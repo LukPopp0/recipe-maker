@@ -34,7 +34,7 @@ type CanonicalRecipe = {
 
 ## Validation Rules
 1. title required, trimmed, 1-140 chars.
-2. tags required array, max 5 entries, each 1-40 chars.
+2. tags required array, max 5 entries, each 1-40 chars. Selected primarily from the controlled vocabulary in specs/12-shared-constants.md; custom tags allowed if none fit.
 3. time nullable; if present, integer minutes >= 0 and <= 1440.
 4. ingredients required array; may be empty when all detected items are classified as pantry items.
 5. ingredient name required, trimmed.
@@ -52,7 +52,7 @@ type CanonicalRecipe = {
 - Deduplicate tags case-insensitively.
 - Preserve ordering for ingredients and steps.
 - Lowercase pantry item matching keys but preserve display form.
-- Pantry routing is based on a fixed pantry allowlist defined in shared constants and provided by the product owner.
+- Pantry routing is based on a fixed pantry allowlist defined in shared constants (see specs/12-shared-constants.md for the exact list).
 
 ## Conflict Rules
 - If an ingredient matches the fixed pantry allowlist, move it to pantry_items and remove it from ingredients.

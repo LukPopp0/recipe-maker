@@ -4,8 +4,9 @@
 Provide a single-page workflow to run both ingestion options, review results, and export JSON.
 
 ## Layout
+- Top-level navigation: Create (this workspace) and Library (specs/13-recipe-persistence-and-library.md).
 - Header: app title and status indicator.
-- Left panel: input tabs (URL, Manual).
+- Left panel: input tabs (URL, Manual, Load JSON).
 - Right panel: normalized recipe preview/editor.
 - Bottom utility area: JSON preview + download button.
 
@@ -16,6 +17,16 @@ Actions:
 - "Extract Recipe" submits to /api/ingest/url.
 States:
 - idle/loading/success/error.
+
+## Load JSON Tab
+Fields:
+- File picker (accepts .json).
+Actions:
+- "Load Recipe" reads the file client-side and posts it to /api/recipe/validate.
+Behavior:
+- On success, feeds the validated recipe into the same review panel as a fresh ingestion.
+- Does not auto-save; user still uses the explicit Save action if they want it in the library.
+- On validation failure, show field-level errors from the validate response.
 
 ## Manual Tab
 Fields:
@@ -38,6 +49,7 @@ Controls:
 - Show pantry_items as derived values from fixed pantry allowlist routing.
 - Add/remove tags.
 - Validate recipe before download.
+- "Save Recipe" action (explicit, not automatic): posts to /api/recipe/save and confirms with the returned id.
 
 ## JSON Export
 - Show syntax-highlighted canonical JSON.

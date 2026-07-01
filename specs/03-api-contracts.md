@@ -59,6 +59,46 @@ Response: valid boolean + normalized value or errors.
 ### GET /api/recipe/download/:id
 Returns normalized JSON as attachment.
 
+### POST /api/recipe/save
+Persists a canonical recipe candidate to server-side storage (explicit user action, not automatic).
+Request: canonical recipe object.
+Response success:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "id": "..."
+}
+```
+Response error shape mirrors other endpoints.
+
+### GET /api/recipes
+Returns saved recipe summaries for the library view.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "recipes": [
+    { "id": "...", "title": "...", "tags": [], "main_image": "...", "createdAt": "..." }
+  ]
+}
+```
+
+### GET /api/recipe/:id
+Returns the full canonical recipe for a saved id.
+Response shape mirrors /api/ingest/url (recipe field populated, no diagnostics).
+
+### DELETE /api/recipe/:id
+Removes a saved recipe.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "..."
+}
+```
+
 ## Error Codes (Minimum Set)
 - INVALID_INPUT
 - INVALID_URL
@@ -67,6 +107,7 @@ Returns normalized JSON as attachment.
 - AI_NORMALIZATION_FAILED
 - SCHEMA_VALIDATION_FAILED
 - IMAGE_DOWNLOAD_FAILED
+- RECIPE_NOT_FOUND
 - INTERNAL_ERROR
 
 ## Non-Functional Rules

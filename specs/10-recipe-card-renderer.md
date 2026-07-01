@@ -37,10 +37,11 @@ Render a standardized two-page recipe card from canonical JSON.
 - Mobile: stacked pages with page labels.
 
 ## Print/PDF
-- Add print stylesheet:
+- Add print stylesheet (milestone 2 baseline):
   - fixed card dimensions.
   - hide app controls.
   - force page breaks between card pages.
+- Future upgrade (see plan Phase 9, not part of milestone 2): server-side headless rendering (Puppeteer/Playwright) hitting the card renderer route and printing to PDF, for consistent output regardless of the user's browser.
 
 ## Styling Constraints
 - Final visual design can evolve, but data placement hierarchy must remain stable.

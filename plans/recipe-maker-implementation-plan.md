@@ -17,6 +17,9 @@ Milestone 1 includes:
 - Pantry-vs-ingredient split.
 - Ingredient image matching from local asset library.
 - JSON preview + download in UI.
+- Load JSON tab to re-import a previously exported recipe.
+- Explicit Save action persisting recipes server-side.
+- Recipe library: list, view (JSON/review), download, delete.
 
 ### Milestone 2 (Secondary): Recipe Card Rendering
 Implement deterministic card rendering driven only by canonical JSON:
@@ -27,6 +30,7 @@ Milestone 2 includes:
 - Responsive card layout.
 - Print/PDF export baseline.
 - Visual refinement pass after design lock.
+- "View as Card" upgrade to the recipe library's view action.
 
 ## 3. Constraints and Decisions
 - Must support both Option A and Option B in-app.
@@ -38,24 +42,28 @@ Milestone 2 includes:
 - Tags use fixed vocabulary plus optional custom tags.
 - Amount handling preserves flexible text values.
 - main_image is required in canonical output. If no image is found, use a configured default image URL.
+- Recipe persistence uses flat JSON files on disk (one per recipe), not a database, behind a pluggable RecipeRepository interface. Saving is an explicit user action, not automatic.
+- No authentication in milestone 1/2 (single-user, local-first). If deployed later, add a basic access gate (single shared secret); full multi-user auth is out of scope.
 
 ## 4. Target Architecture
 
 ### 4.1 Frontend
 - React + TypeScript (existing Vite app).
-- One workspace page with two ingestion tabs: URL Import, Manual Import.
+- Top-level nav: Create workspace (two ingestion tabs + Load JSON) and Library.
 - Review/edit panel for normalized recipe.
 - JSON viewer and download action.
 - Card renderer module (milestone 2).
 
 ### 4.2 Backend
-- Node.js API service in same repo (recommended for secure key handling).
+- Node.js API service in same repo using Hono (recommended for secure key handling).
+- Test framework: Vitest (unit/integration), React Testing Library (frontend components).
 - Responsibilities:
    - URL fetch and preprocessing.
    - Gemini-first extraction and normalization.
    - Normalization + validation.
    - Step compaction.
    - Image download and re-hosting.
+   - Recipe save/list/get/delete via RecipeRepository.
    - Return canonical payloads.
 
 ### 4.3 Shared Contracts
@@ -63,8 +71,8 @@ Milestone 2 includes:
 - Strict response contract for success/error states.
 
 ### 4.4 Storage
-- Adapter interface with local storage implementation first.
-- Future-ready cloud adapter (S3/GCS/R2) contract.
+- Image storage: adapter interface with local storage implementation first, future-ready cloud adapter (S3/GCS/R2) contract.
+- Recipe storage: separate RecipeRepository interface, LocalJsonFileRecipeRepository default (flat JSON files, one per recipe). See specs/13-recipe-persistence-and-library.md.
 
 ## 5. Execution Plan
 
@@ -80,6 +88,8 @@ Milestone 2 includes:
 - Spec 09 (frontend ingestion workspace): specs/09-frontend-ingestion-workspace.md
 - Spec 10 (card renderer): specs/10-recipe-card-renderer.md
 - Spec 11 (testing and ops): specs/11-testing-observability-and-ops.md
+- Spec 12 (shared constants): specs/12-shared-constants.md
+- Spec 13 (recipe persistence and library): specs/13-recipe-persistence-and-library.md
 
 ## Phase 0: Repository Cleanup and Baseline Setup
 
@@ -152,20 +162,27 @@ Milestone 2 includes:
    - Define primary model, retry model, timeout, token budget, and retry count.
    - Version prompts explicitly (promptVersion) for reproducibility.
    - Add deterministic generation settings where supported.
-5. Bootstrap backend service skeleton.
+5. Bootstrap backend service skeleton using Hono.
    - Add server entrypoint, route registration, middleware order, and health endpoint.
    - Add startup checks for env variables and storage adapter readiness.
+   - Set up Vitest for the backend package.
+6. Bootstrap RecipeRepository.
+   - Add RecipeRepository interface in shared/server contracts.
+   - Implement LocalJsonFileRecipeRepository writing to server/data/recipes.
+   - Ensure server/data/recipes is created on startup and gitignored.
 
 ### Deliverables
 - Compile-safe shared contracts.
 - Runtime validators for all payload edges.
 - Backend skeleton with typed route boundaries and centralized error handling.
 - Gemini configuration module with prompt versioning.
+- RecipeRepository interface and local JSON file implementation.
 
 ### Acceptance Criteria
 - Invalid payloads fail with typed, user-readable errors.
 - All route handlers return predictable success/error shape.
 - Backend boots with validated config and returns health check response.
+- RecipeRepository save/get/list/delete round-trip correctly (covered by Vitest).
 
 ## Phase 2: Option A Pipeline (URL Import)
 
@@ -270,9 +287,10 @@ Milestone 2 includes:
 - specs/02-canonical-recipe-schema.md
 - specs/07-step-compaction-max-6.md
 - specs/08-ingredient-image-matching.md
+- specs/12-shared-constants.md
 
 ### Implementation Tasks
-1. Pantry classifier with fixed pantry allowlist (no user override in normalization pipeline).
+1. Pantry classifier with fixed pantry allowlist from specs/12-shared-constants.md (no user override in normalization pipeline).
    - Match normalized ingredient names against allowlist.
    - Move matches to pantry_items and remove from ingredients.
    - Deduplicate pantry_items while preserving display consistency.
@@ -306,9 +324,11 @@ Milestone 2 includes:
 - specs/03-api-contracts.md
 - specs/09-frontend-ingestion-workspace.md
 - specs/02-canonical-recipe-schema.md
+- specs/13-recipe-persistence-and-library.md
 
 ### Implementation Tasks
-1. Build two-tab ingestion UI.
+1. Build ingestion UI with URL, Manual, and Load JSON tabs.
+   - Load JSON reads a file client-side and validates it via POST /api/recipe/validate before feeding it into the review panel.
 2. Add request lifecycle UI states.
    - idle/loading/success/error per tab.
    - stage-level status text (fetching, normalizing, post-processing, complete).
@@ -326,17 +346,45 @@ Milestone 2 includes:
 7. Add client-side pre-submit validation and guardrails.
    - Validate required manual fields before API call.
    - Enforce file type/size limits client-side for quicker feedback.
+8. Add explicit Save Recipe action.
+   - Posts current review-state recipe to POST /api/recipe/save.
+   - Confirms with returned id; does not auto-save on ingestion or on Load JSON.
 
 ### Deliverables
 - End-to-end milestone 1 UX.
 - Diagnostics-aware review experience and JSON export.
+- Explicit save flow wired to the backend RecipeRepository.
 
 ### Acceptance Criteria
-- User can complete both flows without touching code.
+- User can complete all three flows (URL, Manual, Load JSON) without touching code.
 - Final JSON download reflects all user edits.
 - Error and warning states are understandable and actionable.
+- Save Recipe persists the currently reviewed recipe and only that recipe.
 
-## Phase 6: Milestone 2 Card Rendering
+## Phase 6: Recipe Persistence and Library
+
+### Spec References
+- specs/03-api-contracts.md
+- specs/13-recipe-persistence-and-library.md
+
+### Implementation Tasks
+1. Backend: implement POST /api/recipe/save, GET /api/recipes, GET /api/recipe/:id, DELETE /api/recipe/:id using RecipeRepository (built in Phase 1).
+2. Add RECIPE_NOT_FOUND error handling for get/delete on missing ids.
+3. Frontend: build Library section (top-level nav item) with list/view/download/delete.
+   - List view renders title, main image thumbnail, tags per saved recipe.
+   - View opens the existing review/JSON panel in read-only mode.
+   - Delete confirms before calling DELETE.
+
+### Deliverables
+- Working save-to-library flow from the review panel.
+- Library list/view/download/delete UI.
+
+### Acceptance Criteria
+- Saved recipes persist across server restarts.
+- Deleting a recipe removes it from disk and from the library list.
+- Library view/download reuse existing review/export components rather than duplicating them.
+
+## Phase 7: Milestone 2 Card Rendering
 
 ### Implementation Tasks
 1. Build card renderer module that accepts canonical JSON only.
@@ -347,15 +395,17 @@ Milestone 2 includes:
 4. Print mode and PDF baseline:
    - Browser print CSS first.
 5. Empty-state fallbacks for missing images/text.
+6. Add "View as Card" link from the Library view action into the card renderer.
 
 ### Deliverables
 - Two-page card preview and printable output.
+- Library entries can be opened as a rendered card.
 
 ### Acceptance Criteria
 - All valid canonical recipes render without layout breakage.
 - Print/PDF output is legible and complete.
 
-## Phase 7: Quality, Testing, and Hardening
+## Phase 8: Quality, Testing, and Hardening
 
 ### Implementation Tasks
 1. Unit tests:
@@ -363,9 +413,12 @@ Milestone 2 includes:
    - Step compaction.
    - Pantry classifier.
    - Ingredient matcher.
+   - RecipeRepository (save/get/list/delete).
 2. Integration tests:
    - URL flow golden fixtures.
    - Manual flow golden fixtures.
+   - Load JSON flow.
+   - Save/list/view/delete round-trip through the API.
 3. Operational guards:
    - Request timeouts.
    - Retry strategy.
@@ -382,23 +435,43 @@ Milestone 2 includes:
 - Critical modules covered by tests.
 - Known failures handled with actionable messages.
 
+## Phase 9: PDF Generation Upgrade (Future, Post-Milestone 2)
+
+### Spec References
+- specs/10-recipe-card-renderer.md
+
+### Implementation Tasks
+1. Add server-side headless rendering (Puppeteer or Playwright) that hits the card renderer route and prints to PDF.
+2. Expose a download-as-PDF action alongside the existing browser print flow.
+3. Keep browser print CSS as a fallback.
+
+### Deliverables
+- Consistent PDF output independent of the user's browser.
+
+### Acceptance Criteria
+- PDF output matches the on-screen card layout for a representative fixture set.
+- Not required for Milestone 2 completion; tracked as a follow-up.
+
 ## 6. Implementation Order (Strict)
 1. Phase 0 cleanup.
-2. Phase 1 contracts.
+2. Phase 1 contracts (includes RecipeRepository).
 3. Option A backend.
 4. Option B backend + frontend forms.
 5. Shared post-processing.
-6. Frontend review + JSON export.
-7. Milestone 2 card renderer.
-8. Tests + hardening.
+6. Frontend review + JSON export + Load JSON + Save action.
+7. Recipe persistence and library.
+8. Milestone 2 card renderer.
+9. Tests + hardening.
+10. PDF generation upgrade (future, post-milestone 2).
 
 ## 7. Definition of Done
-- Both input options work in one UI.
+- Both input options, plus Load JSON, work in one UI.
 - Canonical JSON is generated, editable, and downloadable.
 - Max 6 steps always enforced.
 - Ingredient images matched from local library through Gemini catalog matching with INGREDIENT_NOT_FOUND.png fallback.
-- Two-page card renders from canonical JSON.
-- Tests cover core transformation logic and ingestion endpoints.
+- Recipes can be explicitly saved, then listed, viewed, downloaded, and deleted from the library.
+- Two-page card renders from canonical JSON, including from a saved library entry.
+- Tests cover core transformation logic, ingestion endpoints, and recipe persistence.
 
 ## 8. Risks and Mitigations
 
@@ -425,7 +498,18 @@ Mitigation:
 - Gemini ingredient normalization and catalog-based matching.
 - INGREDIENT_NOT_FOUND.png fallback + warning message.
 
+### Risk: Flat-file recipe storage under concurrent writes or at scale
+Mitigation:
+- Personal, single-user, local-first usage keeps concurrency risk low.
+- RecipeRepository is an interface; swapping in a DB-backed implementation later requires no caller changes.
+- Revisit if list() directory scanning becomes slow (unlikely at personal-use volume).
+
+### Risk: Deploying beyond local use without access control
+Mitigation:
+- Deferred until deployment is actually planned.
+- Add a basic access gate (single shared secret) at the Hono middleware level; full multi-user auth is explicitly out of scope.
+
 ## 9. Deliverables Checklist
 - Master plan document (this file).
-- Feature specs in ./specs for each implementation area.
+- Feature specs in ./specs for each implementation area, including specs/12-shared-constants.md and specs/13-recipe-persistence-and-library.md.
 - Implementation starts only after this plan is approved.

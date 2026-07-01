@@ -4,6 +4,7 @@
 Ensure reliability, debuggability, and safe operation for ingestion and rendering features.
 
 ## Test Strategy
+Tooling: Vitest for unit/integration tests; React Testing Library for UI/component tests.
 
 ### Unit Tests
 - Schema validation success/failure.
