@@ -1,77 +1,46 @@
-# React + TypeScript + Vite
+# Recipe Maker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ingests recipes (URL or manual text+images) via Gemini, normalizes them into a
+canonical JSON schema, lets you save/browse them, and renders a printable
+two-page recipe card.
 
-Currently, two official plugins are available:
+## Status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Milestone 1 (ingestion + normalization + persistence) in progress. Milestone 2
+(card rendering) not started. See `plans/recipe-maker-implementation-plan.md`
+for the full phase breakdown and `specs/` for per-feature specs.
 
-## React Compiler
+## Architecture
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+- `src/` - frontend (React + TypeScript + Vite).
+- `server/` - backend API (Hono), added in Phase 1. Not present yet.
+- `shared/` - types, schema validators, constants, and `assets/ingredients`
+  (ingredient image library used by both frontend and backend).
+- `plans/`, `specs/` - planning docs; read before changing scope.
 
-Note: This will impact Vite dev & build performances.
+## Setup
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm install
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+`pnpm dev` and `pnpm build` automatically regenerate the ingredient asset
+manifest (`shared/src/generated/ingredient-manifest.json`) via a `pre`
+script - no manual step needed.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `pnpm dev` - start the Vite dev server.
+- `pnpm build` - type-check and build for production.
+- `pnpm lint` - run ESLint.
+- `pnpm test` - run Vitest.
+- `pnpm generate:manifest` - regenerate the ingredient asset manifest manually.
 
-```
+## Known Constraints
+
+- English-only input for Milestone 1.
+- Recipes are capped at 6 cooking steps (compaction runs automatically above that).
+- Pantry allowlist and tag vocabulary are fixed lists, see `specs/12-shared-constants.md`.
+- Recipe persistence is flat JSON files on disk (`server/data/recipes/`), not a database.
+- Single-user, no authentication (local-first).
