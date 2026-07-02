@@ -191,7 +191,10 @@ Milestone 2 includes:
 - specs/04-option-a-url-ingestion.md
 - specs/06-image-rehosting-storage.md
 - specs/07-step-compaction-max-6.md
-- specs/08-ingredient-image-matching.md
+- specs/12-shared-constants.md
+
+### Scope Note
+Pantry classifier, tag normalizer, step compaction, and final sanitation are built here as the real, reusable post-processing module, since Option A needs them to produce valid output. Phase 3 (Option B) reuses this module rather than rebuilding it. Phase 4 is scoped down to ingredient image matching (specs/08) plus confidence-metadata/warning hardening on top of this module.
 
 ### Implementation Tasks
 1. Implement URL intake and security guardrails.
@@ -212,11 +215,12 @@ Milestone 2 includes:
 5. Apply deterministic quality gate.
    - Validate required fields and schema conformance.
    - Reject responses with unresolved structural issues after retry.
-6. Apply post-processing pipeline.
-   - Enforce fixed pantry-list routing.
-   - Run step compaction if >6 steps.
-   - Clamp step_description to 600 characters if still over limit.
-   - Ensure required main_image with configured default fallback.
+6. Build and apply the reusable canonical post-processing module.
+   - Pantry classifier: match normalized ingredient names against the fixed allowlist (specs/12), move matches to pantry_items, dedupe while preserving display form.
+   - Tag normalizer: map model tags to the controlled vocabulary (specs/12), keep extras as custom tags.
+   - Step compaction algorithm (hard cap at 6, specs/07).
+   - Final sanitation: clamp step_description to 600 characters, trim/collapse whitespace, ensure required main_image with configured default fallback, re-validate against the canonical schema.
+   - Module is built to be called identically from Option B (Phase 3).
 7. Process images.
    - Download main image and step images when available.
    - Re-host through storage adapter and replace URLs in payload.
@@ -226,6 +230,7 @@ Milestone 2 includes:
 
 ### Deliverables
 - /api/ingest/url endpoint.
+- Reusable canonical post-processing module (pantry, tags, step compaction, sanitation) used by both pipelines.
 - Deterministic success/failure behavior.
 - URL ingestion diagnostics and warning metadata.
 
@@ -259,7 +264,7 @@ Milestone 2 includes:
    - Pass raw text blocks and image metadata to Gemini-first normalization.
    - Avoid deep heuristic parsing except minimal cleanup.
    - Require canonical schema output from Gemini.
-4. Apply same post-normalization logic as Option A:
+4. Apply the same post-processing module built in Phase 2 (no reimplementation):
    - Pantry split.
    - Tag policy.
    - Step compaction.
@@ -281,42 +286,31 @@ Milestone 2 includes:
 - main_image is always present (uploaded/re-hosted or configured default).
 - API returns diagnostics and warnings in standard envelope.
 
-## Phase 4: Canonical Post-Processing
+## Phase 4: Ingredient Image Matching and Post-Processing Hardening
 
 ### Spec References
 - specs/02-canonical-recipe-schema.md
-- specs/07-step-compaction-max-6.md
 - specs/08-ingredient-image-matching.md
-- specs/12-shared-constants.md
+
+### Scope Note
+Pantry classifier, tag normalizer, step compaction, and final sanitation were built in Phase 2 as the reusable post-processing module (used unchanged by Option B in Phase 3). This phase only adds ingredient image matching on top of that module, plus confidence/warning metadata hardening.
 
 ### Implementation Tasks
-1. Pantry classifier with fixed pantry allowlist from specs/12-shared-constants.md (no user override in normalization pipeline).
-   - Match normalized ingredient names against allowlist.
-   - Move matches to pantry_items and remove from ingredients.
-   - Deduplicate pantry_items while preserving display consistency.
-2. Tag normalizer:
-   - Map model tags to controlled vocabulary.
-   - Keep extras as custom tags.
-3. Step compaction algorithm (hard cap at 6).
-4. Ingredient image matcher:
+1. Ingredient image matcher:
    - Gemini-driven matching against provided ingredient asset catalog.
    - Enforce catalog-only filenames or INGREDIENT_NOT_FOUND.png fallback.
-5. Confidence metadata:
+2. Confidence metadata:
    - Track warnings for low-confidence matching/extraction.
-6. Final canonical sanitation:
-   - Trim and normalize whitespace.
-   - Deduplicate tags.
-   - Guarantee main_image presence.
-   - Validate final object before API response.
+3. Wire the matcher into the existing post-processing module (Phase 2) so both pipelines call it as the final step before sanitation's re-validation.
 
 ### Deliverables
-- Reusable post-processing module used by both pipelines.
-- Deterministic pantry routing and final sanitation stage.
+- Ingredient image matcher integrated into the shared post-processing module.
+- Confidence/warning metadata for unmatched or low-confidence ingredients.
 
 ### Acceptance Criteria
-- All outputs satisfy schema and step cap.
 - Ingredient image assignment deterministic for same input.
-- Pantry-list items never appear in ingredients after final post-processing.
+- Unknown ingredients reliably map to INGREDIENT_NOT_FOUND.png without failing the request.
+- All outputs still satisfy schema and step cap (regression check on Phase 2's guarantees).
 
 ## Phase 5: Milestone 1 Frontend Completion
 
@@ -455,9 +449,9 @@ Milestone 2 includes:
 ## 6. Implementation Order (Strict)
 1. Phase 0 cleanup.
 2. Phase 1 contracts (includes RecipeRepository).
-3. Option A backend.
+3. Option A backend (includes reusable post-processing module: pantry, tags, step compaction, sanitation).
 4. Option B backend + frontend forms.
-5. Shared post-processing.
+5. Ingredient image matching and post-processing hardening.
 6. Frontend review + JSON export + Load JSON + Save action.
 7. Recipe persistence and library.
 8. Milestone 2 card renderer.

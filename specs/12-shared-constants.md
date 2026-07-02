@@ -45,6 +45,6 @@ Dessert
 ```
 
 ## Acceptance Criteria
-- Pantry classifier (spec 04 post-processing step, spec 05, Phase 4 of the plan) imports this list rather than duplicating it.
+- Pantry classifier (spec 04 post-processing step, spec 05, Phase 2 of the plan) imports this list rather than duplicating it.
 - Tag normalizer prefers this vocabulary before falling back to custom tags.
 - Both lists are unit-tested against the pantry classifier and tag normalizer (spec 11).
