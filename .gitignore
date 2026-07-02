@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 shared/src/generated
+server/data/recipes
+
+# Env files (never commit secrets; .env.example files stay tracked)
+.env
+.env.*
+!.env.example
+!server/.env.example
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +30,7 @@ shared/src/generated
 *.njsproj
 *.sln
 *.sw?
+
+skills-lock.json
+graphify-out
+.agents

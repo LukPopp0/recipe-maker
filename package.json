@@ -4,36 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "generate:manifest": "node scripts/generate-ingredient-manifest.mjs",
-    "predev": "node scripts/generate-ingredient-manifest.mjs",
-    "prebuild": "node scripts/generate-ingredient-manifest.mjs",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "dev": "pnpm --filter shared run generate:manifest && pnpm --filter web run dev",
+    "build": "pnpm --filter shared run generate:manifest && pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "generate:manifest": "pnpm --filter shared run generate:manifest"
   },
   "devDependencies": {
-    "@babel/core": "^7.29.7",
     "@eslint/js": "^10.0.1",
-    "@rolldown/plugin-babel": "^0.2.3",
-    "@types/babel__core": "^7.20.5",
-    "@types/node": "^24.13.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
-    "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.61.0",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "typescript-eslint": "^8.61.0"
   }
 }

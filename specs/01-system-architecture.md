@@ -10,24 +10,27 @@ Define the concrete architecture for a secure, maintainable recipe ingestion and
 
 ## Repository Structure
 
+This is a pnpm workspace with three sibling packages: `/apps/web` (package `web`),
+`/server` (package `server`), `/shared` (package `shared`).
+
 ## Top-level
-- /src: frontend application.
-- /server: backend API service.
-- /shared: shared types, validators, constants.
+- /apps/web: frontend application (package `web`).
+- /server: backend API service (package `server`).
+- /shared: shared types, validators, constants (package `shared`).
 - /shared/assets/ingredients: shared ingredient image source-of-truth used by frontend and backend.
 - /plans: implementation plans.
 - /specs: feature specifications.
 - /server/data/recipes: local JSON file storage for saved recipes (gitignored).
 
 ## Frontend structure
-- /src/app: app shell, providers, routing (if needed).
-- /src/components/ingest-url: URL option UI and client logic.
-- /src/components/ingest-manual: manual option UI and client logic.
-- /src/components/review: normalized recipe review/edit UI.
-- /src/components/library: recipe library list/view/delete UI.
-- /src/components/card: two-page card renderer.
-- /src/lib/api: typed API client wrappers.
-- /src/lib/state: app state modules.
+- /apps/web/src/app: app shell, providers, routing (if needed).
+- /apps/web/src/components/ingest-url: URL option UI and client logic.
+- /apps/web/src/components/ingest-manual: manual option UI and client logic.
+- /apps/web/src/components/review: normalized recipe review/edit UI.
+- /apps/web/src/components/library: recipe library list/view/delete UI.
+- /apps/web/src/components/card: two-page card renderer.
+- /apps/web/src/lib/api: typed API client wrappers.
+- /apps/web/src/lib/state: app state modules.
 - frontend reads ingredient image manifest generated from /shared/assets/ingredients.
 
 ## Backend structure

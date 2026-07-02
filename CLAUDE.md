@@ -6,8 +6,9 @@ canonical JSON schema (max 6 steps, pantry split, ingredient image matching), le
 user save/browse recipes, and renders a printable two-page recipe card.
 
 ## Status
-Planning only. No implementation started. `src/App.tsx` still has the Vite template.
-Read `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
+Phase 0 (repo cleanup) and the pnpm workspace conversion (Phase 1, task 1) are done.
+`apps/web/src/App.tsx` still has the Vite template. Read
+`plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 
 ## Key docs
@@ -26,10 +27,11 @@ strict phase order.
 - Single-user, no auth for now; access gate only if/when deployed
 - Deployment: local-first, keep adapters pluggable for future hosting
 
-## Repo layout (target, per specs/01)
-- `/src` - frontend (React + TS + Vite)
-- `/server` - backend API (not yet created)
-- `/shared` - shared types, schema, constants, `assets/ingredients` (215 images, already in place)
+## Repo layout (pnpm workspace, per specs/01)
+- `/apps/web` - frontend (React + TS + Vite), package `web`
+- `/server` - backend API, package `server` (not yet created)
+- `/shared` - shared types, schema, constants, `assets/ingredients` (215 images, already
+  in place); package `shared` (not yet an installable package - added in a later Phase 1 task)
 - `/plans`, `/specs` - planning docs
 
 ## Conventions

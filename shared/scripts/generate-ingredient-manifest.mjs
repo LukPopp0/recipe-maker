@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { buildIngredientManifest } from './lib/build-ingredient-manifest.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const SOURCE_DIR = resolve(__dirname, '../shared/assets/ingredients')
-const OUTPUT_FILE = resolve(__dirname, '../shared/src/generated/ingredient-manifest.json')
+const SOURCE_DIR = resolve(__dirname, '../assets/ingredients')
+const OUTPUT_FILE = resolve(__dirname, '../src/generated/ingredient-manifest.json')
 
 const manifest = await buildIngredientManifest(SOURCE_DIR)
 await mkdir(dirname(OUTPUT_FILE), { recursive: true })

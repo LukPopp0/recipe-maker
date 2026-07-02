@@ -6,16 +6,26 @@ two-page recipe card.
 
 ## Status
 
-Milestone 1 (ingestion + normalization + persistence) in progress. Milestone 2
-(card rendering) not started. See `plans/recipe-maker-implementation-plan.md`
-for the full phase breakdown and `specs/` for per-feature specs.
+Phase 0 (repo cleanup) and Phase 1 (core contracts and foundations) are done.
+Backend now boots, validates config, and exposes working recipe
+save/list/get/delete/download/validate routes backed by a local JSON-file
+`RecipeRepository`; URL and manual ingestion (`/api/ingest/url`,
+`/api/ingest/manual`) are registered but return `NOT_IMPLEMENTED` until
+Phase 2/3. No frontend ingestion UI yet (Phase 5). See
+`plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
+`specs/` for per-feature specs.
 
 ## Architecture
 
-- `src/` - frontend (React + TypeScript + Vite).
-- `server/` - backend API (Hono), added in Phase 1. Not present yet.
-- `shared/` - types, schema validators, constants, and `assets/ingredients`
-  (ingredient image library used by both frontend and backend).
+This is a pnpm workspace with three sibling packages:
+
+- `apps/web/` - frontend (React + TypeScript + Vite), package `web`.
+- `server/` - backend API (Hono), package `server`. Boots via `pnpm --filter
+  server run dev`, validates env/config and storage readiness on startup,
+  exposes `/health` and `/api/*` routes.
+- `shared/` - types, Zod schema validators, constants, and `assets/ingredients`
+  (ingredient image library used by both frontend and backend), package
+  `shared`.
 - `plans/`, `specs/` - planning docs; read before changing scope.
 
 ## Setup
@@ -26,16 +36,26 @@ pnpm dev
 ```
 
 `pnpm dev` and `pnpm build` automatically regenerate the ingredient asset
-manifest (`shared/src/generated/ingredient-manifest.json`) via a `pre`
-script - no manual step needed.
+manifest (`shared/src/generated/ingredient-manifest.json`) before starting/building
+- no manual step needed. `pnpm dev` only starts the frontend; run the backend
+separately (see below).
+
+To run the backend: copy `server/.env.example` to `server/.env`, then
+`pnpm --filter server run dev` (starts on `PORT` from `.env`, default 8787).
+`GEMINI_API_KEY` isn't required yet - no Gemini calls happen until Phase 2/3.
 
 ## Scripts
 
-- `pnpm dev` - start the Vite dev server.
-- `pnpm build` - type-check and build for production.
-- `pnpm lint` - run ESLint.
-- `pnpm test` - run Vitest.
+- `pnpm dev` - regenerate the ingredient manifest, then start the `web` Vite dev server.
+- `pnpm build` - regenerate the ingredient manifest, then build all workspace packages.
+- `pnpm lint` - run ESLint across all workspace packages (`pnpm -r run lint`).
+- `pnpm test` - run tests across all workspace packages (`pnpm -r run test`).
+- `pnpm typecheck` - run TypeScript type checking across all workspace packages (`pnpm -r run typecheck`).
 - `pnpm generate:manifest` - regenerate the ingredient asset manifest manually.
+- `pnpm --filter web run dev|build|lint|preview|test` - run a script for the `web`
+  package only.
+- `pnpm --filter server run dev|start|test|lint|typecheck` - run a script for the
+  `server` package only (`dev` watches, `start` runs once).
 
 ## Known Constraints
 
