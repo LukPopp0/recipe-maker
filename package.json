@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "pnpm --filter shared run generate:manifest",
     "dev": "pnpm --filter shared run generate:manifest && pnpm --filter web run dev",
     "build": "pnpm --filter shared run generate:manifest && pnpm -r run build",
     "lint": "pnpm -r run lint",

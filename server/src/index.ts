@@ -4,6 +4,7 @@ import { createApp } from './app.js';
 import { loadServerEnv } from './env.js';
 import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
+import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
 import { LocalJsonFileRecipeRepository } from './services/recipes/local-json-file-recipe-repository.js';
 import { LocalDiskStorageAdapter } from './services/storage/local-disk-storage-adapter.js';
 
@@ -39,6 +40,12 @@ async function checkStorageReady(): Promise<boolean> {
 const storageReady = await checkStorageReady();
 
 if (!storageReady) {
+  process.exit(1);
+}
+
+// Startup ingredient-catalog readiness check: ensure the not-found
+// placeholder image is present in the manifest before serving traffic.
+if (!checkIngredientCatalogReady()) {
   process.exit(1);
 }
 

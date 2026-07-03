@@ -12,6 +12,8 @@ import type { GeminiClient } from '../services/ai/gemini-client.js';
 import { rehostRecipeImages } from '../services/images/image-rehoster.js';
 import { runManualIngestionPipeline } from '../services/ingestion/manual-ingestion-pipeline.js';
 import { runUrlIngestionPipeline } from '../services/ingestion/url-ingestion-pipeline.js';
+import { loadIngredientCatalog } from '../services/ingredient-matching/catalog.js';
+import { createIngredientImageMatcher } from '../services/ingredient-matching/ingredient-image-matcher.js';
 import { parseManualUploadBody } from '../services/manual-ingestion/manual-upload-parser.js';
 import { applyPostProcessing, type RawRecipeCandidate } from '../services/post-processing/index.js';
 import type { StorageAdapter } from '../services/storage/storage-adapter.js';
@@ -30,6 +32,11 @@ export type IngestDeps = {
 export function createIngestApp(deps: IngestDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
   const { env, geminiClient, geminiConfig, storageAdapter, defaultMainImageUrl } = deps;
+  const ingredientImageMatcher = createIngredientImageMatcher({
+    geminiClient,
+    geminiConfig,
+    catalog: loadIngredientCatalog(),
+  });
 
   app.post('/ingest/url', async (c) => {
     const requestId = c.get('requestId');
@@ -46,8 +53,9 @@ export function createIngestApp(deps: IngestDeps) {
 
     // 2. Deterministic post-processing -> schema-valid canonical recipe, still
     //    referencing the original remote image URLs at this point.
-    const canonical = applyPostProcessing(recipeCandidate as RawRecipeCandidate, {
+    const canonical = await applyPostProcessing(recipeCandidate as RawRecipeCandidate, {
       defaultMainImageUrl,
+      ingredientImageMatcher,
     });
 
     // 3. Re-host remote images. recipeId is a fresh UUID used only as the image
@@ -110,12 +118,12 @@ export function createIngestApp(deps: IngestDeps) {
     //    metadata.source_type is forced to 'manual' server-side, never
     //    trusted from the model's output, since a hallucinated 'url' value
     //    must never leak through.
-    const canonical = applyPostProcessing(
+    const canonical = await applyPostProcessing(
       {
         ...recipeCandidate,
         metadata: { ...recipeCandidate.metadata, source_type: 'manual' },
       } as RawRecipeCandidate,
-      { defaultMainImageUrl },
+      { defaultMainImageUrl, ingredientImageMatcher },
     );
 
     // 5. Merge pipeline warnings (image hosting failures, step-image

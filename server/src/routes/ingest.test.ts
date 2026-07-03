@@ -90,6 +90,22 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
     return { generateCanonicalRecipe: vi.fn(handler) } as unknown as GeminiClient;
   }
 
+  // Fake GeminiClient that answers a fixed sequence of calls in order: first
+  // the ingestion candidate, then the ingredient image matcher's attempt(s).
+  // Each request now makes >= 2 Gemini calls once a matcher is wired in.
+  function fakeGeminiSequence(...handlers: Array<() => Promise<unknown>>): GeminiClient {
+    const fn = vi.fn();
+    for (const handler of handlers) fn.mockImplementationOnce(handler);
+    return { generateCanonicalRecipe: fn } as unknown as GeminiClient;
+  }
+
+  // Match response used by the "matched filename" test: same order/length as
+  // VALID_CANDIDATE.ingredients, using real catalog filenames.
+  const MATCH_RESPONSE = [
+    { name: 'Lasagna Sheets', amount_text: '500g', image: 'pasta-linguine.png' },
+    { name: 'Ground Beef', amount_text: '400g', image: 'meat-beef-ground.png' },
+  ];
+
   function makeApp(geminiClient: GeminiClient) {
     const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir, IMAGE_DATA_DIR: imageDir });
     const recipeRepository = new LocalJsonFileRecipeRepository(dataDir);
@@ -122,7 +138,10 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
 
   it('runs the full pipeline and returns a schema-valid recipe with a re-hosted image', async () => {
     mockFetch();
-    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_CANDIDATE)));
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_CANDIDATE),
+      () => Promise.resolve(MATCH_RESPONSE),
+    ));
 
     const res = await app.request('/api/ingest/url', {
       method: 'POST',
@@ -142,6 +161,60 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
     // main_image was re-hosted onto our own /images/ mount, not left remote.
     expect(body.recipe.main_image).toContain('/images/');
     expect(body.recipe.main_image).not.toBe(REMOTE_IMAGE_URL);
+    // Ingredient images were assigned from the matcher's fake response.
+    expect(body.recipe.ingredients.map((i) => i.image)).toEqual([
+      'pasta-linguine.png',
+      'meat-beef-ground.png',
+    ]);
+  });
+
+  it('degrades an invented matcher filename to INGREDIENT_NOT_FOUND.png with a warning', async () => {
+    mockFetch();
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_CANDIDATE),
+      () => Promise.resolve([
+        { name: 'Lasagna Sheets', amount_text: '500g', image: 'pasta-linguine.png' },
+        { name: 'Ground Beef', amount_text: '400g', image: 'not-a-real-catalog-file.png' },
+      ]),
+    ));
+
+    const res = await app.request('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/lasagna' }),
+    });
+    const body = (await res.json()) as IngestUrlSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.recipe.ingredients.map((i) => i.image)).toEqual([
+      'pasta-linguine.png',
+      'INGREDIENT_NOT_FOUND.png',
+    ]);
+    expect(body.recipe.metadata.warnings.some((w) => w.includes('not in the catalog'))).toBe(true);
+  });
+
+  it('degrades all ingredient images to INGREDIENT_NOT_FOUND.png when the matcher fails both attempts', async () => {
+    mockFetch();
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_CANDIDATE),
+      () => Promise.reject(new Error('primary matcher call failed')),
+      () => Promise.reject(new Error('retry matcher call failed')),
+    ));
+
+    const res = await app.request('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/lasagna' }),
+    });
+    const body = (await res.json()) as IngestUrlSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.recipe.ingredients.map((i) => i.image)).toEqual([
+      'INGREDIENT_NOT_FOUND.png',
+      'INGREDIENT_NOT_FOUND.png',
+    ]);
+    expect(body.recipe.metadata.warnings.some((w) => w.includes('degradation') || w.includes('failed after retry'))).toBe(true);
   });
 
   it('rejects a private/blocked URL with 400 INVALID_URL', async () => {
@@ -240,6 +313,21 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
     return { generateCanonicalRecipe: vi.fn(handler) } as unknown as GeminiClient;
   }
 
+  // Fake GeminiClient that answers a fixed sequence of calls in order: first
+  // the ingestion candidate, then the ingredient image matcher's attempt(s).
+  function fakeGeminiSequence(...handlers: Array<() => Promise<unknown>>): GeminiClient {
+    const fn = vi.fn();
+    for (const handler of handlers) fn.mockImplementationOnce(handler);
+    return { generateCanonicalRecipe: fn } as unknown as GeminiClient;
+  }
+
+  // Match response used by the "matched filename" test: same order/length as
+  // VALID_MANUAL_CANDIDATE.ingredients, using real catalog filenames.
+  const MANUAL_MATCH_RESPONSE = [
+    { name: 'Ground Beef', amount_text: '500g', image: 'meat-beef-ground.png' },
+    { name: 'Taco Shells', amount_text: '8', image: 'broccoli.png' },
+  ];
+
   function makeApp(geminiClient: GeminiClient, envOverrides: Record<string, string> = {}) {
     const env = loadServerEnv({
       RECIPE_DATA_DIR: dataDir,
@@ -276,7 +364,10 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
   }
 
   it('runs the full pipeline and returns a schema-valid recipe with hosted images', async () => {
-    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_MANUAL_CANDIDATE)));
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_MANUAL_CANDIDATE),
+      () => Promise.resolve(MANUAL_MATCH_RESPONSE),
+    ));
 
     const res = await app.request('/api/ingest/manual', {
       method: 'POST',
@@ -294,6 +385,56 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
     expect(body.recipe.main_image).toContain('/images/');
     expect(body.recipe.steps.every((step) => !step.image || step.image.includes('/images/'))).toBe(true);
     expect(body.recipe.steps.some((step) => step.image?.includes('/images/'))).toBe(true);
+    // Ingredient images were assigned from the matcher's fake response.
+    expect(body.recipe.ingredients.map((i) => i.image)).toEqual([
+      'meat-beef-ground.png',
+      'broccoli.png',
+    ]);
+  });
+
+  it('degrades an invented matcher filename to INGREDIENT_NOT_FOUND.png with a warning', async () => {
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_MANUAL_CANDIDATE),
+      () => Promise.resolve([
+        { name: 'Ground Beef', amount_text: '500g', image: 'meat-beef-ground.png' },
+        { name: 'Taco Shells', amount_text: '8', image: 'not-a-real-catalog-file.png' },
+      ]),
+    ));
+
+    const res = await app.request('/api/ingest/manual', {
+      method: 'POST',
+      body: validFormData(),
+    });
+    const body = (await res.json()) as IngestManualSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.recipe.ingredients.map((i) => i.image)).toEqual([
+      'meat-beef-ground.png',
+      'INGREDIENT_NOT_FOUND.png',
+    ]);
+    expect(body.recipe.metadata.warnings.some((w) => w.includes('not in the catalog'))).toBe(true);
+  });
+
+  it('degrades all ingredient images to INGREDIENT_NOT_FOUND.png when the matcher fails both attempts', async () => {
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_MANUAL_CANDIDATE),
+      () => Promise.reject(new Error('primary matcher call failed')),
+      () => Promise.reject(new Error('retry matcher call failed')),
+    ));
+
+    const res = await app.request('/api/ingest/manual', {
+      method: 'POST',
+      body: validFormData(),
+    });
+    const body = (await res.json()) as IngestManualSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.recipe.ingredients.map((i) => i.image)).toEqual([
+      'INGREDIENT_NOT_FOUND.png',
+      'INGREDIENT_NOT_FOUND.png',
+    ]);
+    expect(body.recipe.metadata.warnings.some((w) => w.includes('degradation') || w.includes('failed after retry'))).toBe(true);
   });
 
   it('returns 400 INVALID_INPUT when mainImage is missing', async () => {

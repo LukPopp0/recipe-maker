@@ -5,9 +5,24 @@ import { buildIngredientManifest } from './lib/build-ingredient-manifest.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SOURCE_DIR = resolve(__dirname, '../assets/ingredients')
-const OUTPUT_FILE = resolve(__dirname, '../src/generated/ingredient-manifest.json')
+const OUTPUT_DIR = resolve(__dirname, '../src/generated')
+const JSON_OUTPUT = resolve(OUTPUT_DIR, 'ingredient-manifest.json')
+const TS_OUTPUT = resolve(OUTPUT_DIR, 'ingredient-manifest.ts')
 
 const manifest = await buildIngredientManifest(SOURCE_DIR)
-await mkdir(dirname(OUTPUT_FILE), { recursive: true })
-await writeFile(OUTPUT_FILE, JSON.stringify(manifest, null, 2) + '\n')
-console.log(`Wrote ${manifest.length} ingredient assets to ${OUTPUT_FILE}`)
+await mkdir(OUTPUT_DIR, { recursive: true })
+
+// Write JSON
+await writeFile(JSON_OUTPUT, JSON.stringify(manifest, null, 2) + '\n')
+
+// Write TypeScript
+const tsContent = `// Auto-generated: ingredient image manifest from shared/assets/ingredients.
+// Do not edit manually - regenerate with: pnpm --filter shared run generate:manifest
+
+export const INGREDIENT_IMAGE_MANIFEST: readonly string[] = [
+${manifest.map((entry) => `  '${entry}',`).join('\n')}
+];
+`
+await writeFile(TS_OUTPUT, tsContent)
+
+console.log(`Wrote ${manifest.length} ingredient assets to ${JSON_OUTPUT} and ${TS_OUTPUT}`)
