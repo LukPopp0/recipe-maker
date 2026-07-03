@@ -1,4 +1,4 @@
-import type { CanonicalRecipe, RecipeSummary } from 'shared'
+import type { CanonicalRecipe, RecipeSummary } from 'shared';
 
 // Pluggable persistence interface per specs/13, mirroring the StorageAdapter pattern
 // (spec 06) so a database-backed implementation can replace the local JSON file

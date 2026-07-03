@@ -4,7 +4,7 @@ function App() {
       <h1>Recipe Maker</h1>
       <p>Ingestion workspace coming in Phase 5.</p>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;

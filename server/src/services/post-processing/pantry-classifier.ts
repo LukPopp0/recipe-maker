@@ -1,4 +1,4 @@
-import { isPantryItem } from 'shared'
+import { isPantryItem } from 'shared';
 
 // Raw ingredient as produced by Gemini extraction, before schema validation.
 // Same shape as the canonical Ingredient but treated as untrusted input.
@@ -24,24 +24,24 @@ export function classifyPantryItems(ingredients: RawIngredient[]): {
   ingredients: RawIngredient[]
   pantry_items: string[]
 } {
-  const remaining: RawIngredient[] = []
-  const pantryItems: string[] = []
-  const seenKeys = new Set<string>()
+  const remaining: RawIngredient[] = [];
+  const pantryItems: string[] = [];
+  const seenKeys = new Set<string>();
 
   for (const ingredient of ingredients) {
-    const name = (ingredient.name ?? '').trim()
+    const name = (ingredient.name ?? '').trim();
 
     if (name && isPantryItem(name)) {
-      const key = name.toLowerCase()
+      const key = name.toLowerCase();
       if (!seenKeys.has(key)) {
-        seenKeys.add(key)
-        pantryItems.push(name)
+        seenKeys.add(key);
+        pantryItems.push(name);
       }
-      continue
+      continue;
     }
 
-    remaining.push(ingredient)
+    remaining.push(ingredient);
   }
 
-  return { ingredients: remaining, pantry_items: pantryItems }
+  return { ingredients: remaining, pantry_items: pantryItems };
 }

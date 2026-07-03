@@ -18,4 +18,4 @@ export const TAG_VOCABULARY = [
   'Beefy',
   'Chickeny',
   'Dessert',
-]
+];

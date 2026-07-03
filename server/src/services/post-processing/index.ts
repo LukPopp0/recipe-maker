@@ -1,15 +1,15 @@
-import type { CanonicalRecipe, Metadata } from 'shared'
-import { classifyPantryItems, type RawIngredient } from './pantry-classifier.js'
-import { normalizeTags } from './tag-normalizer.js'
-import { compactSteps, type RawStep } from './step-compaction.js'
-import { finalSanitize } from './sanitize.js'
+import type { CanonicalRecipe, Metadata } from 'shared';
+import { classifyPantryItems, type RawIngredient } from './pantry-classifier.js';
+import { normalizeTags } from './tag-normalizer.js';
+import { compactSteps, type RawStep } from './step-compaction.js';
+import { finalSanitize } from './sanitize.js';
 
-export type { RawIngredient } from './pantry-classifier.js'
-export type { RawStep } from './step-compaction.js'
-export { classifyPantryItems } from './pantry-classifier.js'
-export { normalizeTags } from './tag-normalizer.js'
-export { compactSteps } from './step-compaction.js'
-export { finalSanitize } from './sanitize.js'
+export type { RawIngredient } from './pantry-classifier.js';
+export type { RawStep } from './step-compaction.js';
+export { classifyPantryItems } from './pantry-classifier.js';
+export { normalizeTags } from './tag-normalizer.js';
+export { compactSteps } from './step-compaction.js';
+export { finalSanitize } from './sanitize.js';
 
 // Loosely-typed recipe as produced by Gemini extraction, before deterministic
 // post-processing turns it into a schema-valid CanonicalRecipe. Fields mirror
@@ -44,10 +44,10 @@ export function applyPostProcessing(
   candidate: RawRecipeCandidate,
   { defaultMainImageUrl }: ApplyPostProcessingOptions,
 ): CanonicalRecipe {
-  const { ingredients, pantry_items: classifiedPantry } = classifyPantryItems(candidate.ingredients ?? [])
-  const tags = normalizeTags(candidate.tags ?? [])
-  const steps = compactSteps(candidate.steps ?? [])
-  const pantryItems = [...(candidate.pantry_items ?? []), ...classifiedPantry]
+  const { ingredients, pantry_items: classifiedPantry } = classifyPantryItems(candidate.ingredients ?? []);
+  const tags = normalizeTags(candidate.tags ?? []);
+  const steps = compactSteps(candidate.steps ?? []);
+  const pantryItems = [...(candidate.pantry_items ?? []), ...classifiedPantry];
 
   const assembled: CanonicalRecipe = {
     title: candidate.title,
@@ -58,7 +58,7 @@ export function applyPostProcessing(
     main_image: candidate.main_image ?? '',
     steps,
     metadata: candidate.metadata,
-  }
+  };
 
-  return finalSanitize(assembled, defaultMainImageUrl)
+  return finalSanitize(assembled, defaultMainImageUrl);
 }

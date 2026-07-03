@@ -9,11 +9,11 @@ export interface StepImageAssignmentResult {
  * For example, 'file2.jpg' sorts before 'file10.jpg'.
  */
 export function sortStepImageFilenames<T extends { filename: string }>(files: T[]): T[] {
-  const sorted = [...files]
+  const sorted = [...files];
   sorted.sort((a, b) => {
-    return a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
-  })
-  return sorted
+    return a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' });
+  });
+  return sorted;
 }
 
 /**
@@ -26,21 +26,21 @@ export function assignStepImageUrls(
   hostedStepImageUrls: string[],
   stepCount: number,
 ): StepImageAssignmentResult {
-  const stepImageUrls: (string | undefined)[] = []
-  const warnings: string[] = []
+  const stepImageUrls: (string | undefined)[] = [];
+  const warnings: string[] = [];
 
   // Assign images by index up to stepCount
   for (let i = 0; i < stepCount; i++) {
-    stepImageUrls.push(hostedStepImageUrls[i] ?? undefined)
+    stepImageUrls.push(hostedStepImageUrls[i] ?? undefined);
   }
 
   // Warn if more images than steps
   if (hostedStepImageUrls.length > stepCount) {
-    const ignoredCount = hostedStepImageUrls.length - stepCount
+    const ignoredCount = hostedStepImageUrls.length - stepCount;
     warnings.push(
       `${ignoredCount} step image(s) were ignored: more images were uploaded than recipe steps.`,
-    )
+    );
   }
 
-  return { stepImageUrls, warnings }
+  return { stepImageUrls, warnings };
 }

@@ -1,4 +1,4 @@
-import type { ApiError, ErrorCode } from 'shared'
+import type { ApiError, ErrorCode } from 'shared';
 
 // HTTP status per error code, per specs/03.
 export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
@@ -13,7 +13,7 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   INTERNAL_ERROR: 500,
   NOT_IMPLEMENTED: 501,
   ROUTE_NOT_FOUND: 404,
-}
+};
 
 // Default user-safe message per error code, used when a caller does not
 // supply a more specific message.
@@ -29,23 +29,23 @@ export const ERROR_DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   INTERNAL_ERROR: 'An unexpected error occurred.',
   NOT_IMPLEMENTED: 'This feature is not implemented yet.',
   ROUTE_NOT_FOUND: 'The requested route does not exist.',
-}
+};
 
 // Application-level error carrying a standardized error code and optional
 // machine-readable details, plus the HTTP status derived from that code.
 export class AppError extends Error {
-  readonly code: ErrorCode
-  readonly details?: unknown
+  readonly code: ErrorCode;
+  readonly details?: unknown;
 
   constructor(code: ErrorCode, message: string, details?: unknown) {
-    super(message)
-    this.name = 'AppError'
-    this.code = code
-    this.details = details
+    super(message);
+    this.name = 'AppError';
+    this.code = code;
+    this.details = details;
   }
 
   get status(): number {
-    return ERROR_STATUS_MAP[this.code]
+    return ERROR_STATUS_MAP[this.code];
   }
 }
 
@@ -58,11 +58,11 @@ export function serializeError(err: unknown): ApiError {
       code: err.code,
       message: err.message,
       details: err.details,
-    }
+    };
   }
 
   return {
     code: 'INTERNAL_ERROR',
     message: 'An unexpected error occurred.',
-  }
+  };
 }

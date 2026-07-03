@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest'
-import { CanonicalRecipeSchema } from 'shared'
-import { applyPostProcessing, type RawRecipeCandidate } from './index.js'
+import { describe, it, expect } from 'vitest';
+import { CanonicalRecipeSchema } from 'shared';
+import { applyPostProcessing, type RawRecipeCandidate } from './index.js';
 
-const DEFAULT_IMAGE = 'https://example.com/default.jpg'
+const DEFAULT_IMAGE = 'https://example.com/default.jpg';
 
 describe('applyPostProcessing', () => {
   it('turns an unsanitized 9-step, unrouted-pantry, over-budget-tags candidate into a schema-valid recipe', () => {
@@ -29,31 +29,31 @@ describe('applyPostProcessing', () => {
         language: 'en',
         warnings: [],
       },
-    }
+    };
 
-    const result = applyPostProcessing(candidate, { defaultMainImageUrl: DEFAULT_IMAGE })
+    const result = applyPostProcessing(candidate, { defaultMainImageUrl: DEFAULT_IMAGE });
 
     // fully schema-valid after one call
-    expect(CanonicalRecipeSchema.safeParse(result).success).toBe(true)
+    expect(CanonicalRecipeSchema.safeParse(result).success).toBe(true);
 
     // steps compacted to <= 6
-    expect(result.steps.length).toBeLessThanOrEqual(6)
-    expect(result.steps.length).toBe(6)
+    expect(result.steps.length).toBeLessThanOrEqual(6);
+    expect(result.steps.length).toBe(6);
 
     // pantry routed out of ingredients
-    expect(result.pantry_items).toEqual(expect.arrayContaining(['Salt', 'Pepper', 'Olive oil']))
-    expect(result.ingredients.map((i) => i.name)).toEqual(['Chicken', 'Rosemary'])
+    expect(result.pantry_items).toEqual(expect.arrayContaining(['Salt', 'Pepper', 'Olive oil']));
+    expect(result.ingredients.map((i) => i.name)).toEqual(['Chicken', 'Rosemary']);
 
     // tags capped at 5, vocab first, casing normalized
-    expect(result.tags).toHaveLength(5)
-    expect(result.tags.slice(0, 4)).toEqual(['High Protein', 'Family Friendly', 'Comfort Meal', 'Quick'])
+    expect(result.tags).toHaveLength(5);
+    expect(result.tags.slice(0, 4)).toEqual(['High Protein', 'Family Friendly', 'Comfort Meal', 'Quick']);
 
     // main image fallback applied
-    expect(result.main_image).toBe(DEFAULT_IMAGE)
+    expect(result.main_image).toBe(DEFAULT_IMAGE);
 
     // title trimmed
-    expect(result.title).toBe('Roast Chicken')
-  })
+    expect(result.title).toBe('Roast Chicken');
+  });
 
   it('is deterministic for identical input', () => {
     const candidate: RawRecipeCandidate = {
@@ -68,10 +68,10 @@ describe('applyPostProcessing', () => {
         step_description: `desc ${i}`,
       })),
       metadata: { source_type: 'url', language: 'en', warnings: [] },
-    }
+    };
 
-    const a = applyPostProcessing(candidate, { defaultMainImageUrl: DEFAULT_IMAGE })
-    const b = applyPostProcessing(candidate, { defaultMainImageUrl: DEFAULT_IMAGE })
-    expect(a).toEqual(b)
-  })
-})
+    const a = applyPostProcessing(candidate, { defaultMainImageUrl: DEFAULT_IMAGE });
+    const b = applyPostProcessing(candidate, { defaultMainImageUrl: DEFAULT_IMAGE });
+    expect(a).toEqual(b);
+  });
+});

@@ -13,7 +13,7 @@ export const PANTRY_ALLOWLIST = [
   'oil (olive and vegetable)',
   'milk',
   'flour',
-]
+];
 
 /**
  * Check if a normalized ingredient name is in the pantry allowlist.
@@ -22,16 +22,16 @@ export const PANTRY_ALLOWLIST = [
  */
 export function isPantryItem(normalizedName: string): boolean {
   if (!normalizedName || normalizedName.trim() === '') {
-    return false
+    return false;
   }
 
-  const lower = normalizedName.toLowerCase()
+  const lower = normalizedName.toLowerCase();
 
   // Special handling for oil: only match olive oil and vegetable oil
   if (lower === 'olive oil' || lower === 'vegetable oil') {
-    return true
+    return true;
   }
 
   // Check exact matches against the allowlist (case-insensitive)
-  return PANTRY_ALLOWLIST.some(item => item.toLowerCase() === lower)
+  return PANTRY_ALLOWLIST.some(item => item.toLowerCase() === lower);
 }

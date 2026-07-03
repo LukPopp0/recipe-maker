@@ -1,7 +1,7 @@
-import { parse, type HTMLElement } from 'node-html-parser'
+import { parse, type HTMLElement } from 'node-html-parser';
 
-const MAX_CANDIDATE_IMAGES = 10
-const TAGS_TO_STRIP = ['script', 'style', 'noscript']
+const MAX_CANDIDATE_IMAGES = 10;
+const TAGS_TO_STRIP = ['script', 'style', 'noscript'];
 
 // Block-level tags after which a text boundary must be inserted before text
 // extraction. node-html-parser's innerText/.text concatenate text nodes with
@@ -14,7 +14,7 @@ const BLOCK_TAGS = [
   'article', 'section', 'header', 'footer', 'nav', 'aside', 'main',
   'ul', 'ol', 'table', 'blockquote', 'pre', 'form',
   'figure', 'figcaption', 'dl', 'dt', 'dd', 'address', 'hr',
-]
+];
 
 export interface CleanedHtml {
   cleanedText: string
@@ -26,7 +26,7 @@ export interface CleanedHtml {
 // and trims the ends, so extracted text is safe to feed to Gemini without
 // wasting the character budget on formatting artifacts.
 function collapseWhitespace(text: string): string {
-  return text.replace(/\s+/g, ' ').trim()
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 // Removes elements that never contribute visible text (script/style/noscript)
@@ -34,7 +34,7 @@ function collapseWhitespace(text: string): string {
 function stripNonVisibleNodes(root: HTMLElement): void {
   for (const tag of TAGS_TO_STRIP) {
     for (const el of root.querySelectorAll(tag)) {
-      el.remove()
+      el.remove();
     }
   }
   // node-html-parser keeps comments out of text extraction already, but
@@ -42,10 +42,10 @@ function stripNonVisibleNodes(root: HTMLElement): void {
   root.querySelectorAll('*').forEach((el) => {
     for (const child of [...el.childNodes]) {
       if (child.nodeType === 8 /* COMMENT_NODE */) {
-        child.remove()
+        child.remove();
       }
     }
-  })
+  });
 }
 
 // Inserts a single-space text boundary immediately after every block-level
@@ -53,9 +53,9 @@ function stripNonVisibleNodes(root: HTMLElement): void {
 // separator during subsequent .innerText/.text extraction. collapseWhitespace
 // normalizes any doubled-up spacing this produces (e.g. around nested tags).
 function insertBlockBoundaries(root: HTMLElement): void {
-  const selector = BLOCK_TAGS.join(', ')
+  const selector = BLOCK_TAGS.join(', ');
   for (const el of root.querySelectorAll(selector)) {
-    el.insertAdjacentHTML('afterend', ' ')
+    el.insertAdjacentHTML('afterend', ' ');
   }
 }
 
@@ -63,80 +63,80 @@ function insertBlockBoundaries(root: HTMLElement): void {
 // order) <article>, <main>, the largest <div> by text length, and finally
 // the full body text when none of those are present.
 function selectPrimaryTextBlock(root: HTMLElement): string {
-  const body = root.querySelector('body') ?? root
+  const body = root.querySelector('body') ?? root;
 
-  const article = body.querySelector('article')
-  if (article) return collapseWhitespace(article.innerText)
+  const article = body.querySelector('article');
+  if (article) return collapseWhitespace(article.innerText);
 
-  const main = body.querySelector('main')
-  if (main) return collapseWhitespace(main.innerText)
+  const main = body.querySelector('main');
+  if (main) return collapseWhitespace(main.innerText);
 
-  let largestDiv: HTMLElement | null = null
-  let largestLength = 0
+  let largestDiv: HTMLElement | null = null;
+  let largestLength = 0;
   for (const div of body.querySelectorAll('div')) {
-    const length = collapseWhitespace(div.innerText).length
+    const length = collapseWhitespace(div.innerText).length;
     if (length > largestLength) {
-      largestDiv = div
-      largestLength = length
+      largestDiv = div;
+      largestLength = length;
     }
   }
-  if (largestDiv) return collapseWhitespace(largestDiv.innerText)
+  if (largestDiv) return collapseWhitespace(largestDiv.innerText);
 
-  return collapseWhitespace(body.innerText)
+  return collapseWhitespace(body.innerText);
 }
 
 // Resolves a possibly-relative URL string against the effective page URL.
 // Returns null for values that cannot be resolved to a usable absolute URL.
 function resolveUrl(value: string | null | undefined, baseUrl: string): string | null {
-  if (!value) return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
   try {
-    return new URL(trimmed, baseUrl).toString()
+    return new URL(trimmed, baseUrl).toString();
   } catch {
-    return null
+    return null;
   }
 }
 
 // Collects og:image / twitter:image meta content and <img src> values,
 // resolves them to absolute URLs against baseUrl, dedupes, and caps at 10.
 function extractCandidateImageUrls(root: HTMLElement, baseUrl: string): string[] {
-  const urls: string[] = []
-  const seen = new Set<string>()
+  const urls: string[] = [];
+  const seen = new Set<string>();
 
   const addUrl = (raw: string | null | undefined) => {
-    if (urls.length >= MAX_CANDIDATE_IMAGES) return
-    const resolved = resolveUrl(raw, baseUrl)
-    if (!resolved || seen.has(resolved)) return
-    seen.add(resolved)
-    urls.push(resolved)
-  }
+    if (urls.length >= MAX_CANDIDATE_IMAGES) return;
+    const resolved = resolveUrl(raw, baseUrl);
+    if (!resolved || seen.has(resolved)) return;
+    seen.add(resolved);
+    urls.push(resolved);
+  };
 
   for (const meta of root.querySelectorAll('meta')) {
-    const property = meta.getAttribute('property') ?? meta.getAttribute('name')
+    const property = meta.getAttribute('property') ?? meta.getAttribute('name');
     if (property === 'og:image' || property === 'twitter:image') {
-      addUrl(meta.getAttribute('content'))
+      addUrl(meta.getAttribute('content'));
     }
   }
 
   for (const img of root.querySelectorAll('img')) {
-    addUrl(img.getAttribute('src'))
+    addUrl(img.getAttribute('src'));
   }
 
-  return urls.slice(0, MAX_CANDIDATE_IMAGES)
+  return urls.slice(0, MAX_CANDIDATE_IMAGES);
 }
 
 // Extracts a title hint from <title> or, failing that, og:title meta content.
 function extractTitleHint(root: HTMLElement): string | null {
-  const titleEl = root.querySelector('title')
-  const titleText = titleEl ? collapseWhitespace(titleEl.text) : ''
-  if (titleText) return titleText
+  const titleEl = root.querySelector('title');
+  const titleText = titleEl ? collapseWhitespace(titleEl.text) : '';
+  if (titleText) return titleText;
 
-  const ogTitle = root.querySelector('meta[property="og:title"]')
-  const ogTitleText = ogTitle ? collapseWhitespace(ogTitle.getAttribute('content') ?? '') : ''
-  if (ogTitleText) return ogTitleText
+  const ogTitle = root.querySelector('meta[property="og:title"]');
+  const ogTitleText = ogTitle ? collapseWhitespace(ogTitle.getAttribute('content') ?? '') : '';
+  if (ogTitleText) return ogTitleText;
 
-  return null
+  return null;
 }
 
 // Parses raw HTML fetched from a recipe URL into inputs for the Gemini
@@ -148,20 +148,20 @@ export function cleanHtmlForExtraction(
   tokenBudgetChars: number,
   baseUrl: string,
 ): CleanedHtml {
-  let root: HTMLElement
+  let root: HTMLElement;
   try {
-    root = parse(html ?? '')
+    root = parse(html ?? '');
   } catch {
-    return { cleanedText: '', candidateImageUrls: [], titleHint: null }
+    return { cleanedText: '', candidateImageUrls: [], titleHint: null };
   }
 
-  const titleHint = extractTitleHint(root)
-  const candidateImageUrls = extractCandidateImageUrls(root, baseUrl)
+  const titleHint = extractTitleHint(root);
+  const candidateImageUrls = extractCandidateImageUrls(root, baseUrl);
 
-  stripNonVisibleNodes(root)
-  insertBlockBoundaries(root)
-  const primaryText = selectPrimaryTextBlock(root)
-  const cleanedText = primaryText.slice(0, Math.max(tokenBudgetChars, 0))
+  stripNonVisibleNodes(root);
+  insertBlockBoundaries(root);
+  const primaryText = selectPrimaryTextBlock(root);
+  const cleanedText = primaryText.slice(0, Math.max(tokenBudgetChars, 0));
 
-  return { cleanedText, candidateImageUrls, titleHint }
+  return { cleanedText, candidateImageUrls, titleHint };
 }

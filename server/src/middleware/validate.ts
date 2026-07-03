@@ -1,6 +1,6 @@
-import type { Context } from 'hono'
-import type { z } from 'zod'
-import { AppError } from '../lib/errors.js'
+import type { Context } from 'hono';
+import type { z } from 'zod';
+import { AppError } from '../lib/errors.js';
 
 // Parses the request body as JSON, throwing a standard INVALID_INPUT AppError
 // if the body is missing or not valid JSON. Exported separately from
@@ -10,9 +10,9 @@ import { AppError } from '../lib/errors.js'
 // duplicating it.
 export async function parseJson(c: Context): Promise<unknown> {
   try {
-    return await c.req.json()
+    return await c.req.json();
   } catch {
-    throw new AppError('INVALID_INPUT', 'The request body must be valid JSON.')
+    throw new AppError('INVALID_INPUT', 'The request body must be valid JSON.');
   }
 }
 
@@ -23,14 +23,14 @@ export async function parseJson(c: Context): Promise<unknown> {
 // flattened zod error on validation failure. Returns the parsed, typed data
 // on success.
 export async function parseJsonBody<T>(c: Context, schema: z.ZodType<T>): Promise<T> {
-  const body = await parseJson(c)
-  const result = schema.safeParse(body)
+  const body = await parseJson(c);
+  const result = schema.safeParse(body);
 
   if (!result.success) {
     throw new AppError('INVALID_INPUT', 'The request payload was invalid.', {
       issues: result.error.flatten(),
-    })
+    });
   }
 
-  return result.data
+  return result.data;
 }

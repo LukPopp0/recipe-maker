@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 // Schema for environment variables, with defaults and validation per specs/11.
 // Deterministic generationConfig ensures reproducible outputs.
@@ -9,7 +9,7 @@ const geminiConfigSchema = z.object({
   GEMINI_TIMEOUT_MS: z.coerce.number().default(20000),
   GEMINI_TOKEN_BUDGET: z.coerce.number().default(8000),
   GEMINI_MAX_RETRIES: z.coerce.number().min(0).max(3).default(1),
-})
+});
 
 export type GeminiConfig = {
   geminiApiKey?: string
@@ -26,7 +26,7 @@ export type GeminiConfig = {
 }
 
 export function loadGeminiConfig(env: Record<string, string | undefined>): GeminiConfig {
-  const parsed = geminiConfigSchema.parse(env)
+  const parsed = geminiConfigSchema.parse(env);
 
   return {
     geminiApiKey: parsed.GEMINI_API_KEY,
@@ -40,5 +40,5 @@ export function loadGeminiConfig(env: Record<string, string | undefined>): Gemin
       topP: 1,
       topK: 1,
     },
-  }
+  };
 }

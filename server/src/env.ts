@@ -1,5 +1,5 @@
-import path from 'node:path'
-import { z } from 'zod'
+import path from 'node:path';
+import { z } from 'zod';
 
 // Raw process.env-shaped input: every value is a string (or undefined) before
 // coercion/validation.
@@ -31,7 +31,7 @@ const ServerEnvSchema = z.object({
     .string()
     .optional()
     .transform((value) => (value === '' ? undefined : value)),
-})
+});
 
 // PUBLIC_BASE_URL is optional at the schema level but loadServerEnv always
 // resolves it (defaulting to http://localhost:{PORT}), so the exported type
@@ -46,17 +46,17 @@ export type ServerEnv = Omit<z.infer<typeof ServerEnvSchema>, 'PUBLIC_BASE_URL'>
 // descriptive error on invalid values (e.g. an unrecognized NODE_ENV or a
 // non-numeric PORT).
 export function loadServerEnv(raw: RawEnv): ServerEnv {
-  const result = ServerEnvSchema.safeParse(raw)
+  const result = ServerEnvSchema.safeParse(raw);
 
   if (!result.success) {
     const issues = result.error.issues
       .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
-      .join('; ')
-    throw new Error(`Invalid server environment configuration: ${issues}`)
+      .join('; ');
+    throw new Error(`Invalid server environment configuration: ${issues}`);
   }
 
   return {
     ...result.data,
     PUBLIC_BASE_URL: result.data.PUBLIC_BASE_URL ?? `http://localhost:${result.data.PORT}`,
-  }
+  };
 }

@@ -1,5 +1,5 @@
-import type { StorageAdapter } from '../storage/storage-adapter.js'
-import { ALLOWED_CONTENT_TYPES } from './image-rehoster.js'
+import type { StorageAdapter } from '../storage/storage-adapter.js';
+import { ALLOWED_CONTENT_TYPES } from './image-rehoster.js';
 
 export interface UploadedFile {
   buffer: Buffer
@@ -23,23 +23,23 @@ export async function hostUploadedImage(
   file: UploadedFile,
   options: HostUploadedImageOptions,
 ): Promise<{ url: string } | { warning: string }> {
-  const { recipeId, storageAdapter, maxBytes, kind, index } = options
+  const { recipeId, storageAdapter, maxBytes, kind, index } = options;
 
-  const ext = ALLOWED_CONTENT_TYPES[file.contentType]
+  const ext = ALLOWED_CONTENT_TYPES[file.contentType];
   if (!ext) {
     return {
       warning: `"${file.filename}" was not uploaded: unsupported content type "${file.contentType || 'unknown'}".`,
-    }
+    };
   }
 
   if (file.buffer.length > maxBytes) {
     return {
       warning: `"${file.filename}" was not uploaded: exceeded the ${maxBytes}-byte limit.`,
-    }
+    };
   }
 
-  const key = `recipes/${recipeId}/${kind}-${index}.${ext}`
-  const url = await storageAdapter.put(file.buffer, key, file.contentType)
+  const key = `recipes/${recipeId}/${kind}-${index}.${ext}`;
+  const url = await storageAdapter.put(file.buffer, key, file.contentType);
 
-  return { url }
+  return { url };
 }
