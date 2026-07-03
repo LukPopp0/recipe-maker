@@ -7,7 +7,8 @@ two-page recipe card.
 ## Status
 
 Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), Phase 2
-(Option A: URL ingestion), and Phase 3 (Option B: manual ingestion) are done.
+(Option A: URL ingestion), Phase 3 (Option B: manual ingestion), and Phase 4
+(ingredient image matching) are done.
 Backend now boots, validates config, and exposes working recipe
 save/list/get/delete/download/validate routes backed by a local JSON-file
 `RecipeRepository`. `POST /api/ingest/url` is fully implemented: SSRF-guarded
@@ -20,13 +21,17 @@ images, direct hosting of uploaded buffers (no SSRF path needed - they're
 already local), a single Gemini normalization call (no retry, unlike Option
 A), deterministic step-image assignment by sorted filename index, and reuse
 of the same post-processing module as Option A. Ingredient image matching
-(specs/08) is planned for Phase 4 for both pipelines (see
+(specs/08, Phase 4) is implemented for both pipelines (see
 `plans/phase-4-ingredient-image-matching.md`): a second Gemini call matches
 each non-pantry ingredient to a bare catalog filename from
 `shared/assets/ingredients` (215 assets incl. `INGREDIENT_NOT_FOUND.png` as
 fallback), with unmatched items surfaced as `metadata.warnings` strings and
 matching failures degrading gracefully instead of failing the request. No
-frontend ingestion UI yet (Phase 5). See
+frontend ingestion UI yet: Phase 5 (Milestone 1 frontend completion) is
+planned next (see `plans/phase-5-milestone-1-frontend-completion.md`) - the
+Create workspace with URL/Manual/Load JSON tabs, an editable review panel
+with ingredient thumbnails (served at `/ingredient-images/*`), a JSON
+viewer/download, and an explicit Save action. See
 `plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
 `specs/` for per-feature specs.
 

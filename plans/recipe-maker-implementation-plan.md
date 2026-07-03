@@ -329,6 +329,24 @@ Decisions confirmed during Phase 4 planning (see `plans/phase-4-ingredient-image
 - specs/02-canonical-recipe-schema.md
 - specs/13-recipe-persistence-and-library.md
 
+### Scope Note
+Decisions confirmed during Phase 5 planning (see `plans/phase-5-milestone-1-frontend-completion.md`):
+- Design level is functional/clean on the existing Phase 0 design tokens; the visual
+  refinement pass stays in Milestone 2.
+- Tag editing uses clickable vocabulary chips (specs/12) plus a free-text custom tag
+  input, hard-capped at 5 tags.
+- Ingredient thumbnails are shown in the review panel. The backend statically serves
+  `shared/assets/ingredients` at `/ingredient-images/*` (closing Phase 4's deferral);
+  `ingredient.image` in the JSON stays a bare catalog filename.
+- Review panel supports full editing: edit-in-place plus add/remove ingredient rows
+  and steps (cap 6); reordering is out of scope. pantry_items stays read-only/derived.
+- Dev connectivity uses a Vite proxy (`/api`, `/images`, `/ingredient-images` ->
+  localhost:8787) instead of CORS.
+- Frontend tests use Vitest + React Testing Library under jsdom (added this phase).
+- No router: top-level nav is local state; Library is a disabled placeholder until Phase 6.
+- Stage status text reflects real request lifecycle points (no simulated backend stages).
+- Download and Save are gated by client-side CanonicalRecipeSchema validation.
+
 ### Implementation Tasks
 1. Build ingestion UI with URL, Manual, and Load JSON tabs.
    - Load JSON reads a file client-side and validates it via POST /api/recipe/validate before feeding it into the review panel.
@@ -370,9 +388,15 @@ Decisions confirmed during Phase 4 planning (see `plans/phase-4-ingredient-image
 - specs/03-api-contracts.md
 - specs/13-recipe-persistence-and-library.md
 
+### Scope Note
+The backend half of this phase (tasks 1-2) already shipped: `server/src/routes/recipe.ts`
+implements save/list/get/delete/download/validate with RECIPE_NOT_FOUND handling.
+Phase 6 shrinks to the Library UI (task 3), reusing Phase 5's review/JSON components
+in read-only mode.
+
 ### Implementation Tasks
-1. Backend: implement POST /api/recipe/save, GET /api/recipes, GET /api/recipe/:id, DELETE /api/recipe/:id using RecipeRepository (built in Phase 1).
-2. Add RECIPE_NOT_FOUND error handling for get/delete on missing ids.
+1. Backend: implement POST /api/recipe/save, GET /api/recipes, GET /api/recipe/:id, DELETE /api/recipe/:id using RecipeRepository (built in Phase 1). [Done - shipped ahead of schedule alongside Phase 1-3 work.]
+2. Add RECIPE_NOT_FOUND error handling for get/delete on missing ids. [Done.]
 3. Frontend: build Library section (top-level nav item) with list/view/download/delete.
    - List view renders title, main image thumbnail, tags per saved recipe.
    - View opens the existing review/JSON panel in read-only mode.
