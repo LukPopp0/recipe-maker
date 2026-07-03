@@ -1,4 +1,4 @@
-import { PANTRY_ALLOWLIST, TAG_VOCABULARY } from 'shared'
+import { PANTRY_ALLOWLIST, TAG_VOCABULARY } from 'shared';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline (Task 6)
@@ -17,15 +17,17 @@ const CANONICAL_RECIPE_SHAPE = `{
     "language": "en",
     "warnings": string[] (empty array if none)
   }
-}`
+}`;
 
-const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(', ')
-const TAG_VOCABULARY_TEXT = TAG_VOCABULARY.join(', ')
+const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(', ');
+const TAG_VOCABULARY_TEXT = TAG_VOCABULARY.join(', ');
 
 const SHARED_INSTRUCTIONS = `You are extracting a recipe into a strict JSON schema. Output ONLY a single JSON
 object matching this shape exactly (field names must match exactly):
 
+<output_schema>
 ${CANONICAL_RECIPE_SHAPE}
+</output_schema>
 
 Rules:
 - Preserve the original ingredient order exactly as it appears in the source content.
@@ -41,7 +43,7 @@ Rules:
   "metadata.warnings".
 - Select tags primarily from this controlled vocabulary: ${TAG_VOCABULARY_TEXT}. Custom
   tags are allowed if none of these fit, but prefer the vocabulary above.
-- Set "metadata.source_type" to "url", "metadata.language" to "en".`
+- Set "metadata.source_type" to "url", "metadata.language" to "en".`;
 
 export interface BuildUrlIngestionPromptParams {
   url: string
@@ -66,11 +68,11 @@ Candidate image URLs (choose "main_image" from this list if a suitable one exist
 ${candidateImageUrls.length > 0 ? candidateImageUrls.join('\n') : '(none)'}
 
 Page content:
-"""
+<page_content>
 ${cleanedText}
-"""
+</page_content>
 
-Return only the JSON object, no surrounding text or markdown fences.`
+Return only the JSON object, no surrounding text or markdown fences.`;
 }
 
 export interface BuildUrlIngestionRetryPromptParams {
@@ -99,9 +101,9 @@ Candidate image URLs (choose "main_image" from this list if a suitable one exist
 ${candidateImageUrls.length > 0 ? candidateImageUrls.join('\n') : '(none)'}
 
 Reduced page content:
-"""
+<page_content>
 ${reducedText}
-"""
+</page_content>
 
-Return only the JSON object, no surrounding text or markdown fences.`
+Return only the JSON object, no surrounding text or markdown fences.`;
 }

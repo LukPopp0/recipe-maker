@@ -1,13 +1,15 @@
-import { PANTRY_ALLOWLIST, TAG_VOCABULARY } from 'shared'
+import { PANTRY_ALLOWLIST } from "shared";
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline feeds the
 // model's raw JSON straight into CanonicalRecipeSchema.parse. Unlike the URL
 // ingestion prompt, "main_image" is intentionally omitted here - the backend
 // sets it directly after hosting the user's uploaded images (Scope Decision 5).
+// "tags" is also omitted - for manual ingestion tags are fully user-set in the
+// review UI, not assigned by Gemini (Scope Decision 7); the pipeline forces
+// candidate.tags = [] after this call regardless of what the model returns.
 const MANUAL_RECIPE_SHAPE = `{
   "title": string (1-140 chars, required),
-  "tags": string[] (max 5 tags, each 1-40 chars),
   "time": number | null (integer minutes, 0-1440, or null if unknown),
   "ingredients": [{ "name": string, "amount_text": string, "amount_value"?: number, "unit"?: string }],
   "pantry_items": string[] (fixed pantry-list items only, see below),
@@ -17,15 +19,16 @@ const MANUAL_RECIPE_SHAPE = `{
     "language": "en",
     "warnings": string[] (empty array if none)
   }
-}`
+}`;
 
-const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(', ')
-const TAG_VOCABULARY_TEXT = TAG_VOCABULARY.join(', ')
+const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(", ");
 
 const SHARED_INSTRUCTIONS = `You are extracting a recipe into a strict JSON schema. Output ONLY a single JSON
 object matching this shape exactly (field names must match exactly):
 
+<output_schema>
 ${MANUAL_RECIPE_SHAPE}
+</output_schema>
 
 Rules:
 - Preserve the original ingredient order exactly as it appears in the source content.
@@ -40,16 +43,14 @@ Rules:
 - Never hallucinate missing fields. If a field is not present in the source, use null
   or an empty value as appropriate and add a short note explaining what is missing to
   "metadata.warnings".
-- Select tags primarily from this controlled vocabulary: ${TAG_VOCABULARY_TEXT}. Custom
-  tags are allowed if none of these fit, but prefer the vocabulary above.
 - Set "metadata.source_type" to "manual", "metadata.language" to "en".
 - Do not select or reference a main image or step images - those are hosted and
-  assigned deterministically by the backend, not by you.`
+  assigned deterministically by the backend, not by you.`;
 
 export interface BuildManualIngestionPromptParams {
-  ingredientsText: string
-  stepsText: string
-  stepImageCount: number
+  ingredientsText: string;
+  stepsText: string;
+  stepImageCount: number;
 }
 
 // Primary extraction prompt for manual (Option B) ingestion: raw user-typed
@@ -66,14 +67,14 @@ Context: the user uploaded ${stepImageCount} step image(s), which will be attach
 steps by the backend after normalization - do not attempt to describe or reference them.
 
 Ingredients (raw user text):
-"""
+<ingredients>
 ${ingredientsText}
-"""
+</ingredients>
 
 Steps (raw user text):
-"""
+<steps>
 ${stepsText}
-"""
+</steps>
 
-Return only the JSON object, no surrounding text or markdown fences.`
+Return only the JSON object, no surrounding text or markdown fences.`;
 }

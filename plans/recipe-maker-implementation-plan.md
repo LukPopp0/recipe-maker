@@ -39,7 +39,7 @@ Milestone 2 includes:
 - Step image generation is out of scope in milestone 1. Missing step images remain empty.
 - URL images should be downloaded and re-hosted in milestone 1.
 - Pantry logic uses a fixed pantry allowlist provided by the product owner. Pantry-list items must be routed to pantry_items and removed from ingredients.
-- Tags use fixed vocabulary plus optional custom tags.
+- Tags use fixed vocabulary plus optional custom tags for Option A (URL ingestion). For Option B (manual ingestion), Gemini does not assign tags at all - tags are fully user-set in the UI (wired in Phase 5).
 - Amount handling preserves flexible text values.
 - main_image is required in canonical output. If no image is found, use a configured default image URL.
 - Recipe persistence uses flat JSON files on disk (one per recipe), not a database, behind a pluggable RecipeRepository interface. Saving is an explicit user action, not automatic.
@@ -264,7 +264,8 @@ Backend only, mirroring Phase 2's pattern (Phase 2 shipped `/api/ingest/url` wit
    - Require canonical schema output from Gemini.
 3. Apply the same post-processing module built in Phase 2 (no reimplementation):
    - Pantry split.
-   - Tag policy.
+   - Tag policy (Option B only: tags pass through empty/user-set - Gemini does not
+     assign tags for manual ingestion; the tag vocabulary applies to Option A only).
    - Step compaction.
    - Step description 600-character cap.
    - Required main_image default fallback.
@@ -272,6 +273,8 @@ Backend only, mirroring Phase 2's pattern (Phase 2 shipped `/api/ingest/url` wit
 4. Return normalized recipe and diagnostics:
    - Include warnings when step images are missing or unmatched by index.
    - Include promptVersion, model, and duration.
+5. Tags for manual ingestion: Gemini does not select tags. `tags` comes back empty from
+   this pipeline; the user sets tags entirely themselves in the review UI (Phase 5).
 
 ### Deliverables
 - /api/ingest/manual endpoint.
