@@ -249,29 +249,27 @@ Pantry classifier, tag normalizer, step compaction, and final sanitation are bui
 - specs/07-step-compaction-max-6.md
 - specs/08-ingredient-image-matching.md
 
+### Scope Note
+Backend only, mirroring Phase 2's pattern (Phase 2 shipped `/api/ingest/url` with no frontend URL tab). The manual-entry form UI (ingredients/steps text areas, main image and step image uploads) is built in Phase 5 ("Milestone 1 Frontend Completion") alongside the URL and Load JSON tabs, not here. This phase ships `POST /api/ingest/manual` end-to-end: multipart parsing, uploaded-image hosting, Gemini normalization, deterministic step-image assignment by filename order, and reuse of Phase 2's post-processing module unchanged. Ingredient image matching (specs/08) stays deferred to Phase 4 for both pipelines. See `plans/phase-3-option-b-manual-ingestion.md`.
+
 ### Implementation Tasks
-1. Build manual input form:
-   - Ingredients text area.
-   - Steps text area.
-   - Main image upload.
-   - Optional step image upload list.
-2. Upload preprocessing:
+1. Upload preprocessing:
    - Normalize filenames.
    - Sort step image files alphabetically.
-3. Backend normalization:
+2. Backend normalization:
    - Validate required fields (ingredientsText, stepsText, mainImage).
    - Re-host uploaded main image and optional step images.
    - Pass raw text blocks and image metadata to Gemini-first normalization.
    - Avoid deep heuristic parsing except minimal cleanup.
    - Require canonical schema output from Gemini.
-4. Apply the same post-processing module built in Phase 2 (no reimplementation):
+3. Apply the same post-processing module built in Phase 2 (no reimplementation):
    - Pantry split.
    - Tag policy.
    - Step compaction.
    - Step description 600-character cap.
    - Required main_image default fallback.
    - Image hosting.
-5. Return normalized recipe and diagnostics:
+4. Return normalized recipe and diagnostics:
    - Include warnings when step images are missing or unmatched by index.
    - Include promptVersion, model, and duration.
 
