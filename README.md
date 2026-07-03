@@ -6,17 +6,23 @@ two-page recipe card.
 
 ## Status
 
-Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), and Phase 2
-(Option A: URL ingestion) are done. Backend now boots, validates config, and
-exposes working recipe save/list/get/delete/download/validate routes backed
-by a local JSON-file `RecipeRepository`. `POST /api/ingest/url` is fully
-implemented: SSRF-guarded fetch, HTML cleaning, Gemini extraction with
-retry, deterministic post-processing (pantry routing, tag normalization,
-step compaction to <=6 steps, sanitation), and local-disk image re-hosting
-served at `/images/*`. `POST /api/ingest/manual` is still registered but
-returns `NOT_IMPLEMENTED` until Phase 3. No frontend ingestion UI yet
-(Phase 5). See `plans/recipe-maker-implementation-plan.md` for the full
-phase breakdown and `specs/` for per-feature specs.
+Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), Phase 2
+(Option A: URL ingestion), and Phase 3 (Option B: manual ingestion) are done.
+Backend now boots, validates config, and exposes working recipe
+save/list/get/delete/download/validate routes backed by a local JSON-file
+`RecipeRepository`. `POST /api/ingest/url` is fully implemented: SSRF-guarded
+fetch, HTML cleaning, Gemini extraction with retry, deterministic
+post-processing (pantry routing, tag normalization, step compaction to
+<=6 steps, sanitation), and local-disk image re-hosting served at
+`/images/*`. `POST /api/ingest/manual` is also fully implemented: multipart
+parsing of raw ingredients/steps text plus a main image and optional step
+images, direct hosting of uploaded buffers (no SSRF path needed - they're
+already local), a single Gemini normalization call (no retry, unlike Option
+A), deterministic step-image assignment by sorted filename index, and reuse
+of the same post-processing module as Option A. Ingredient image matching
+(specs/08) is deferred to Phase 4 for both pipelines. No frontend ingestion
+UI yet (Phase 5). See `plans/recipe-maker-implementation-plan.md` for the
+full phase breakdown and `specs/` for per-feature specs.
 
 ## Architecture
 
@@ -45,9 +51,9 @@ separately (see below).
 
 To run the backend: copy `server/.env.example` to `server/.env`, then
 `pnpm --filter server run dev` (starts on `PORT` from `.env`, default 8787).
-A real `GEMINI_API_KEY` is required to exercise `POST /api/ingest/url`
-end-to-end; without one, all other routes and the test suite still work
-(tests mock the Gemini client and network calls).
+A real `GEMINI_API_KEY` is required to exercise `POST /api/ingest/url` or
+`POST /api/ingest/manual` end-to-end; without one, all other routes and the
+test suite still work (tests mock the Gemini client and network calls).
 
 ## Scripts
 

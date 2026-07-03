@@ -2,7 +2,7 @@ import dns from 'node:dns'
 import type { CanonicalRecipe } from 'shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StorageAdapter } from '../storage/storage-adapter.js'
-import { rehostRecipeImages } from './image-rehoster.js'
+import { ALLOWED_CONTENT_TYPES, rehostRecipeImages } from './image-rehoster.js'
 
 // source.example.com is a fake hostname used throughout these tests; stub DNS
 // resolution to a public address so resolveAndCheckHost's guard (exercised as
@@ -32,6 +32,16 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
     delete: vi.fn(),
   }
 }
+
+describe('ALLOWED_CONTENT_TYPES export', () => {
+  it('exports the allowed content types map for reuse', () => {
+    expect(ALLOWED_CONTENT_TYPES).toEqual({
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    })
+  })
+})
 
 describe('rehostRecipeImages', () => {
   const originalFetch = globalThis.fetch

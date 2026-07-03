@@ -24,6 +24,7 @@ const ServerEnvSchema = z.object({
     .default('./data/images')
     .transform((value) => path.resolve(value)),
   IMAGE_MAX_BYTES: z.coerce.number().int().positive().default(8_000_000),
+  MANUAL_REQUEST_MAX_BYTES: z.coerce.number().int().positive().default(20_000_000),
   // No schema-level default: PUBLIC_BASE_URL defaults to
   // `http://localhost:{PORT}` in loadServerEnv below, once PORT is known.
   PUBLIC_BASE_URL: z

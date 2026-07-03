@@ -4,7 +4,7 @@ import { readBodyBytesWithLimit, resolveAndCheckHost, validateUrlSyntax } from '
 import type { StorageAdapter } from '../storage/storage-adapter.js'
 
 // MIME types permitted for re-hosted images per specs/06.
-const ALLOWED_CONTENT_TYPES: Record<string, string> = {
+export const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',

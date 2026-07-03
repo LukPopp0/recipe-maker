@@ -15,6 +15,7 @@ describe('loadServerEnv', () => {
     expect(env.URL_MAX_RESPONSE_BYTES).toBe(5_000_000)
     expect(env.IMAGE_DATA_DIR).toBe(path.resolve('./data/images'))
     expect(env.IMAGE_MAX_BYTES).toBe(8_000_000)
+    expect(env.MANUAL_REQUEST_MAX_BYTES).toBe(20_000_000)
     expect(env.PUBLIC_BASE_URL).toBe('http://localhost:8787')
   })
 
@@ -35,6 +36,7 @@ describe('loadServerEnv', () => {
       URL_MAX_RESPONSE_BYTES: '1000000',
       IMAGE_DATA_DIR: './tmp/images',
       IMAGE_MAX_BYTES: '2000000',
+      MANUAL_REQUEST_MAX_BYTES: '3000000',
       PUBLIC_BASE_URL: 'https://recipes.example.com',
     })
 
@@ -47,6 +49,7 @@ describe('loadServerEnv', () => {
     expect(env.URL_MAX_RESPONSE_BYTES).toBe(1000000)
     expect(env.IMAGE_DATA_DIR).toBe(path.resolve('./tmp/images'))
     expect(env.IMAGE_MAX_BYTES).toBe(2000000)
+    expect(env.MANUAL_REQUEST_MAX_BYTES).toBe(3000000)
     expect(env.PUBLIC_BASE_URL).toBe('https://recipes.example.com')
   })
 

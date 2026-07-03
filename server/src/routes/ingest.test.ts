@@ -182,18 +182,183 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
     expect(gemini.generateCanonicalRecipe).not.toHaveBeenCalled()
   })
 
-  it('POST /api/ingest/manual still returns 501 NOT_IMPLEMENTED', async () => {
-    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_CANDIDATE)))
+})
+
+// A structurally-complete Gemini candidate for manual ingestion (Option B).
+// metadata.source_type is deliberately hallucinated as 'url' here to verify
+// the route forces it back to 'manual' server-side rather than trusting the
+// model's output.
+const VALID_MANUAL_CANDIDATE = {
+  title: 'Weeknight Tacos',
+  tags: ['dinner'],
+  time: 30,
+  ingredients: [
+    { name: 'ground beef', amount_text: '500g' },
+    { name: 'taco shells', amount_text: '8' },
+  ],
+  pantry_items: [],
+  steps: [
+    { step_header: 'Cook', step_description: 'Brown the ground beef in a skillet.' },
+    { step_header: 'Assemble', step_description: 'Fill the taco shells with beef and toppings.' },
+  ],
+  metadata: { source_type: 'url', language: 'en', warnings: [] },
+}
+
+// A structurally-incomplete Gemini candidate: no title, no steps. Fails the
+// manual pipeline's structural pre-check (no retry for Option B).
+const STEPLESS_TITLELESS_CANDIDATE = {
+  title: '',
+  tags: [],
+  time: null,
+  ingredients: [{ name: 'ground beef', amount_text: '500g' }],
+  pantry_items: [],
+  steps: [],
+  metadata: { source_type: 'manual', language: 'en', warnings: [] },
+}
+
+type IngestManualSuccess = ApiSuccessEnvelope<{
+  recipe: CanonicalRecipe
+  diagnostics: { extractor: string; model: string; durationMs: number }
+}>
+
+describe('POST /api/ingest/manual (Option B pipeline)', () => {
+  let dataDir: string
+  let imageDir: string
+
+  beforeEach(async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'ingest-manual-recipes-'))
+    imageDir = await mkdtemp(path.join(tmpdir(), 'ingest-manual-images-'))
+  })
+
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await rm(dataDir, { recursive: true, force: true })
+    await rm(imageDir, { recursive: true, force: true })
+  })
+
+  function fakeGemini(handler: () => Promise<unknown>): GeminiClient {
+    return { generateCanonicalRecipe: vi.fn(handler) } as unknown as GeminiClient
+  }
+
+  function makeApp(geminiClient: GeminiClient, envOverrides: Record<string, string> = {}) {
+    const env = loadServerEnv({
+      RECIPE_DATA_DIR: dataDir,
+      IMAGE_DATA_DIR: imageDir,
+      ...envOverrides,
+    })
+    const recipeRepository = new LocalJsonFileRecipeRepository(dataDir)
+    const storageAdapter = new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL)
+    return createApp({
+      env,
+      checkStorageReady: () => true,
+      recipeRepository,
+      geminiClient,
+      geminiConfig: loadGeminiConfig({}),
+      storageAdapter,
+      defaultMainImageUrl: '/images/placeholder-recipe.png',
+    })
+  }
+
+  function makeImageFile(name: string, contentType: string): File {
+    // Tiny in-memory buffer; the pipeline only inspects declared content type
+    // and byte length, not real image structure.
+    return new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], name, { type: contentType })
+  }
+
+  function validFormData(): FormData {
+    const form = new FormData()
+    form.set('ingredientsText', '500g ground beef\n8 taco shells')
+    form.set('stepsText', 'Brown the ground beef.\nAssemble the tacos.')
+    form.set('mainImage', makeImageFile('main.jpg', 'image/jpeg'))
+    form.append('stepImages', makeImageFile('step-1.png', 'image/png'))
+    form.append('stepImages', makeImageFile('step-2.png', 'image/png'))
+    return form
+  }
+
+  it('runs the full pipeline and returns a schema-valid recipe with hosted images', async () => {
+    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_MANUAL_CANDIDATE)))
 
     const res = await app.request('/api/ingest/manual', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
+      body: validFormData(),
+    })
+    const body = (await res.json()) as IngestManualSuccess
+
+    expect(res.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(CanonicalRecipeSchema.safeParse(body.recipe).success).toBe(true)
+    // source_type is forced to 'manual' server-side, never trusting Gemini's
+    // (deliberately hallucinated 'url') output.
+    expect(body.recipe.metadata.source_type).toBe('manual')
+    // Uploaded images were hosted onto our own /images/ mount.
+    expect(body.recipe.main_image).toContain('/images/')
+    expect(body.recipe.steps.every((step) => !step.image || step.image.includes('/images/'))).toBe(true)
+    expect(body.recipe.steps.some((step) => step.image?.includes('/images/'))).toBe(true)
+  })
+
+  it('returns 400 INVALID_INPUT when mainImage is missing', async () => {
+    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_MANUAL_CANDIDATE)))
+    const form = validFormData()
+    form.delete('mainImage')
+
+    const res = await app.request('/api/ingest/manual', { method: 'POST', body: form })
+    const body = (await res.json()) as ApiErrorEnvelope
+
+    expect(res.status).toBe(400)
+    expect(body.ok).toBe(false)
+    expect(body.error.code).toBe('INVALID_INPUT')
+  })
+
+  it('returns 400 INVALID_INPUT when ingredientsText is missing', async () => {
+    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_MANUAL_CANDIDATE)))
+    const form = validFormData()
+    form.delete('ingredientsText')
+
+    const res = await app.request('/api/ingest/manual', { method: 'POST', body: form })
+    const body = (await res.json()) as ApiErrorEnvelope
+
+    expect(res.status).toBe(400)
+    expect(body.error.code).toBe('INVALID_INPUT')
+  })
+
+  it('returns 400 INVALID_INPUT when stepsText is missing', async () => {
+    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_MANUAL_CANDIDATE)))
+    const form = validFormData()
+    form.delete('stepsText')
+
+    const res = await app.request('/api/ingest/manual', { method: 'POST', body: form })
+    const body = (await res.json()) as ApiErrorEnvelope
+
+    expect(res.status).toBe(400)
+    expect(body.error.code).toBe('INVALID_INPUT')
+  })
+
+  it('returns 400 INVALID_INPUT when the multipart body exceeds MANUAL_REQUEST_MAX_BYTES', async () => {
+    const app = makeApp(fakeGemini(() => Promise.resolve(VALID_MANUAL_CANDIDATE)), {
+      MANUAL_REQUEST_MAX_BYTES: '10',
+    })
+
+    const res = await app.request('/api/ingest/manual', {
+      method: 'POST',
+      body: validFormData(),
     })
     const body = (await res.json()) as ApiErrorEnvelope
 
-    expect(res.status).toBe(501)
-    expect(body.error.code).toBe('NOT_IMPLEMENTED')
-    expect(body.error.message).toContain('Phase 3')
+    expect(res.status).toBe(400)
+    expect(body.error.code).toBe('INVALID_INPUT')
+  })
+
+  it('returns AI_NORMALIZATION_FAILED when Gemini returns a stepless/titleless candidate', async () => {
+    const app = makeApp(fakeGemini(() => Promise.resolve(STEPLESS_TITLELESS_CANDIDATE)))
+
+    const res = await app.request('/api/ingest/manual', {
+      method: 'POST',
+      body: validFormData(),
+    })
+    const body = (await res.json()) as ApiErrorEnvelope
+
+    expect(res.status).toBe(502)
+    expect(body.ok).toBe(false)
+    expect(body.error.code).toBe('AI_NORMALIZATION_FAILED')
   })
 })
