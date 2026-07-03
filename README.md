@@ -20,9 +20,15 @@ images, direct hosting of uploaded buffers (no SSRF path needed - they're
 already local), a single Gemini normalization call (no retry, unlike Option
 A), deterministic step-image assignment by sorted filename index, and reuse
 of the same post-processing module as Option A. Ingredient image matching
-(specs/08) is deferred to Phase 4 for both pipelines. No frontend ingestion
-UI yet (Phase 5). See `plans/recipe-maker-implementation-plan.md` for the
-full phase breakdown and `specs/` for per-feature specs.
+(specs/08) is planned for Phase 4 for both pipelines (see
+`plans/phase-4-ingredient-image-matching.md`): a second Gemini call matches
+each non-pantry ingredient to a bare catalog filename from
+`shared/assets/ingredients` (215 assets incl. `INGREDIENT_NOT_FOUND.png` as
+fallback), with unmatched items surfaced as `metadata.warnings` strings and
+matching failures degrading gracefully instead of failing the request. No
+frontend ingestion UI yet (Phase 5). See
+`plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
+`specs/` for per-feature specs.
 
 ## Architecture
 

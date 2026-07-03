@@ -1,11 +1,11 @@
 # Spec 08: Ingredient Image Matching
 
 ## Goal
-Use Gemini to normalize recipe ingredients and map each ingredient to the best matching local image asset from src/assets/ingredients.
+Use Gemini to normalize recipe ingredients and map each ingredient to the best matching local image asset from shared/assets/ingredients.
 
 ## Input
-- Raw ingredient entries from ingestion pipeline.
-- Asset filenames from ingredient library.
+- Ingredient entries after pantry classification (pantry items are never matched; they have no image field).
+- Asset filenames from the ingredient library (the committed manifest generated from shared/assets/ingredients, including INGREDIENT_NOT_FOUND.png).
 
 ## Output
 Gemini must return a normalized ingredient list where each ingredient includes:
@@ -16,8 +16,13 @@ Gemini must return a normalized ingredient list where each ingredient includes:
 
 If no image can be matched, image must be set to INGREDIENT_NOT_FOUND.png.
 
+The canonical recipe stores the bare catalog filename (e.g. broccoli.png), not a
+served path or URL, so exported JSON stays portable. Resolving filenames to
+displayable URLs is a frontend concern (via the ingredient manifest); static
+serving of ingredient assets is deferred to Phase 5.
+
 ## Gemini-First Matching Strategy
-1. Build an ingredient-image catalog from available filenames in src/assets/ingredients.
+1. Build an ingredient-image catalog from available filenames in shared/assets/ingredients.
 2. Send Gemini:
    - raw ingredient list,
    - ingredient-image catalog,
@@ -57,9 +62,14 @@ If no image can be matched, image must be set to INGREDIENT_NOT_FOUND.png.
 - Backend must reject non-catalog filenames.
 
 ## Post-Processing
-1. Convert matched filename to final served image path/URL.
-2. Add warning entries for INGREDIENT_NOT_FOUND.png matches.
+1. Keep the bare catalog filename in the canonical recipe (path/URL resolution is a frontend concern, see Output section).
+2. Add warning entries (metadata.warnings strings) for INGREDIENT_NOT_FOUND.png matches and for coerced non-catalog filenames.
 3. Keep unmatched ingredients valid for downstream rendering.
+
+## Failure Behavior
+- Matching never fails an ingestion request that already produced a valid recipe.
+- One retry with the configured retry model on a failed matching call (error, unparseable output, or count/order mismatch).
+- If the retry also fails, every ingredient gets INGREDIENT_NOT_FOUND.png and a single warning is added.
 
 ## Acceptance Criteria
 - Gemini response conforms to schema and filename constraints.

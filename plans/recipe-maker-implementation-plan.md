@@ -296,6 +296,14 @@ Backend only, mirroring Phase 2's pattern (Phase 2 shipped `/api/ingest/url` wit
 ### Scope Note
 Pantry classifier, tag normalizer, step compaction, and final sanitation were built in Phase 2 as the reusable post-processing module (used unchanged by Option B in Phase 3). This phase only adds ingredient image matching on top of that module, plus confidence/warning metadata hardening.
 
+Decisions confirmed during Phase 4 planning (see `plans/phase-4-ingredient-image-matching.md`):
+- `INGREDIENT_NOT_FOUND.png` was added to `shared/assets/ingredients` by the product owner (215 assets); the committed manifest is regenerated and the server checks its presence at startup.
+- `ingredient.image` stores the bare catalog filename (e.g. `broccoli.png`), not a path/URL; the frontend resolves filenames via the manifest. Static serving of ingredient assets is deferred to Phase 5.
+- Confidence metadata is flat strings in `metadata.warnings` (one per unmatched/coerced ingredient); no schema change.
+- Matcher failure never fails the request: one retry with the retry model, then degrade all ingredients to `INGREDIENT_NOT_FOUND.png` plus a warning.
+- The matcher runs after pantry classification (pantry items are never matched) and after step compaction, immediately before final sanitation; `applyPostProcessing` becomes async with an optional injected matcher.
+- `PROMPT_VERSION` bumps to `v2`.
+
 ### Implementation Tasks
 1. Ingredient image matcher:
    - Gemini-driven matching against provided ingredient asset catalog.
