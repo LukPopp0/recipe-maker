@@ -1,12 +1,15 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { ApiErrorEnvelope } from 'shared'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createApp } from './app.js'
 import { loadServerEnv } from './env.js'
 import { LocalJsonFileRecipeRepository } from './services/recipes/local-json-file-recipe-repository.js'
+import { makeIngestDeps } from './test-support/ingest-deps.js'
 
-function makeEnv() {
-  return loadServerEnv({ RECIPE_DATA_DIR: path.resolve('./data/recipes-test') })
+function makeEnv(overrides: Record<string, string> = {}) {
+  return loadServerEnv({ RECIPE_DATA_DIR: path.resolve('./data/recipes-test'), ...overrides })
 }
 
 function makeRecipeRepository() {
@@ -15,7 +18,7 @@ function makeRecipeRepository() {
 
 describe('createApp', () => {
   it('GET /api/health returns ok:true with requestId echoed in body and header when storage is ready', async () => {
-    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository() })
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() })
 
     const res = await app.request('/api/health', {
       headers: { 'x-request-id': 'test-request-id' },
@@ -33,7 +36,7 @@ describe('createApp', () => {
   })
 
   it('GET /health (bare, for infra probes) returns the same shape as /api/health', async () => {
-    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository() })
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() })
 
     const res = await app.request('/health')
     const body = (await res.json()) as Record<string, unknown>
@@ -46,7 +49,7 @@ describe('createApp', () => {
   })
 
   it('generates a requestId when the caller does not supply x-request-id', async () => {
-    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository() })
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() })
 
     const res = await app.request('/api/health')
     const body = (await res.json()) as Record<string, unknown>
@@ -56,7 +59,7 @@ describe('createApp', () => {
   })
 
   it('reflects storage-unavailable in the health response', async () => {
-    const app = createApp({ env: makeEnv(), checkStorageReady: () => false, recipeRepository: makeRecipeRepository() })
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => false, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() })
 
     const res = await app.request('/api/health')
     const body = (await res.json()) as Record<string, unknown>
@@ -67,7 +70,7 @@ describe('createApp', () => {
   })
 
   it('returns a structured error envelope for an unknown route', async () => {
-    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository() })
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() })
 
     const res = await app.request('/api/does-not-exist')
     const body = (await res.json()) as ApiErrorEnvelope
@@ -85,7 +88,7 @@ describe('createApp', () => {
       checkStorageReady: () => {
         throw new Error('boom')
       },
-      recipeRepository: makeRecipeRepository(),
+      recipeRepository: makeRecipeRepository(), ...makeIngestDeps(),
     })
 
     const res = await app.request('/api/health')
@@ -94,5 +97,44 @@ describe('createApp', () => {
     expect(res.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error.code).toBe('INTERNAL_ERROR')
+  })
+
+  describe('GET /images/*', () => {
+    let imageDataDir: string
+
+    afterEach(async () => {
+      if (imageDataDir) {
+        await rm(imageDataDir, { recursive: true, force: true })
+      }
+    })
+
+    it('serves a file from IMAGE_DATA_DIR at the matching /images/* path', async () => {
+      imageDataDir = await mkdtemp(path.join(tmpdir(), 'app-test-images-'))
+      await mkdir(path.join(imageDataDir, 'recipes/recipe-1'), { recursive: true })
+      await writeFile(path.join(imageDataDir, 'recipes/recipe-1/main-0.jpg'), Buffer.from('fake-jpeg-bytes'))
+      const app = createApp({
+        env: makeEnv({ IMAGE_DATA_DIR: imageDataDir }),
+        checkStorageReady: () => true,
+        recipeRepository: makeRecipeRepository(), ...makeIngestDeps(),
+      })
+
+      const res = await app.request('/images/recipes/recipe-1/main-0.jpg')
+
+      expect(res.status).toBe(200)
+      expect(Buffer.from(await res.arrayBuffer())).toEqual(Buffer.from('fake-jpeg-bytes'))
+    })
+
+    it('returns 404 for a missing image key', async () => {
+      imageDataDir = await mkdtemp(path.join(tmpdir(), 'app-test-images-'))
+      const app = createApp({
+        env: makeEnv({ IMAGE_DATA_DIR: imageDataDir }),
+        checkStorageReady: () => true,
+        recipeRepository: makeRecipeRepository(), ...makeIngestDeps(),
+      })
+
+      const res = await app.request('/images/recipes/does-not-exist/main-0.jpg')
+
+      expect(res.status).toBe(404)
+    })
   })
 })

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../app.js'
 import { loadServerEnv } from '../env.js'
 import { LocalJsonFileRecipeRepository } from '../services/recipes/local-json-file-recipe-repository.js'
+import { makeIngestDeps } from '../test-support/ingest-deps.js'
 
 function makeRecipe(overrides: Partial<CanonicalRecipe> = {}): CanonicalRecipe {
   return {
@@ -37,7 +38,7 @@ describe('recipe routes', () => {
   function makeApp() {
     const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir })
     const recipeRepository = new LocalJsonFileRecipeRepository(dataDir)
-    return createApp({ env, checkStorageReady: () => true, recipeRepository })
+    return createApp({ env, checkStorageReady: () => true, recipeRepository, ...makeIngestDeps() })
   }
 
   describe('POST /api/recipe/validate', () => {

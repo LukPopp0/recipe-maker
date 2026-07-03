@@ -6,14 +6,17 @@ two-page recipe card.
 
 ## Status
 
-Phase 0 (repo cleanup) and Phase 1 (core contracts and foundations) are done.
-Backend now boots, validates config, and exposes working recipe
-save/list/get/delete/download/validate routes backed by a local JSON-file
-`RecipeRepository`; URL and manual ingestion (`/api/ingest/url`,
-`/api/ingest/manual`) are registered but return `NOT_IMPLEMENTED` until
-Phase 2/3. No frontend ingestion UI yet (Phase 5). See
-`plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
-`specs/` for per-feature specs.
+Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), and Phase 2
+(Option A: URL ingestion) are done. Backend now boots, validates config, and
+exposes working recipe save/list/get/delete/download/validate routes backed
+by a local JSON-file `RecipeRepository`. `POST /api/ingest/url` is fully
+implemented: SSRF-guarded fetch, HTML cleaning, Gemini extraction with
+retry, deterministic post-processing (pantry routing, tag normalization,
+step compaction to <=6 steps, sanitation), and local-disk image re-hosting
+served at `/images/*`. `POST /api/ingest/manual` is still registered but
+returns `NOT_IMPLEMENTED` until Phase 3. No frontend ingestion UI yet
+(Phase 5). See `plans/recipe-maker-implementation-plan.md` for the full
+phase breakdown and `specs/` for per-feature specs.
 
 ## Architecture
 
@@ -42,7 +45,9 @@ separately (see below).
 
 To run the backend: copy `server/.env.example` to `server/.env`, then
 `pnpm --filter server run dev` (starts on `PORT` from `.env`, default 8787).
-`GEMINI_API_KEY` isn't required yet - no Gemini calls happen until Phase 2/3.
+A real `GEMINI_API_KEY` is required to exercise `POST /api/ingest/url`
+end-to-end; without one, all other routes and the test suite still work
+(tests mock the Gemini client and network calls).
 
 ## Scripts
 
@@ -63,4 +68,5 @@ To run the backend: copy `server/.env.example` to `server/.env`, then
 - Recipes are capped at 6 cooking steps (compaction runs automatically above that).
 - Pantry allowlist and tag vocabulary are fixed lists, see `specs/12-shared-constants.md`.
 - Recipe persistence is flat JSON files on disk (`server/data/recipes/`), not a database.
+- Re-hosted recipe images are stored locally on disk (`server/data/images/`), not a cloud adapter.
 - Single-user, no authentication (local-first).

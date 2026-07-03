@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.js'
 import { loadServerEnv } from '../env.js'
 import { LocalJsonFileRecipeRepository } from '../services/recipes/local-json-file-recipe-repository.js'
+import { makeIngestDeps } from '../test-support/ingest-deps.js'
 
 function makeEnv() {
   return loadServerEnv({ RECIPE_DATA_DIR: path.resolve('./data/recipes-test') })
@@ -19,7 +20,7 @@ describe('logger middleware', () => {
 
   it('logs a line for a successful request', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository() })
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() })
 
     const res = await app.request('/api/health')
     await res.json()
@@ -36,7 +37,7 @@ describe('logger middleware', () => {
       checkStorageReady: () => {
         throw new Error('boom')
       },
-      recipeRepository: makeRecipeRepository(),
+      recipeRepository: makeRecipeRepository(), ...makeIngestDeps(),
     })
 
     const res = await app.request('/api/health')

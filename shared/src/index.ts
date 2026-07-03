@@ -17,3 +17,6 @@ export { ERROR_CODES } from './contracts/envelope.js'
 export type { ErrorCode, ApiError, ApiSuccessEnvelope, ApiErrorEnvelope, ApiResponse } from './contracts/envelope.js'
 
 export type { RecipeSummary } from './contracts/recipe-repository.js'
+
+export { PANTRY_ALLOWLIST, isPantryItem } from './constants/pantry-allowlist.js'
+export { TAG_VOCABULARY } from './constants/tag-vocabulary.js'
