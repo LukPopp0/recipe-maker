@@ -459,16 +459,43 @@ Decisions confirmed during Phase 6 planning (see `plans/phase-6-library-ui.md`):
 
 ## Phase 7: Milestone 2 Card Rendering
 
+### Spec References
+- specs/02-canonical-recipe-schema.md
+- specs/10-recipe-card-renderer.md
+
+### Scope Note
+Decisions confirmed during Phase 7 planning (see `plans/phase-7-card-rendering.md`
+and the locked design section in specs/10):
+- Visual design follows the product owner's letter-size template
+  (hello-fresh-template.pdf) with an exact typography table in specs/10.
+- Pages are fixed 8.5in x 11in boxes scaled to fit on screen
+  (`transform: scale()`); print removes the scale and outputs 1:1. No
+  responsive reflow of the card itself.
+- Montserrat 700 and Lato 400/700 are self-hosted woff2 (SIL OFL); DIN
+  Alternate and Helvetica come from system font stacks with fallbacks.
+- Pantry items render as a banner at the top of page 2 (specs/10 updated;
+  supersedes the old "page 1 bottom" placement).
+- Step descriptions auto-bold ingredient mentions at render time (pure
+  helper, whole-word case-insensitive match); the schema stays plain text.
+- Ingredient grid stays 2 columns; >12 ingredients shrink density so all
+  fit on page 1 (no third column, no cap).
+- Entry points: "View as Card" in the Library detail view plus "Preview
+  Card" in the Create workspace (validation-gated like Download).
+- Card header uses shared/assets/pina-logo.png + "MY RECIPES" wordmark;
+  shared/assets/favicon.png moves to apps/web/public.
+- Download stays browser print CSS (window.print -> save as PDF);
+  server-side Playwright PDF remains Phase 9.
+
 ### Implementation Tasks
 1. Build card renderer module that accepts canonical JSON only.
 2. Page 1 layout:
-   - Title, tags, time, main image, ingredients list with ingredient images.
+   - Header logo/wordmark, title, time, tags, main image, ingredients grid with ingredient images.
 3. Page 2 layout:
-   - Exactly rendered compacted steps (max 6), optional step images.
+   - Pantry banner plus exactly rendered compacted steps (max 6), optional step images.
 4. Print mode and PDF baseline:
    - Browser print CSS first.
 5. Empty-state fallbacks for missing images/text.
-6. Add "View as Card" link from the Library view action into the card renderer.
+6. Add "View as Card" link from the Library view action into the card renderer, plus "Preview Card" from the Create workspace.
 
 ### Deliverables
 - Two-page card preview and printable output.
