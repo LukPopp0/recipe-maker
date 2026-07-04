@@ -415,12 +415,24 @@ implements save/list/get/delete/download/validate with RECIPE_NOT_FOUND handling
 Phase 6 shrinks to the Library UI (task 3), reusing Phase 5's review/JSON components
 in read-only mode.
 
+Decisions confirmed during Phase 6 planning (see `plans/phase-6-library-ui.md`):
+- View action is read-only plus an "Open in Create" button that copies the saved
+  recipe into the Create workspace (dirty-confirm applies; Save there creates a new
+  id, the original is untouched - no in-place update path, per specs/13).
+- Layout: list view with detail replacing the list (Back button), local state only,
+  no router. Create workspace state is preserved while browsing the Library.
+- Read-only rendering threads a `readOnly` prop through ReviewPanel and its editors
+  (no duplicate detail component); detail view hides Save, keeps JSON copy/download.
+- Delete uses window.confirm (matches existing dirty-confirm pattern); list sorted
+  by createdAt descending; download uses GET /api/recipe/download/:id.
+
 ### Implementation Tasks
 1. Backend: implement POST /api/recipe/save, GET /api/recipes, GET /api/recipe/:id, DELETE /api/recipe/:id using RecipeRepository (built in Phase 1). [Done - shipped ahead of schedule alongside Phase 1-3 work.]
 2. Add RECIPE_NOT_FOUND error handling for get/delete on missing ids. [Done.]
 3. Frontend: build Library section (top-level nav item) with list/view/download/delete.
    - List view renders title, main image thumbnail, tags per saved recipe.
    - View opens the existing review/JSON panel in read-only mode.
+   - View offers "Open in Create" (copy into workspace; Save creates a new id).
    - Delete confirms before calling DELETE.
 
 ### Deliverables

@@ -42,6 +42,7 @@ New top-level section alongside the ingestion workspace (spec 09 layout).
 Milestone 1 scope:
 - List view: grid/list of saved recipes showing title, main image thumbnail, and tags. Backed by `GET /api/recipes`.
 - View action: opens the recipe in the existing read-only review/JSON panel (no new rendering code). Backed by `GET /api/recipe/:id`.
+- Open in Create action (Phase 6 decision): copies the viewed recipe into the Create workspace for editing. Saving there creates a new recipe id; the original saved recipe is untouched. This is a copy, not an in-place update - the update path stays out of scope.
 - Download action: triggers `GET /api/recipe/download/:id`.
 - Delete action: confirms, then calls `DELETE /api/recipe/:id` and removes the item from the list.
 
