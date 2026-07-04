@@ -5,9 +5,9 @@ import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-typ
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
 import { JsonPanel } from './components/json/JsonPanel.tsx';
+import { LibraryPanel } from './components/library/LibraryPanel.tsx';
 
-// Nav is local-state only (plan decision 11) - no router yet. Library ships
-// in Phase 6.
+// Nav is local-state only (plan decision 11) - no router yet.
 type WorkspaceView = 'create' | 'library';
 
 function statusLabel(state: WorkspaceRecipeState): string {
@@ -25,16 +25,28 @@ function App() {
   // unsaved edits, so confirm first when the current state is dirty (plan
   // decision 12).
   const adoptRecipe = useCallback(
-    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null) => {
+    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null): boolean => {
       if (shouldConfirmReplace(recipeState)) {
         const proceed = window.confirm(
           'Loading a new recipe will discard your unsaved changes. Continue?',
         );
-        if (!proceed) return;
+        if (!proceed) return false;
       }
       setRecipeState({ recipe, diagnostics, savedId: null, dirty: false });
+      return true;
     },
     [recipeState],
+  );
+
+  // Open in Create copies a saved recipe into the workspace (specs/13):
+  // saving it again creates a new id, the library original is untouched.
+  const handleOpenInCreate = useCallback(
+    (recipe: CanonicalRecipe) => {
+      if (adoptRecipe(recipe, null)) {
+        setView('create');
+      }
+    },
+    [adoptRecipe],
   );
 
   // Every review-panel edit produces a freshly patched recipe (single source
@@ -49,6 +61,8 @@ function App() {
   const handleSaved = useCallback((id: string) => {
     setRecipeState((prev) => (prev ? { ...prev, savedId: id, dirty: false } : prev));
   }, []);
+
+  const inCreate = view === 'create';
 
   return (
     <main id="workspace-shell" className="workspace-shell">
@@ -66,18 +80,22 @@ function App() {
         >
           Create
         </button>
-        <button type="button" className="workspace-nav-item" disabled title="Coming in Phase 6">
+        <button
+          type="button"
+          className="workspace-nav-item"
+          aria-current={view === 'library' ? 'page' : undefined}
+          onClick={() => setView('library')}
+        >
           Library
-          <span className="workspace-nav-hint"> (coming in Phase 6)</span>
         </button>
       </nav>
 
-      <section className="workspace-panel workspace-panel-input" aria-labelledby="input-panel-heading">
+      <section className="workspace-panel workspace-panel-input" aria-labelledby="input-panel-heading" hidden={!inCreate}>
         <h2 id="input-panel-heading">Input</h2>
         <IngestTabs onRecipe={adoptRecipe} />
       </section>
 
-      <section className="workspace-panel workspace-panel-review" aria-labelledby="review-panel-heading">
+      <section className="workspace-panel workspace-panel-review" aria-labelledby="review-panel-heading" hidden={!inCreate}>
         <h2 id="review-panel-heading">Review</h2>
         {recipeState ? (
           <ReviewPanel
@@ -90,7 +108,7 @@ function App() {
         )}
       </section>
 
-      <section className="workspace-panel workspace-panel-json" aria-labelledby="json-panel-heading">
+      <section className="workspace-panel workspace-panel-json" aria-labelledby="json-panel-heading" hidden={!inCreate}>
         <h2 id="json-panel-heading">JSON</h2>
         {recipeState ? (
           <JsonPanel
@@ -103,6 +121,13 @@ function App() {
           <p>Nothing to show yet - ingest or load a recipe first.</p>
         )}
       </section>
+
+      {view === 'library' ? (
+        <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">
+          <h2 id="library-panel-heading">Library</h2>
+          <LibraryPanel onOpenInCreate={handleOpenInCreate} />
+        </section>
+      ) : null}
     </main>
   );
 }

@@ -3,10 +3,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import App from './App.tsx';
-import { ingestUrl } from './api/client.ts';
+import { ingestUrl, listRecipes } from './api/client.ts';
 
 vi.mock('./api/client.ts', () => ({
   ingestUrl: vi.fn(),
+  listRecipes: vi.fn(),
+  getRecipe: vi.fn(),
+  deleteRecipe: vi.fn(),
 }));
 
 const mockedIngestUrl = vi.mocked(ingestUrl);
@@ -30,7 +33,7 @@ describe('App', () => {
     expect(document.getElementById('workspace-shell')).toBeInTheDocument();
   });
 
-  it('renders nav with Create active and Library disabled with a Phase 6 hint', () => {
+  it('renders nav with Create active and Library enabled', () => {
     render(<App />);
 
     const nav = screen.getByRole('navigation');
@@ -40,8 +43,7 @@ describe('App', () => {
     expect(nav).toBeInTheDocument();
     expect(createButton).toBeInTheDocument();
     expect(createButton).toHaveAttribute('aria-current', 'page');
-    expect(libraryButton).toBeDisabled();
-    expect(screen.getByText(/coming in Phase 6/i)).toBeInTheDocument();
+    expect(libraryButton).toBeEnabled();
   });
 
   it('renders the input, review, and JSON layout regions', () => {
@@ -98,5 +100,31 @@ describe('App', () => {
 
     expect(screen.getByText(/"Test Recipe"/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save recipe/i })).toBeInTheDocument();
+  });
+});
+
+describe('Library view', () => {
+  it('enables the Library nav button and shows the library on click', async () => {
+    vi.mocked(listRecipes).mockResolvedValueOnce({ ok: true, value: { recipes: [] } });
+    const user = userEvent.setup();
+    render(<App />);
+
+    const libraryButton = screen.getByRole('button', { name: /library/i });
+    expect(libraryButton).toBeEnabled();
+    await user.click(libraryButton);
+    expect(await screen.findByText(/no saved recipes yet/i)).toBeInTheDocument();
+  });
+
+  it('hides the Create panels while in the Library view without unmounting them', async () => {
+    vi.mocked(listRecipes).mockResolvedValueOnce({ ok: true, value: { recipes: [] } });
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /library/i }));
+    // hidden sections stay in the DOM but are not visible
+    expect(screen.getByText(/no recipe loaded yet/i)).not.toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: /^create$/i }));
+    expect(screen.getByText(/no recipe loaded yet/i)).toBeVisible();
   });
 });

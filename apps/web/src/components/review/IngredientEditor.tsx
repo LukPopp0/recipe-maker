@@ -26,9 +26,11 @@ function IngredientThumbnail({ image }: { image: string | undefined }) {
 export function IngredientEditor({
   ingredients,
   onChange,
+  readOnly = false,
 }: {
   ingredients: Ingredient[]
   onChange: (ingredients: Ingredient[]) => void
+  readOnly?: boolean
 }) {
   const updateField = (index: number, field: 'name' | 'amount_text' | 'unit', value: string) => {
     const next = ingredients.map((ingredient, i) => {
@@ -48,6 +50,23 @@ export function IngredientEditor({
   const addRow = () => {
     onChange([...ingredients, { name: '', amount_text: '', image: undefined }]);
   };
+
+  if (readOnly) {
+    return (
+      <div className="ingredient-editor">
+        {ingredients.map((ingredient, index) => (
+          <div className="ingredient-editor-row" key={index}>
+            <IngredientThumbnail key={ingredient.image ?? 'no-image'} image={ingredient.image} />
+            <span className="ingredient-editor-static-name">{ingredient.name}</span>
+            <span className="ingredient-editor-static-amount">
+              {ingredient.amount_text}
+              {ingredient.unit ? ` ${ingredient.unit}` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="ingredient-editor">

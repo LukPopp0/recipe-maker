@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, validateRecipe } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, validateRecipe, listRecipes, getRecipe, deleteRecipe } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -204,6 +204,46 @@ describe('api/client', () => {
         ok: false,
         error: { code: 'SCHEMA_VALIDATION_FAILED', message: 'Invalid recipe.', details: undefined, requestId: 'req-9' },
       });
+    });
+  });
+
+  describe('library endpoints', () => {
+    it('listRecipes unwraps the recipes array from the envelope', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({
+          ok: true,
+          requestId: 'r1',
+          recipes: [{ id: 'a', title: 'T', tags: [], main_image: '/images/x.png', createdAt: '2026-01-01T00:00:00.000Z' }],
+        }),
+      );
+
+      const result = await listRecipes();
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.recipes).toHaveLength(1);
+      expect(fetchMock).toHaveBeenCalledWith('/api/recipes', undefined);
+    });
+
+    it('getRecipe hits /api/recipe/:id and unwraps the recipe', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r2', recipe: { title: 'T' } }));
+
+      const result = await getRecipe('some-id');
+      expect(result.ok).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith('/api/recipe/some-id', undefined);
+    });
+
+    it('deleteRecipe issues DELETE and surfaces RECIPE_NOT_FOUND failures', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({
+          ok: false,
+          requestId: 'r3',
+          error: { code: 'RECIPE_NOT_FOUND', message: 'No recipe exists with id "x".' },
+        }),
+      );
+
+      const result = await deleteRecipe('x');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('RECIPE_NOT_FOUND');
+      expect(fetchMock).toHaveBeenCalledWith('/api/recipe/x', { method: 'DELETE' });
     });
   });
 });

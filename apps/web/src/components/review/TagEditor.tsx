@@ -11,9 +11,11 @@ const MAX_TAG_LENGTH = 40;
 export function TagEditor({
   tags,
   onChange,
+  readOnly = false,
 }: {
   tags: string[]
   onChange: (tags: string[]) => void
+  readOnly?: boolean
 }) {
   const [customTag, setCustomTag] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,24 @@ export function TagEditor({
       handleAddCustom();
     }
   };
+
+  if (readOnly) {
+    return (
+      <div className="tag-editor">
+        {tags.length > 0 ? (
+          <ul className="tag-editor-applied" aria-label="Applied tags">
+            {tags.map((tag) => (
+              <li key={tag} className="tag-editor-chip">
+                <span>{tag}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="tag-editor-hint">No tags.</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="tag-editor">

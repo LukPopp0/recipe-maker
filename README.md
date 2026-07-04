@@ -8,8 +8,8 @@ two-page recipe card.
 
 Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), Phase 2
 (Option A: URL ingestion), Phase 3 (Option B: manual ingestion), Phase 4
-(ingredient image matching), and Phase 5 (Milestone 1 frontend completion)
-are done.
+(ingredient image matching), Phase 5 (Milestone 1 frontend completion), and
+Phase 6 (Library UI) are done.
 Backend now boots, validates config, and exposes working recipe
 save/list/get/delete/download/validate routes backed by a local JSON-file
 `RecipeRepository`. `POST /api/ingest/url` is fully implemented: SSRF-guarded
@@ -35,7 +35,8 @@ time, ingredients with thumbnails served at `/ingredient-images/*`,
 add/remove rows, steps capped at 6), non-blocking warnings, a
 syntax-highlighted JSON viewer with copy and deterministic-filename
 download, and an explicit Save Recipe action. The Library UI (Phase 6) is
-next; its backend routes already exist. See
+also implemented: list/view (read-only), download, delete, and Open in Create
+(copy into workspace for editing). See
 `plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
 `specs/` for per-feature specs.
 

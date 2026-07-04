@@ -13,9 +13,11 @@ const DESCRIPTION_MAXLENGTH = 600;
 export function StepEditor({
   steps,
   onChange,
+  readOnly = false,
 }: {
   steps: Step[]
   onChange: (steps: Step[]) => void
+  readOnly?: boolean
 }) {
   const updateField = (index: number, field: 'step_header' | 'step_description', value: string) => {
     onChange(steps.map((step, i) => (i === index ? { ...step, [field]: value } : step)));
@@ -31,6 +33,24 @@ export function StepEditor({
 
   const atCap = steps.length >= MAX_STEPS;
   const atFloor = steps.length <= MIN_STEPS;
+
+  if (readOnly) {
+    return (
+      <div className="step-editor">
+        {steps.map((step, index) => (
+          <div className="step-editor-block" key={index}>
+            <h4 className="step-editor-static-header">{step.step_header}</h4>
+            <p className="step-editor-static-description">{step.step_description}</p>
+            {step.image ? (
+              <span className="step-editor-image-indicator" data-testid="step-image-indicator">
+                Image attached: {step.image}
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="step-editor">

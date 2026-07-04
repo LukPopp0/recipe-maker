@@ -169,3 +169,35 @@ describe('ReviewPanel', () => {
     expect(RECIPE).toEqual(before);
   });
 });
+
+describe('readOnly mode', () => {
+  const recipe: CanonicalRecipe = {
+    title: 'Static Soup',
+    tags: ['dinner'],
+    time: 25,
+    ingredients: [{ name: 'Carrot', amount_text: '2', unit: 'pcs', image: 'carrot.png' }],
+    pantry_items: ['salt'],
+    main_image: '/images/main.png',
+    steps: [{ step_header: 'Chop', step_description: 'Chop the carrot.' }],
+    metadata: { source_type: 'url', language: 'en', warnings: ['a warning'] },
+  };
+
+  it('renders no textboxes, spinbuttons, or buttons', () => {
+    render(<ReviewPanel recipe={recipe} diagnostics={null} readOnly />);
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('renders all field values as static text', () => {
+    render(<ReviewPanel recipe={recipe} diagnostics={null} readOnly />);
+    expect(screen.getByText('Static Soup')).toBeInTheDocument();
+    expect(screen.getByText(/25/)).toBeInTheDocument();
+    expect(screen.getByText('dinner')).toBeInTheDocument();
+    expect(screen.getByText('Carrot')).toBeInTheDocument();
+    expect(screen.getByText('Chop')).toBeInTheDocument();
+    expect(screen.getByText('Chop the carrot.')).toBeInTheDocument();
+    expect(screen.getByText('salt')).toBeInTheDocument();
+    expect(screen.getByText('a warning')).toBeInTheDocument();
+  });
+});

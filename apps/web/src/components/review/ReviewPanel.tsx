@@ -13,17 +13,23 @@ import { WarningsPanel } from './WarningsPanel.tsx';
 
 const TITLE_MAXLENGTH = 140;
 
+const noop = () => {};
+
 export function ReviewPanel({
   recipe,
   diagnostics,
   onChange,
+  readOnly = false,
 }: {
   recipe: CanonicalRecipe
   diagnostics: IngestDiagnostics | null
-  onChange: (recipe: CanonicalRecipe) => void
+  onChange?: (recipe: CanonicalRecipe) => void
+  readOnly?: boolean
 }) {
+  const emit = onChange ?? noop;
+
   const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...recipe, title: event.target.value });
+    emit({ ...recipe, title: event.target.value });
   };
 
   const handleTimeChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -31,46 +37,59 @@ export function ReviewPanel({
     const parsed = raw === '' ? NaN : parseInt(raw, 10);
     // Treat anything that doesn't parse to a finite integer (e.g. a leading
     // '.' like ".5") as null rather than propagating NaN into the schema.
-    onChange({ ...recipe, time: Number.isFinite(parsed) ? parsed : null });
+    emit({ ...recipe, time: Number.isFinite(parsed) ? parsed : null });
   };
 
   const handleIngredientsChange = (ingredients: Ingredient[]) => {
-    onChange({ ...recipe, ingredients });
+    emit({ ...recipe, ingredients });
   };
 
   const handleStepsChange = (steps: Step[]) => {
-    onChange({ ...recipe, steps });
+    emit({ ...recipe, steps });
   };
 
   const handleTagsChange = (tags: string[]) => {
-    onChange({ ...recipe, tags });
+    emit({ ...recipe, tags });
   };
 
   return (
     <div className="review-panel">
-      <label>
-        <span>Title</span>
-        <input type="text" maxLength={TITLE_MAXLENGTH} value={recipe.title} onChange={handleTitleChange} />
-      </label>
+      {readOnly ? (
+        <>
+          <p className="review-panel-static-field">
+            <span className="review-panel-static-label">Title</span> {recipe.title}
+          </p>
+          <p className="review-panel-static-field">
+            <span className="review-panel-static-label">Time (minutes)</span> {recipe.time ?? 'not set'}
+          </p>
+        </>
+      ) : (
+        <>
+          <label>
+            <span>Title</span>
+            <input type="text" maxLength={TITLE_MAXLENGTH} value={recipe.title} onChange={handleTitleChange} />
+          </label>
 
-      <label>
-        <span>Time (minutes)</span>
-        <input type="number" value={recipe.time ?? ''} onChange={handleTimeChange} />
-      </label>
+          <label>
+            <span>Time (minutes)</span>
+            <input type="number" value={recipe.time ?? ''} onChange={handleTimeChange} />
+          </label>
+        </>
+      )}
 
       <section aria-labelledby="review-tags-heading">
         <h3 id="review-tags-heading">Tags</h3>
-        <TagEditor tags={recipe.tags} onChange={handleTagsChange} />
+        <TagEditor tags={recipe.tags} onChange={handleTagsChange} readOnly={readOnly} />
       </section>
 
       <section aria-labelledby="review-ingredients-heading">
         <h3 id="review-ingredients-heading">Ingredients</h3>
-        <IngredientEditor ingredients={recipe.ingredients} onChange={handleIngredientsChange} />
+        <IngredientEditor ingredients={recipe.ingredients} onChange={handleIngredientsChange} readOnly={readOnly} />
       </section>
 
       <section aria-labelledby="review-steps-heading">
         <h3 id="review-steps-heading">Steps</h3>
-        <StepEditor steps={recipe.steps} onChange={handleStepsChange} />
+        <StepEditor steps={recipe.steps} onChange={handleStepsChange} readOnly={readOnly} />
       </section>
 
       <section aria-labelledby="review-pantry-heading" data-testid="pantry-section">

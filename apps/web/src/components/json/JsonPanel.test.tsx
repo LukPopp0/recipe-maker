@@ -221,4 +221,14 @@ describe('JsonPanel', () => {
     renderPanel({ dirty: false, savedId: 'recipe-123' });
     expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
   });
+
+  describe('readOnly mode', () => {
+    it('hides Save and the unsaved note, keeps Copy and Download', () => {
+      render(<JsonPanel recipe={RECIPE} readOnly />);
+      expect(screen.queryByRole('button', { name: /save recipe/i })).not.toBeInTheDocument();
+      expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /copy json/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /download json/i })).toBeInTheDocument();
+    });
+  });
 });

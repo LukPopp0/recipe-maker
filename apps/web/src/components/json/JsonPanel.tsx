@@ -36,14 +36,16 @@ type JsonPanelStatus =
 
 export function JsonPanel({
   recipe,
-  savedId,
-  dirty,
+  savedId = null,
+  dirty = false,
   onSaved,
+  readOnly = false,
 }: {
   recipe: CanonicalRecipe
-  savedId: string | null
-  dirty: boolean
-  onSaved: (id: string) => void
+  savedId?: string | null
+  dirty?: boolean
+  onSaved?: (id: string) => void
+  readOnly?: boolean
 }) {
   const [status, setStatus] = useState<JsonPanelStatus>({ phase: 'idle' });
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -94,7 +96,7 @@ export function JsonPanel({
     void saveRecipe(recipe).then((result) => {
       if (result.ok) {
         setStatus({ phase: 'saved', id: result.value.id });
-        onSaved(result.value.id);
+        onSaved?.(result.value.id);
         return;
       }
 
@@ -118,7 +120,7 @@ export function JsonPanel({
   }, []);
 
   const isSaving = status.phase === 'saving';
-  const showUnsavedNote = dirty && savedId === null;
+  const showUnsavedNote = !readOnly && dirty && savedId === null;
 
   return (
     <div className="json-panel">
@@ -146,9 +148,11 @@ export function JsonPanel({
           Download JSON
         </button>
 
-        <button type="button" onClick={handleSave} disabled={isSaving}>
-          Save Recipe
-        </button>
+        {readOnly ? null : (
+          <button type="button" onClick={handleSave} disabled={isSaving}>
+            Save Recipe
+          </button>
+        )}
       </div>
 
       {status.phase === 'saved' ? (

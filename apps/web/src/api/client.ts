@@ -1,7 +1,7 @@
 // Typed API client for the frontend. All fetch calls live here - the rest of
 // the app never calls fetch directly. Every endpoint returns a ClientResult
 // so callers branch on `.ok` instead of catching exceptions.
-import type { ApiErrorEnvelope, ApiResponse, CanonicalRecipe } from 'shared';
+import type { ApiErrorEnvelope, ApiResponse, CanonicalRecipe, RecipeSummary } from 'shared';
 
 export interface IngestDiagnostics {
   extractor: string
@@ -137,4 +137,16 @@ export async function saveRecipe(recipe: CanonicalRecipe): Promise<ClientResult<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(recipe),
   });
+}
+
+export async function listRecipes(): Promise<ClientResult<{ recipes: RecipeSummary[] }>> {
+  return request('/api/recipes');
+}
+
+export async function getRecipe(id: string): Promise<ClientResult<{ recipe: CanonicalRecipe }>> {
+  return request(`/api/recipe/${encodeURIComponent(id)}`);
+}
+
+export async function deleteRecipe(id: string): Promise<ClientResult<Record<string, never>>> {
+  return request(`/api/recipe/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

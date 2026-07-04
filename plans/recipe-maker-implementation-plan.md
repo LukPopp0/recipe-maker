@@ -429,7 +429,7 @@ Decisions confirmed during Phase 6 planning (see `plans/phase-6-library-ui.md`):
 ### Implementation Tasks
 1. Backend: implement POST /api/recipe/save, GET /api/recipes, GET /api/recipe/:id, DELETE /api/recipe/:id using RecipeRepository (built in Phase 1). [Done - shipped ahead of schedule alongside Phase 1-3 work.]
 2. Add RECIPE_NOT_FOUND error handling for get/delete on missing ids. [Done.]
-3. Frontend: build Library section (top-level nav item) with list/view/download/delete.
+3. Frontend: build Library section (top-level nav item) with list/view/download/delete. [Done.]
    - List view renders title, main image thumbnail, tags per saved recipe.
    - View opens the existing review/JSON panel in read-only mode.
    - View offers "Open in Create" (copy into workspace; Save creates a new id).
@@ -443,6 +443,19 @@ Decisions confirmed during Phase 6 planning (see `plans/phase-6-library-ui.md`):
 - Saved recipes persist across server restarts.
 - Deleting a recipe removes it from disk and from the library list.
 - Library view/download reuse existing review/export components rather than duplicating them.
+
+### Known Minor Follow-ups (from final branch review, not blocking)
+- `LibraryPanel`'s delete-failure banner is not cleared when navigating between
+  list and detail views, so a stale failure message can persist across an
+  unrelated navigation.
+- `RecipeList`'s thumbnail `<img>` has no `onError` fallback (unlike
+  `IngredientThumbnail`); a missing `main_image` would render a broken-image icon.
+- `ReviewPanel`'s `onChange` is optional (routed through a `noop`), while the
+  child editors keep `onChange` required and branch on `readOnly` instead - two
+  patterns for the same goal, worth unifying if these files are touched again.
+- No App-level test covers the full "Open in Create switches to Create view and
+  carries the recipe" wiring, including the dirty-confirm guard in
+  `handleOpenInCreate` (manually smoke-tested, not covered by automated tests).
 
 ## Phase 7: Milestone 2 Card Rendering
 
