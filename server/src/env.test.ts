@@ -16,6 +16,7 @@ describe('loadServerEnv', () => {
     expect(env.IMAGE_DATA_DIR).toBe(path.resolve('./data/images'));
     expect(env.IMAGE_MAX_BYTES).toBe(8_000_000);
     expect(env.MANUAL_REQUEST_MAX_BYTES).toBe(20_000_000);
+    expect(env.INGREDIENT_ASSET_DIR).toBe(path.resolve('../shared/assets/ingredients'));
     expect(env.PUBLIC_BASE_URL).toBe('http://localhost:8787');
   });
 
@@ -37,6 +38,7 @@ describe('loadServerEnv', () => {
       IMAGE_DATA_DIR: './tmp/images',
       IMAGE_MAX_BYTES: '2000000',
       MANUAL_REQUEST_MAX_BYTES: '3000000',
+      INGREDIENT_ASSET_DIR: './tmp/ingredients',
       PUBLIC_BASE_URL: 'https://recipes.example.com',
     });
 
@@ -50,6 +52,7 @@ describe('loadServerEnv', () => {
     expect(env.IMAGE_DATA_DIR).toBe(path.resolve('./tmp/images'));
     expect(env.IMAGE_MAX_BYTES).toBe(2000000);
     expect(env.MANUAL_REQUEST_MAX_BYTES).toBe(3000000);
+    expect(env.INGREDIENT_ASSET_DIR).toBe(path.resolve('./tmp/ingredients'));
     expect(env.PUBLIC_BASE_URL).toBe('https://recipes.example.com');
   });
 

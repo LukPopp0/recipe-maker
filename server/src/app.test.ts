@@ -137,4 +137,43 @@ describe('createApp', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('GET /ingredient-images/*', () => {
+    let ingredientAssetDir: string;
+
+    afterEach(async () => {
+      if (ingredientAssetDir) {
+        await rm(ingredientAssetDir, { recursive: true, force: true });
+      }
+    });
+
+    it('serves a file from INGREDIENT_ASSET_DIR at the matching /ingredient-images/* path', async () => {
+      ingredientAssetDir = await mkdtemp(path.join(tmpdir(), 'app-test-ingredient-images-'));
+      await writeFile(path.join(ingredientAssetDir, 'INGREDIENT_NOT_FOUND.png'), Buffer.from('fake-png-bytes'));
+      const app = createApp({
+        env: makeEnv({ INGREDIENT_ASSET_DIR: ingredientAssetDir }),
+        checkStorageReady: () => true,
+        recipeRepository: makeRecipeRepository(), ...makeIngestDeps(),
+      });
+
+      const res = await app.request('/ingredient-images/INGREDIENT_NOT_FOUND.png');
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toMatch(/^image\//);
+      expect(Buffer.from(await res.arrayBuffer())).toEqual(Buffer.from('fake-png-bytes'));
+    });
+
+    it('returns 404 for an unknown filename', async () => {
+      ingredientAssetDir = await mkdtemp(path.join(tmpdir(), 'app-test-ingredient-images-'));
+      const app = createApp({
+        env: makeEnv({ INGREDIENT_ASSET_DIR: ingredientAssetDir }),
+        checkStorageReady: () => true,
+        recipeRepository: makeRecipeRepository(), ...makeIngestDeps(),
+      });
+
+      const res = await app.request('/ingredient-images/does-not-exist.png');
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

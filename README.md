@@ -7,8 +7,9 @@ two-page recipe card.
 ## Status
 
 Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), Phase 2
-(Option A: URL ingestion), Phase 3 (Option B: manual ingestion), and Phase 4
-(ingredient image matching) are done.
+(Option A: URL ingestion), Phase 3 (Option B: manual ingestion), Phase 4
+(ingredient image matching), and Phase 5 (Milestone 1 frontend completion)
+are done.
 Backend now boots, validates config, and exposes working recipe
 save/list/get/delete/download/validate routes backed by a local JSON-file
 `RecipeRepository`. `POST /api/ingest/url` is fully implemented: SSRF-guarded
@@ -26,14 +27,30 @@ of the same post-processing module as Option A. Ingredient image matching
 each non-pantry ingredient to a bare catalog filename from
 `shared/assets/ingredients` (215 assets incl. `INGREDIENT_NOT_FOUND.png` as
 fallback), with unmatched items surfaced as `metadata.warnings` strings and
-matching failures degrading gracefully instead of failing the request. No
-frontend ingestion UI yet: Phase 5 (Milestone 1 frontend completion) is
-planned next (see `plans/phase-5-milestone-1-frontend-completion.md`) - the
-Create workspace with URL/Manual/Load JSON tabs, an editable review panel
-with ingredient thumbnails (served at `/ingredient-images/*`), a JSON
-viewer/download, and an explicit Save action. See
+matching failures degrading gracefully instead of failing the request. The
+Phase 5 frontend (see `plans/phase-5-milestone-1-frontend-completion.md`) is
+implemented: the Create workspace with URL/Manual/Load JSON tabs, an
+editable review panel (title, tags via vocabulary chips + custom input,
+time, ingredients with thumbnails served at `/ingredient-images/*`,
+add/remove rows, steps capped at 6), non-blocking warnings, a
+syntax-highlighted JSON viewer with copy and deterministic-filename
+download, and an explicit Save Recipe action. The Library UI (Phase 6) is
+next; its backend routes already exist. See
 `plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
 `specs/` for per-feature specs.
+
+## Frontend Dev Workflow
+
+Run both dev servers in two terminals:
+
+```bash
+pnpm --filter server run dev   # backend on port 8787
+pnpm --filter web run dev      # Vite dev server, proxies to the backend
+```
+
+Vite proxies `/api`, `/images`, and `/ingredient-images` to
+`http://localhost:8787` (no CORS setup). Frontend tests use Vitest + React
+Testing Library under jsdom: `pnpm --filter web run test`.
 
 ## Architecture
 

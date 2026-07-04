@@ -25,6 +25,10 @@ const ServerEnvSchema = z.object({
     .transform((value) => path.resolve(value)),
   IMAGE_MAX_BYTES: z.coerce.number().int().positive().default(8_000_000),
   MANUAL_REQUEST_MAX_BYTES: z.coerce.number().int().positive().default(20_000_000),
+  INGREDIENT_ASSET_DIR: z
+    .string()
+    .default('../shared/assets/ingredients')
+    .transform((value) => path.resolve(value)),
   // No schema-level default: PUBLIC_BASE_URL defaults to
   // `http://localhost:{PORT}` in loadServerEnv below, once PORT is known.
   PUBLIC_BASE_URL: z
@@ -41,7 +45,7 @@ export type ServerEnv = Omit<z.infer<typeof ServerEnvSchema>, 'PUBLIC_BASE_URL'>
 }
 
 // Validates and normalizes raw process.env-style input into a typed ServerEnv,
-// resolving RECIPE_DATA_DIR/IMAGE_DATA_DIR to absolute paths and defaulting
+// resolving RECIPE_DATA_DIR/IMAGE_DATA_DIR/INGREDIENT_ASSET_DIR to absolute paths and defaulting
 // PUBLIC_BASE_URL to `http://localhost:{PORT}` when not supplied. Throws a
 // descriptive error on invalid values (e.g. an unrecognized NODE_ENV or a
 // non-numeric PORT).

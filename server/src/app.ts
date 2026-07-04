@@ -61,6 +61,17 @@ export function createApp(deps: AppDeps): App {
     }),
   );
 
+  // Serves the shared ingredient catalog images (specs/12) from
+  // INGREDIENT_ASSET_DIR so the frontend can display ingredient thumbnails.
+  // Fulfills Phase 4 decision 2 ("static serving deferred to Phase 5").
+  app.use(
+    '/ingredient-images/*',
+    serveStatic({
+      root: deps.env.INGREDIENT_ASSET_DIR,
+      rewriteRequestPath: (path) => path.replace(/^\/ingredient-images/, ''),
+    }),
+  );
+
   app.onError(errorHandler);
   app.notFound(notFoundHandler);
 

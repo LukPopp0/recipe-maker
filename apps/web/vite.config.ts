@@ -8,4 +8,13 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    // Proxy targets the backend dev server; port matches the PORT default
+    // in server/src/env.ts.
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/images': 'http://localhost:8787',
+      '/ingredient-images': 'http://localhost:8787',
+    },
+  },
 });

@@ -6,8 +6,11 @@ canonical JSON schema (max 6 steps, pantry split, ingredient image matching), le
 user save/browse recipes, and renders a printable two-page recipe card.
 
 ## Status
-Phase 0 (repo cleanup) and the pnpm workspace conversion (Phase 1, task 1) are done.
-`apps/web/src/App.tsx` still has the Vite template. Read
+Phases 0-5 are done: repo cleanup, shared contracts, both ingestion pipelines
+(`/api/ingest/url`, `/api/ingest/manual`), ingredient image matching, recipe CRUD
+routes, and the Milestone 1 frontend (Create workspace with URL/Manual/Load JSON
+tabs, editable review panel with thumbnails, JSON viewer/download, explicit Save).
+Next: Phase 6 Library UI (backend routes already exist). Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 
