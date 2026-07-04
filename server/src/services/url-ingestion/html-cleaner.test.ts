@@ -41,7 +41,7 @@ describe('cleanHtmlForExtraction', () => {
   });
 
   it('collapses whitespace in the extracted text', () => {
-    const html = `<html><body><p>Step   one.\n\n\tStep  two.</p></body></html>`;
+    const html = '<html><body><p>Step   one.\n\n\tStep  two.</p></body></html>';
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
@@ -127,7 +127,7 @@ describe('cleanHtmlForExtraction', () => {
   });
 
   it('ignores empty/missing img src values without throwing', () => {
-    const html = `<html><body><img src="" /><img /></body></html>`;
+    const html = '<html><body><img src="" /><img /></body></html>';
 
     expect(() => cleanHtmlForExtraction(html, 1000, BASE_URL)).not.toThrow();
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
@@ -136,7 +136,7 @@ describe('cleanHtmlForExtraction', () => {
   });
 
   it('extracts the title from <title>', () => {
-    const html = `<html><head><title>  Best Lasagna Ever  </title></head><body></body></html>`;
+    const html = '<html><head><title>  Best Lasagna Ever  </title></head><body></body></html>';
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
@@ -156,7 +156,7 @@ describe('cleanHtmlForExtraction', () => {
   });
 
   it('returns null titleHint when neither title nor og:title is present', () => {
-    const html = `<html><body><p>No title here.</p></body></html>`;
+    const html = '<html><body><p>No title here.</p></body></html>';
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
@@ -172,10 +172,35 @@ describe('cleanHtmlForExtraction', () => {
     expect(result.cleanedText.length).toBeLessThanOrEqual(100);
   });
 
+  it('surfaces schema.org Recipe JSON-LD while keeping script text out of cleanedText', () => {
+    const recipe = { '@type': 'Recipe', name: 'Oats', recipeIngredient: ['1 cup oats'] };
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify(recipe)}</script></head>
+      <body><p>Visible page text about oats.</p></body></html>`;
+
+    const result = cleanHtmlForExtraction(html, 5000, BASE_URL);
+
+    expect(result.recipeJsonLd).toMatchObject({ name: 'Oats' });
+    expect(result.cleanedText).not.toContain('@type');
+    expect(result.cleanedText).toContain('Visible page text');
+  });
+
+  it('counts JSON-LD length against the character budget before slicing cleanedText', () => {
+    const recipe = { '@type': 'Recipe', name: 'Oats', recipeIngredient: ['1 cup oats'] };
+    const jsonLdChars = JSON.stringify(recipe).length;
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify(recipe)}</script></head>
+      <body><p>${'word '.repeat(1000)}</p></body></html>`;
+
+    const budget = jsonLdChars + 50;
+    const result = cleanHtmlForExtraction(html, budget, BASE_URL);
+
+    expect(result.recipeJsonLd).not.toBeNull();
+    expect(result.cleanedText.length).toBeLessThanOrEqual(50);
+  });
+
   it('handles empty HTML without throwing', () => {
     expect(() => cleanHtmlForExtraction('', 1000, BASE_URL)).not.toThrow();
     const result = cleanHtmlForExtraction('', 1000, BASE_URL);
-    expect(result).toEqual({ cleanedText: '', candidateImageUrls: [], titleHint: null });
+    expect(result).toEqual({ cleanedText: '', candidateImageUrls: [], titleHint: null, recipeJsonLd: null });
   });
 
   it('handles malformed HTML without throwing', () => {
@@ -187,7 +212,7 @@ describe('cleanHtmlForExtraction', () => {
   });
 
   it('inserts a text boundary between adjacent block elements with no whitespace in the source', () => {
-    const html = `<html><body><article><p>A</p><p>B</p><div>C</div><span>D</span></article></body></html>`;
+    const html = '<html><body><article><p>A</p><p>B</p><div>C</div><span>D</span></article></body></html>';
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
@@ -195,7 +220,7 @@ describe('cleanHtmlForExtraction', () => {
   });
 
   it('inserts a text boundary between minified list items', () => {
-    const html = `<html><body><article><ul><li>Flour</li><li>Water</li></ul></article></body></html>`;
+    const html = '<html><body><article><ul><li>Flour</li><li>Water</li></ul></article></body></html>';
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 

@@ -37,7 +37,7 @@ const RECIPE_HTML = `
   </html>
 `;
 
-const EMPTY_HTML = `<html><head><title>Untitled</title></head><body></body></html>`;
+const EMPTY_HTML = '<html><head><title>Untitled</title></head><body></body></html>';
 
 const REMOTE_IMAGE_URL = 'https://cdn.example.com/lasagna.jpg';
 
@@ -45,7 +45,7 @@ const REMOTE_IMAGE_URL = 'https://cdn.example.com/lasagna.jpg';
 // pre-check and post-processing, and references a remote main_image so the
 // re-hoster downloads + re-hosts it.
 const VALID_CANDIDATE = {
-  title: "Grandma's Lasagna",
+  title: 'Grandma\'s Lasagna',
   tags: ['dinner'],
   time: 60,
   ingredients: [
@@ -107,7 +107,7 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
   ];
 
   function makeApp(geminiClient: GeminiClient) {
-    const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir, IMAGE_DATA_DIR: imageDir });
+    const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir, IMAGE_DATA_DIR: imageDir, BROWSER_FALLBACK_ENABLED: 'false' });
     const recipeRepository = new LocalJsonFileRecipeRepository(dataDir);
     const storageAdapter = new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL);
     return createApp({
@@ -332,6 +332,7 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
     const env = loadServerEnv({
       RECIPE_DATA_DIR: dataDir,
       IMAGE_DATA_DIR: imageDir,
+      BROWSER_FALLBACK_ENABLED: 'false',
       ...envOverrides,
     });
     const recipeRepository = new LocalJsonFileRecipeRepository(dataDir);

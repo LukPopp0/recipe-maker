@@ -1,4 +1,4 @@
-import { PANTRY_ALLOWLIST } from "shared";
+import { PANTRY_ALLOWLIST } from 'shared';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline feeds the
@@ -21,7 +21,7 @@ const MANUAL_RECIPE_SHAPE = `{
   }
 }`;
 
-const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(", ");
+const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(', ');
 
 const SHARED_INSTRUCTIONS = `You are extracting a recipe into a strict JSON schema. Output ONLY a single JSON
 object matching this shape exactly (field names must match exactly):

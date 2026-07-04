@@ -4,28 +4,31 @@ import type { GeminiClient } from '../ai/gemini-client.js';
 import { buildManualIngestionPrompt } from '../ai/prompts/manual-ingestion.js';
 import { hostUploadedImage } from '../images/upload-image-hoster.js';
 import type { ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
-import { assignStepImageUrls, sortStepImageFilenames } from '../manual-ingestion/step-image-assigner.js';
+import {
+  assignStepImageUrls,
+  sortStepImageFilenames,
+} from '../manual-ingestion/step-image-assigner.js';
 import type { RawRecipeCandidate } from '../post-processing/index.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 
 export interface RunManualIngestionPipelineParams {
-  parsed: ParsedManualUpload
-  geminiClient: GeminiClient
-  geminiConfig: GeminiConfig
-  storageAdapter: StorageAdapter
-  recipeId: string
-  maxImageBytes: number
-  requestId: string
+  parsed: ParsedManualUpload;
+  geminiClient: GeminiClient;
+  geminiConfig: GeminiConfig;
+  storageAdapter: StorageAdapter;
+  recipeId: string;
+  maxImageBytes: number;
+  requestId: string;
 }
 
 export interface RunManualIngestionPipelineResult {
-  recipeCandidate: RawRecipeCandidate
+  recipeCandidate: RawRecipeCandidate;
   diagnostics: {
-    extractor: 'gemini-primary'
-    model: string
-    durationMs: number
-  }
-  warnings: string[]
+    extractor: 'gemini-primary';
+    model: string;
+    durationMs: number;
+  };
+  warnings: string[];
 }
 
 // Light structural pre-check on a raw Gemini JSON response: non-empty title,

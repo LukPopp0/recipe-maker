@@ -7,7 +7,7 @@ describe('slugifyTitle', () => {
   });
 
   it('strips non-alphanumeric characters to hyphens', () => {
-    expect(slugifyTitle("Grandma's Apple Pie!")).toBe('grandma-s-apple-pie');
+    expect(slugifyTitle('Grandma\'s Apple Pie!')).toBe('grandma-s-apple-pie');
   });
 
   it('collapses runs of separators into a single hyphen', () => {

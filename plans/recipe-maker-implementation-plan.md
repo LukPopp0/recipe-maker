@@ -382,6 +382,27 @@ Decisions confirmed during Phase 5 planning (see `plans/phase-5-milestone-1-fron
 - Error and warning states are understandable and actionable.
 - Save Recipe persists the currently reviewed recipe and only that recipe.
 
+## Phase 5.5: URL Ingestion Hardening (Addendum, shipped after Phase 5)
+
+First real-world testing of /api/ingest/url exposed three gaps; fixed as a
+hardening addendum on top of Phase 2 (see specs/04, updated):
+
+1. Non-2xx responses were fed to extraction. Now: 401/403 -> URL_FETCH_BLOCKED
+   (explicit "site blocks automated access, use Manual tab" error, no stealth
+   measures), other non-2xx -> URL_FETCH_FAILED. Static fetch also sends
+   browser-like headers.
+2. The HTML cleaner stripped schema.org Recipe JSON-LD along with all script
+   tags. Now: JSON-LD is extracted first and passed to Gemini as the
+   authoritative source (PROMPT_VERSION v3), with first claim on the character
+   budget.
+3. Client-side-rendered pages without JSON-LD had no path. Now: Playwright
+   headless-Chromium fallback (BROWSER_FALLBACK_ENABLED, default true)
+   triggers only when the static HTML has neither JSON-LD nor plausible
+   visible text; SSRF guardrails are preserved via request interception.
+   Playwright also serves Phase 9 (PDF generation) later.
+
+Diagnostics gained fetchMode (static|browser) and usedJsonLd.
+
 ## Phase 6: Recipe Persistence and Library
 
 ### Spec References

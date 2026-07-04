@@ -1,6 +1,7 @@
 import dns from 'node:dns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../lib/errors.js';
+import { loadServerEnv } from '../../env.js';
 import { loadGeminiConfig } from '../ai/config.js';
 import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { GeminiCanonicalRecipeGenerator } from './url-ingestion-pipeline.js';
@@ -30,7 +31,7 @@ const RECIPE_HTML = `
   </html>
 `;
 
-const EMPTY_HTML = `<html><head><title>Untitled</title></head><body></body></html>`;
+const EMPTY_HTML = '<html><head><title>Untitled</title></head><body></body></html>';
 
 const VALID_CANDIDATE = {
   title: 'Grandma\'s Lasagna',
@@ -48,6 +49,10 @@ const GARBAGE_CANDIDATE = { foo: 'bar' };
 function makeGeminiConfig() {
   return loadGeminiConfig({});
 }
+
+// Fallback disabled: these tests cover the static-fetch flow; the browser
+// fallback path has its own dedicated tests below with a fake fetcher.
+const STATIC_ENV = loadServerEnv({ BROWSER_FALLBACK_ENABLED: 'false' });
 
 function fakeGeminiClient(
   handler: (params: GenerateCanonicalRecipeParams) => Promise<unknown>,
@@ -78,6 +83,7 @@ describe('runUrlIngestionPipeline', () => {
       url: 'https://example.com/lasagna',
       geminiClient,
       geminiConfig: makeGeminiConfig(),
+      env: STATIC_ENV,
       requestId: 'req-1',
     });
 
@@ -100,6 +106,7 @@ describe('runUrlIngestionPipeline', () => {
       url: 'https://example.com/lasagna',
       geminiClient,
       geminiConfig: makeGeminiConfig(),
+      env: STATIC_ENV,
       requestId: 'req-2',
     });
 
@@ -122,6 +129,7 @@ describe('runUrlIngestionPipeline', () => {
       url: 'https://example.com/lasagna',
       geminiClient,
       geminiConfig: makeGeminiConfig(),
+      env: STATIC_ENV,
       requestId: 'req-3',
     });
 
@@ -138,7 +146,8 @@ describe('runUrlIngestionPipeline', () => {
         url: 'https://example.com/lasagna',
         geminiClient,
         geminiConfig: makeGeminiConfig(),
-        requestId: 'req-4',
+        env: STATIC_ENV,
+      requestId: 'req-4',
       }),
     ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
 
@@ -154,11 +163,137 @@ describe('runUrlIngestionPipeline', () => {
         url: 'http://127.0.0.1/recipe',
         geminiClient,
         geminiConfig: makeGeminiConfig(),
-        requestId: 'req-5',
+        env: STATIC_ENV,
+      requestId: 'req-5',
       }),
     ).rejects.toMatchObject({ code: 'INVALID_URL' });
 
     expect(generateCanonicalRecipe).not.toHaveBeenCalled();
+  });
+
+  describe('JSON-LD and browser fallback', () => {
+    const JSONLD_RECIPE = {
+      '@type': 'Recipe',
+      name: 'Overnight Oats',
+      recipeIngredient: ['1 cup oats', '2 tbsp peanut butter'],
+      recipeInstructions: [{ '@type': 'HowToStep', text: 'Mix and refrigerate overnight.' }],
+    };
+
+    // A JS-shell page: almost no visible text, no JSON-LD.
+    const SHELL_HTML = '<html><head><title>App</title></head><body><div id="root"></div></body></html>';
+
+    // The same page after client-side rendering: JSON-LD injected plus text.
+    const RENDERED_HTML = `<html><head><title>Overnight Oats</title>
+      <script type="application/ld+json">${JSON.stringify(JSONLD_RECIPE)}</script></head>
+      <body><article><h1>Overnight Oats</h1><p>${'Mix oats with peanut butter. '.repeat(30)}</p></article></body></html>`;
+
+    const JSONLD_STATIC_HTML = `<html><head><title>Overnight Oats</title>
+      <script type="application/ld+json">${JSON.stringify(JSONLD_RECIPE)}</script></head>
+      <body><div id="root"></div></body></html>`;
+
+    const FALLBACK_ENV = loadServerEnv({});
+
+    function fakeBrowserFetcher(html: string) {
+      const fetchWithBrowser = vi.fn().mockResolvedValue({
+        html,
+        effectiveUrl: 'https://example.com/lasagna',
+      });
+      return { fetcher: { fetchWithBrowser }, fetchWithBrowser };
+    }
+
+    it('uses the browser fallback for a JS shell page and reports fetchMode browser', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(SHELL_HTML));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(RENDERED_HTML);
+      const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+      const result = await runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        env: FALLBACK_ENV,
+        browserFetcher: fetcher,
+        requestId: 'req-7',
+      });
+
+      expect(fetchWithBrowser).toHaveBeenCalledTimes(1);
+      expect(result.diagnostics.fetchMode).toBe('browser');
+      expect(result.diagnostics.usedJsonLd).toBe(true);
+    });
+
+    it('skips the browser fallback when the static HTML already has JSON-LD', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSONLD_STATIC_HTML));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(RENDERED_HTML);
+      const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+      const result = await runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        env: FALLBACK_ENV,
+        browserFetcher: fetcher,
+        requestId: 'req-8',
+      });
+
+      expect(fetchWithBrowser).not.toHaveBeenCalled();
+      expect(result.diagnostics.fetchMode).toBe('static');
+      expect(result.diagnostics.usedJsonLd).toBe(true);
+    });
+
+    it('skips the browser fallback when the static page has enough visible text', async () => {
+      const richHtml = `<html><body><article><p>${'Real recipe content. '.repeat(50)}</p></article></body></html>`;
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(richHtml));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(RENDERED_HTML);
+      const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+      const result = await runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        env: FALLBACK_ENV,
+        browserFetcher: fetcher,
+        requestId: 'req-9',
+      });
+
+      expect(fetchWithBrowser).not.toHaveBeenCalled();
+      expect(result.diagnostics.fetchMode).toBe('static');
+      expect(result.diagnostics.usedJsonLd).toBe(false);
+    });
+
+    it('skips the browser fallback when disabled via env', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(SHELL_HTML));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(RENDERED_HTML);
+      const geminiClient = fakeGeminiClient(vi.fn());
+
+      await expect(
+        runUrlIngestionPipeline({
+          url: 'https://example.com/lasagna',
+          geminiClient,
+          geminiConfig: makeGeminiConfig(),
+          env: STATIC_ENV,
+          browserFetcher: fetcher,
+          requestId: 'req-10',
+        }),
+      ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
+
+      expect(fetchWithBrowser).not.toHaveBeenCalled();
+    });
+
+    it('keeps the static result and fails cleanly when the rendered page is not richer', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(SHELL_HTML));
+      const { fetcher } = fakeBrowserFetcher(SHELL_HTML);
+      const geminiClient = fakeGeminiClient(vi.fn());
+
+      await expect(
+        runUrlIngestionPipeline({
+          url: 'https://example.com/lasagna',
+          geminiClient,
+          geminiConfig: makeGeminiConfig(),
+          env: FALLBACK_ENV,
+          browserFetcher: fetcher,
+          requestId: 'req-11',
+        }),
+      ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
+    });
   });
 
   it('throws URL_EXTRACTION_FAILED for empty page content without calling Gemini', async () => {
@@ -171,7 +306,8 @@ describe('runUrlIngestionPipeline', () => {
         url: 'https://example.com/empty',
         geminiClient,
         geminiConfig: makeGeminiConfig(),
-        requestId: 'req-6',
+        env: STATIC_ENV,
+      requestId: 'req-6',
       }),
     ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
 

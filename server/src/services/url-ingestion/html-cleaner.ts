@@ -1,4 +1,5 @@
 import { parse, type HTMLElement } from 'node-html-parser';
+import { extractRecipeJsonLd } from './jsonld-extractor.js';
 
 const MAX_CANDIDATE_IMAGES = 10;
 const TAGS_TO_STRIP = ['script', 'style', 'noscript'];
@@ -20,6 +21,11 @@ export interface CleanedHtml {
   cleanedText: string
   candidateImageUrls: string[]
   titleHint: string | null
+  // Raw schema.org Recipe node from a <script type="application/ld+json">
+  // block, when the page embeds one. Serialized length counts against the
+  // character budget ahead of cleanedText, since it is the denser and more
+  // authoritative extraction input.
+  recipeJsonLd: Record<string, unknown> | null
 }
 
 // Collapses runs of whitespace (including newlines/tabs) into single spaces
@@ -152,16 +158,24 @@ export function cleanHtmlForExtraction(
   try {
     root = parse(html ?? '');
   } catch {
-    return { cleanedText: '', candidateImageUrls: [], titleHint: null };
+    return { cleanedText: '', candidateImageUrls: [], titleHint: null, recipeJsonLd: null };
   }
 
   const titleHint = extractTitleHint(root);
   const candidateImageUrls = extractCandidateImageUrls(root, baseUrl);
 
+  // JSON-LD must be read before stripNonVisibleNodes removes script tags.
+  const recipeJsonLd = extractRecipeJsonLd(root);
+
   stripNonVisibleNodes(root);
   insertBlockBoundaries(root);
   const primaryText = selectPrimaryTextBlock(root);
-  const cleanedText = primaryText.slice(0, Math.max(tokenBudgetChars, 0));
 
-  return { cleanedText, candidateImageUrls, titleHint };
+  // JSON-LD gets first claim on the character budget; visible text fills the
+  // remainder so the combined prompt input stays within tokenBudgetChars.
+  const jsonLdChars = recipeJsonLd ? JSON.stringify(recipeJsonLd).length : 0;
+  const textBudget = Math.max(tokenBudgetChars - jsonLdChars, 0);
+  const cleanedText = primaryText.slice(0, Math.max(textBudget, 0));
+
+  return { cleanedText, candidateImageUrls, titleHint, recipeJsonLd };
 }

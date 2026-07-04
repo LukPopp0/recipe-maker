@@ -47,7 +47,7 @@ export function finalSanitize(recipe: CanonicalRecipe, defaultMainImageUrl: stri
     return {
       step_header: clean(step.step_header),
       step_description: cleanedDescription.slice(0, MAX_STEP_DESCRIPTION_LENGTH).trim(),
-      ...(step.image !== undefined ? { image: step.image.trim() } : {}),
+      ...(step.image !== undefined && step.image !== null ? { image: step.image.trim() } : {}),
     };
   });
 
@@ -58,16 +58,19 @@ export function finalSanitize(recipe: CanonicalRecipe, defaultMainImageUrl: stri
     ingredients: recipe.ingredients.map((ingredient) => ({
       name: clean(ingredient.name),
       amount_text: clean(ingredient.amount_text),
-      ...(ingredient.amount_value !== undefined ? { amount_value: ingredient.amount_value } : {}),
-      ...(ingredient.unit !== undefined ? { unit: clean(ingredient.unit) } : {}),
-      ...(ingredient.image !== undefined ? { image: ingredient.image.trim() } : {}),
+      // Gemini emits null (not omission) when it has no value; treat both as "absent".
+      ...(ingredient.amount_value !== undefined && ingredient.amount_value !== null
+        ? { amount_value: ingredient.amount_value }
+        : {}),
+      ...(ingredient.unit !== undefined && ingredient.unit !== null ? { unit: clean(ingredient.unit) } : {}),
+      ...(ingredient.image !== undefined && ingredient.image !== null ? { image: ingredient.image.trim() } : {}),
     })),
     pantry_items: dedupeCaseInsensitive(recipe.pantry_items.map(clean).filter((item) => item.length > 0)),
     main_image: applyMainImageFallback((recipe.main_image ?? '').trim(), defaultMainImageUrl),
     steps,
     metadata: {
       source_type: recipe.metadata.source_type,
-      ...(recipe.metadata.source_url !== undefined
+      ...(recipe.metadata.source_url !== undefined && recipe.metadata.source_url !== null
         ? { source_url: recipe.metadata.source_url.trim() }
         : {}),
       language: recipe.metadata.language,

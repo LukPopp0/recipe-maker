@@ -17,6 +17,11 @@ const ServerEnvSchema = z.object({
     .optional()
     .transform((value) => (value === '' ? undefined : value)),
   URL_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  BROWSER_FALLBACK_ENABLED: z
+    .string()
+    .default('true')
+    .transform((value) => value !== 'false' && value !== '0'),
+  BROWSER_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   URL_MAX_REDIRECTS: z.coerce.number().int().nonnegative().default(3),
   URL_MAX_RESPONSE_BYTES: z.coerce.number().int().positive().default(5_000_000),
   IMAGE_DATA_DIR: z

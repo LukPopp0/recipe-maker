@@ -15,6 +15,19 @@ export interface GenerateCanonicalRecipeParams {
   timeoutMs: number
 }
 
+// The @google/genai SDK's ApiError.message is often a raw JSON blob (the full
+// Google API error response, including retry/quota metadata). Pull out just
+// the human-readable `error.message` field so callers don't dump the whole
+// blob into `cause`; falls back to the raw message when it isn't that shape.
+function extractCause(message: string): string {
+  try {
+    const parsed = JSON.parse(message) as { error?: { message?: unknown } };
+    return typeof parsed.error?.message === 'string' ? parsed.error.message : message;
+  } catch {
+    return message;
+  }
+}
+
 // Wraps the @google/genai SDK for the one call this app needs: send a prompt,
 // get back parsed JSON. Deterministic generationConfig (temperature/topP/topK)
 // comes from GeminiConfig so callers never need to think about it per-call.
@@ -64,7 +77,7 @@ export class GeminiClient {
       // Covers non-2xx responses (SDK throws ApiError) and any other transport failure.
       throw new AppError('AI_NORMALIZATION_FAILED', 'Gemini request failed.', {
         model,
-        cause: err instanceof Error ? err.message : String(err),
+        cause: err instanceof Error ? extractCause(err.message) : String(err),
       });
     } finally {
       clearTimeout(timer!);

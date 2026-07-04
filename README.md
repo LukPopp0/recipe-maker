@@ -83,6 +83,17 @@ A real `GEMINI_API_KEY` is required to exercise `POST /api/ingest/url` or
 `POST /api/ingest/manual` end-to-end; without one, all other routes and the
 test suite still work (tests mock the Gemini client and network calls).
 
+URL ingestion can fall back to a headless Chromium (Playwright) for pages whose
+recipe content requires client-side JavaScript. This needs a one-time browser
+download:
+
+```bash
+pnpm --filter server exec playwright install chromium
+```
+
+Set `BROWSER_FALLBACK_ENABLED=false` in `server/.env` to skip the download and
+run URL ingestion with static fetching only.
+
 ## Scripts
 
 - `pnpm dev` - regenerate the ingredient manifest, then start the `web` Vite dev server.

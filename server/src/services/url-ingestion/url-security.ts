@@ -100,6 +100,17 @@ export async function resolveAndCheckHost(hostname: string): Promise<void> {
   }
 }
 
+// Browser-like request headers sent on every fetch hop. Some sites reject
+// requests with no/default UA outright; a realistic header set gets naive
+// UA-sniffing sites through. This does not (and must not) attempt to defeat
+// real bot-protection challenges - those are surfaced as URL_FETCH_BLOCKED.
+export const BROWSER_LIKE_HEADERS: Record<string, string> = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
+
 type FetchGuardrailOptions = {
   timeoutMs: number
   maxRedirects: number
@@ -177,6 +188,7 @@ export async function fetchWithGuardrails(
       const response = await fetch(currentUrl, {
         redirect: 'manual',
         signal: controller.signal,
+        headers: BROWSER_LIKE_HEADERS,
       });
 
       if (response.status >= 300 && response.status < 400) {
@@ -201,6 +213,23 @@ export async function fetchWithGuardrails(
         await resolveAndCheckHost(nextUrl.hostname);
         currentUrl = nextUrl;
         continue;
+      }
+
+      // Non-2xx final responses never contain the real page. 401/403 is
+      // almost always bot protection serving a challenge page - feeding that
+      // to the extractor produces a confusing failure, so fail explicitly
+      // and point the user at the Manual tab escape hatch instead.
+      if (response.status === 401 || response.status === 403) {
+        throw new AppError(
+          'URL_FETCH_BLOCKED',
+          'This site blocks automated access. Copy the recipe into the Manual tab instead.',
+          { status: response.status },
+        );
+      }
+      if (!response.ok) {
+        throw new AppError('URL_FETCH_FAILED', `The site returned an error (HTTP ${response.status}).`, {
+          status: response.status,
+        });
       }
 
       const html = await readBodyWithLimit(response, opts.maxBytes, controller);

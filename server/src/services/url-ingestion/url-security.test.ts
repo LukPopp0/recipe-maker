@@ -180,6 +180,57 @@ describe('fetchWithGuardrails', () => {
     expect(result.effectiveUrl).toBe('https://example.com/recipe');
   });
 
+  it('throws URL_FETCH_BLOCKED on a 403 response instead of returning the challenge page', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(textResponse('<html>challenge</html>', { status: 403 }));
+
+    await expect(
+      fetchWithGuardrails(new URL('https://example.com/recipe'), {
+        timeoutMs: 1000,
+        maxRedirects: 3,
+        maxBytes: 1_000_000,
+      }),
+    ).rejects.toMatchObject({ code: 'URL_FETCH_BLOCKED' });
+  });
+
+  it('throws URL_FETCH_BLOCKED on a 401 response', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(textResponse('', { status: 401 }));
+
+    await expect(
+      fetchWithGuardrails(new URL('https://example.com/recipe'), {
+        timeoutMs: 1000,
+        maxRedirects: 3,
+        maxBytes: 1_000_000,
+      }),
+    ).rejects.toMatchObject({ code: 'URL_FETCH_BLOCKED' });
+  });
+
+  it('throws URL_FETCH_FAILED on other non-2xx responses', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(textResponse('oops', { status: 500 }));
+
+    await expect(
+      fetchWithGuardrails(new URL('https://example.com/recipe'), {
+        timeoutMs: 1000,
+        maxRedirects: 3,
+        maxBytes: 1_000_000,
+      }),
+    ).rejects.toMatchObject({ code: 'URL_FETCH_FAILED' });
+  });
+
+  it('sends browser-like headers on the request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(textResponse('<html>ok</html>'));
+    globalThis.fetch = fetchMock;
+
+    await fetchWithGuardrails(new URL('https://example.com/recipe'), {
+      timeoutMs: 1000,
+      maxRedirects: 3,
+      maxBytes: 1_000_000,
+    });
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(headers['User-Agent']).toContain('Mozilla/5.0');
+    expect(headers['Accept-Language']).toBeTruthy();
+  });
+
   it('follows a redirect chain within the limit and re-validates each hop', async () => {
     const fetchMock = vi
       .fn()

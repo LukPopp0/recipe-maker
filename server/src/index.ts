@@ -5,6 +5,7 @@ import { loadServerEnv } from './env.js';
 import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
+import { closeBrowser } from './services/url-ingestion/browser-fetcher.js';
 import { LocalJsonFileRecipeRepository } from './services/recipes/local-json-file-recipe-repository.js';
 import { LocalDiskStorageAdapter } from './services/storage/local-disk-storage-adapter.js';
 
@@ -63,7 +64,7 @@ const app = createApp({
   defaultMainImageUrl,
 });
 
-serve({ fetch: app.fetch, port: env.PORT }, (info) => {
+const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(
     JSON.stringify({
       level: 'info',
@@ -74,3 +75,16 @@ serve({ fetch: app.fetch, port: env.PORT }, (info) => {
     }),
   );
 });
+
+// On restart/kill signals: stop accepting connections, then close the
+// headless Chromium the browser fallback keeps alive across requests so no
+// orphaned browser processes linger.
+const shutdown = () => {
+  console.log('Shutting down server...');
+  server.close(() => {
+    void closeBrowser().finally(() => process.exit(0));
+  });
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

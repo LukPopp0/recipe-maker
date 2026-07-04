@@ -80,6 +80,21 @@ describe('GeminiClient.generateCanonicalRecipe', () => {
     }
   });
 
+  it('extracts the inner error.message when the SDK throws a JSON quota-error blob', async () => {
+    const rawBlob = JSON.stringify({
+      error: { code: 429, message: 'Quota exceeded, retry in 7s.', status: 'RESOURCE_EXHAUSTED' },
+    });
+    const generateContent = vi.fn().mockRejectedValue(new Error(rawBlob));
+    const client = new GeminiClient(config, makeSdkClient(generateContent));
+
+    try {
+      await client.generateCanonicalRecipe({ model: 'gemini-2.5-pro', prompt: 'x', timeoutMs: 1000 });
+      expect.unreachable();
+    } catch (err) {
+      expect((err as AppError).details).toMatchObject({ cause: 'Quota exceeded, retry in 7s.' });
+    }
+  });
+
   it('throws AI_NORMALIZATION_FAILED when the response has no text', async () => {
     const generateContent = vi.fn().mockResolvedValue({ text: undefined });
     const client = new GeminiClient(config, makeSdkClient(generateContent));

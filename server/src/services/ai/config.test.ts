@@ -8,7 +8,7 @@ describe('loadGeminiConfig', () => {
     expect(config.geminiApiKey).toBeUndefined();
     expect(config.primaryModel).toBe('gemini-2.5-pro');
     expect(config.retryModel).toBe('gemini-2.5-flash');
-    expect(config.timeoutMs).toBe(20000);
+    expect(config.timeoutMs).toBe(60000);
     expect(config.tokenBudget).toBe(8000);
     expect(config.maxRetries).toBe(1);
     expect(config.generationConfig).toEqual({

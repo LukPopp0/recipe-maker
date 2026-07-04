@@ -18,7 +18,7 @@ describe('highlightJson', () => {
   it('round-trips: concatenating all token text reproduces the input exactly', () => {
     const json = JSON.stringify(
       {
-        title: "Grandma's Soup",
+        title: 'Grandma\'s Soup',
         tags: ['easy', 'soup'],
         time: null,
         steps: [{ step_header: 'Boil', step_description: 'Boil water.' }],

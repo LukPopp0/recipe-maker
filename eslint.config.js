@@ -20,6 +20,8 @@ export default defineConfig([
     },
     rules: {
       semi: ["error", "always"],
+      "comma-dangle": ["error", "always-multiline"],
+      quotes: ["error", "single"],
     },
   },
 ]);

@@ -128,13 +128,13 @@ describe('recipe routes', () => {
     const getRes = await app.request(`/api/recipe/${id}`);
     const getBody = (await getRes.json()) as { recipe: CanonicalRecipe };
     expect(getRes.status).toBe(200);
-    expect(getBody.recipe.title).toBe("Grandma's Soup!");
+    expect(getBody.recipe.title).toBe('Grandma\'s Soup!');
 
     const downloadRes = await app.request(`/api/recipe/download/${id}`);
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers.get('content-disposition')).toBe('attachment; filename="grandma-s-soup.json"');
     const downloadBody = (await downloadRes.json()) as CanonicalRecipe;
-    expect(downloadBody.title).toBe("Grandma's Soup!");
+    expect(downloadBody.title).toBe('Grandma\'s Soup!');
 
     const deleteRes = await app.request(`/api/recipe/${id}`, { method: 'DELETE' });
     const deleteBody = (await deleteRes.json()) as { ok: boolean };

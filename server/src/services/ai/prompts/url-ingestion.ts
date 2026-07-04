@@ -45,11 +45,26 @@ Rules:
   tags are allowed if none of these fit, but prefer the vocabulary above.
 - Set "metadata.source_type" to "url", "metadata.language" to "en".`;
 
+// Renders the optional JSON-LD section shared by both prompts. When a page
+// embeds a schema.org Recipe node, it is the most reliable extraction input,
+// so the model is told to prefer it over the visible page text.
+function renderJsonLdSection(recipeJsonLd: Record<string, unknown> | null | undefined): string {
+  if (!recipeJsonLd) return '';
+  return `
+Structured recipe metadata (schema.org JSON-LD embedded by the site - treat this as
+the authoritative source; prefer it over the page content below when they disagree):
+<structured_metadata>
+${JSON.stringify(recipeJsonLd)}
+</structured_metadata>
+`;
+}
+
 export interface BuildUrlIngestionPromptParams {
   url: string
   cleanedText: string
   candidateImageUrls: string[]
   titleHint: string | null
+  recipeJsonLd?: Record<string, unknown> | null
 }
 
 // Primary extraction prompt: full cleaned page content plus context.
@@ -58,6 +73,7 @@ export function buildUrlIngestionPrompt({
   cleanedText,
   candidateImageUrls,
   titleHint,
+  recipeJsonLd,
 }: BuildUrlIngestionPromptParams): string {
   return `${SHARED_INSTRUCTIONS}
 - Set "metadata.source_url" to exactly: ${url}
@@ -66,7 +82,7 @@ Source URL: ${url}
 Title hint (from the page's <title>/og:title, may be inaccurate or absent): ${titleHint ?? '(none)'}
 Candidate image URLs (choose "main_image" from this list if a suitable one exists):
 ${candidateImageUrls.length > 0 ? candidateImageUrls.join('\n') : '(none)'}
-
+${renderJsonLdSection(recipeJsonLd)}
 Page content:
 <page_content>
 ${cleanedText}
@@ -79,6 +95,7 @@ export interface BuildUrlIngestionRetryPromptParams {
   url: string
   reducedText: string
   candidateImageUrls: string[]
+  recipeJsonLd?: Record<string, unknown> | null
 }
 
 // Retry prompt used when the first attempt failed schema validation. Shorter,
@@ -87,6 +104,7 @@ export function buildUrlIngestionRetryPrompt({
   url,
   reducedText,
   candidateImageUrls,
+  recipeJsonLd,
 }: BuildUrlIngestionRetryPromptParams): string {
   return `${SHARED_INSTRUCTIONS}
 - Set "metadata.source_url" to exactly: ${url}
@@ -99,7 +117,7 @@ an empty array/string instead.
 Source URL: ${url}
 Candidate image URLs (choose "main_image" from this list if a suitable one exists):
 ${candidateImageUrls.length > 0 ? candidateImageUrls.join('\n') : '(none)'}
-
+${renderJsonLdSection(recipeJsonLd)}
 Reduced page content:
 <page_content>
 ${reducedText}

@@ -93,4 +93,38 @@ describe('ErrorBanner', () => {
     );
     expect(screen.getByText(/try again/i)).toBeInTheDocument();
   });
+
+  it('renders details.cause as a Reason line when present', () => {
+    const error: ApiFailure = {
+      code: 'AI_NORMALIZATION_FAILED',
+      message: 'Gemini request failed.',
+      details: { model: 'gemini-2.5-flash', cause: 'fetch failed: ECONNRESET' },
+    };
+
+    render(<ErrorBanner error={error} onRetry={() => {}} onDismiss={() => {}} />);
+
+    expect(screen.getByText(/Reason: fetch failed: ECONNRESET/)).toBeInTheDocument();
+  });
+
+  it('renders a collapsible details block for non-cause detail shapes', () => {
+    const error: ApiFailure = {
+      code: 'AI_NORMALIZATION_FAILED',
+      message: 'Gemini returned unparseable JSON.',
+      details: { model: 'gemini-2.5-flash', rawText: 'not json' },
+    };
+
+    render(<ErrorBanner error={error} onRetry={() => {}} onDismiss={() => {}} />);
+
+    expect(screen.getByText('Show details')).toBeInTheDocument();
+    expect(screen.getByText(/"rawText": "not json"/)).toBeInTheDocument();
+  });
+
+  it('renders neither Reason nor details block when details is absent', () => {
+    const error: ApiFailure = { code: 'INTERNAL_ERROR', message: 'Something went wrong.' };
+
+    render(<ErrorBanner error={error} onRetry={() => {}} onDismiss={() => {}} />);
+
+    expect(screen.queryByText(/Reason:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Show details')).not.toBeInTheDocument();
+  });
 });

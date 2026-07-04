@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
-// Per specs/02, rule 5-6: ingredient name is required/trimmed, amount_text is required
-// free text (supports fractions, e.g. "1 1/2 cups").
+// Per specs/02, rule 5-6: ingredient name is required/trimmed, amount_text is free text
+// (supports fractions, e.g. "1 1/2 cups") but may be empty when the source has no
+// amount at all (e.g. "cilantro" as garnish) - Gemini emits null in that case.
 export const IngredientSchema = z.object({
   name: z.string().trim().min(1),
-  amount_text: z.string().min(1),
+  amount_text: z.string(),
   amount_value: z.number().optional(),
   unit: z.string().optional(),
   image: z.string().optional(),

@@ -10,6 +10,8 @@ Phases 0-5 are done: repo cleanup, shared contracts, both ingestion pipelines
 (`/api/ingest/url`, `/api/ingest/manual`), ingredient image matching, recipe CRUD
 routes, and the Milestone 1 frontend (Create workspace with URL/Manual/Load JSON
 tabs, editable review panel with thumbnails, JSON viewer/download, explicit Save).
+Phase 5.5 hardened URL ingestion: JSON-LD extraction, Playwright browser fallback,
+explicit URL_FETCH_BLOCKED/URL_FETCH_FAILED errors (see plan addendum + specs/04).
 Next: Phase 6 Library UI (backend routes already exist). Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.

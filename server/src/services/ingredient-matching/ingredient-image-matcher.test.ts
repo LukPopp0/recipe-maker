@@ -115,7 +115,7 @@ describe('createIngredientImageMatcher', () => {
 
     const result = await matcher.matchIngredientImages(INPUT);
 
-    expect(result.warnings).toEqual([`No image match found for ingredient 'Onions'.`]);
+    expect(result.warnings).toEqual(['No image match found for ingredient \'Onions\'.']);
     expect(result.ingredients[0].image).toBe(INGREDIENT_NOT_FOUND_IMAGE);
   });
 
