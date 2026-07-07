@@ -232,3 +232,28 @@ describe('JsonPanel', () => {
     });
   });
 });
+
+describe('Preview Card action', () => {
+  it('renders no preview button when onPreviewCard is not provided', () => {
+    render(<JsonPanel recipe={RECIPE} savedId={null} dirty={false} onSaved={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /preview card/i })).not.toBeInTheDocument();
+  });
+
+  it('calls onPreviewCard for a valid recipe', async () => {
+    const user = userEvent.setup();
+    const onPreviewCard = vi.fn();
+    render(<JsonPanel recipe={RECIPE} savedId={null} dirty={false} onSaved={vi.fn()} onPreviewCard={onPreviewCard} />);
+    await user.click(screen.getByRole('button', { name: /preview card/i }));
+    expect(onPreviewCard).toHaveBeenCalled();
+  });
+
+  it('blocks preview and shows validation errors for an invalid recipe', async () => {
+    const user = userEvent.setup();
+    const onPreviewCard = vi.fn();
+    const invalid = { ...RECIPE, title: '' };
+    render(<JsonPanel recipe={invalid} savedId={null} dirty={false} onSaved={vi.fn()} onPreviewCard={onPreviewCard} />);
+    await user.click(screen.getByRole('button', { name: /preview card/i }));
+    expect(onPreviewCard).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument(); // FieldErrors container
+  });
+});

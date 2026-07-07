@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RecipeSummary } from 'shared';
 import { RecipeList } from './RecipeList.tsx';
@@ -38,5 +38,12 @@ describe('RecipeList', () => {
   it('links Download to the server download endpoint', () => {
     render(<RecipeList recipes={SUMMARIES} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByRole('link', { name: 'Download Soup' })).toHaveAttribute('href', '/api/recipe/download/id-1');
+  });
+
+  it('hides a thumbnail that fails to load instead of showing a broken image', () => {
+    render(<RecipeList recipes={SUMMARIES} onView={vi.fn()} onDelete={vi.fn()} />);
+    const img = screen.getByRole('img', { name: 'Soup' });
+    fireEvent.error(img);
+    expect(img).not.toBeVisible();
   });
 });

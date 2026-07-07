@@ -26,7 +26,14 @@ export function RecipeList({
     <ul className="recipe-list" aria-label="Saved recipes">
       {recipes.map((recipe) => (
         <li key={recipe.id} className="recipe-list-card">
-          <img className="recipe-list-thumbnail" src={recipe.main_image} alt={recipe.title} />
+          <img
+            className="recipe-list-thumbnail"
+            src={recipe.main_image}
+            alt={recipe.title}
+            onError={(event) => {
+              event.currentTarget.style.visibility = 'hidden';
+            }}
+          />
           <h3 className="recipe-list-title">{recipe.title}</h3>
           {recipe.tags.length > 0 ? (
             <ul className="recipe-list-tags" aria-label={`Tags for ${recipe.title}`}>

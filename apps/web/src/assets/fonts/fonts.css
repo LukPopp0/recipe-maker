@@ -1,0 +1,25 @@
+/* Self-hosted card fonts. Montserrat and Lato are both SIL OFL (see
+   OFL.txt); only the weights the card uses are bundled. font-display:
+   block because the card is print output - a flash of fallback font
+   would change line breaks between preview and print. */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('./montserrat-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./lato-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('./lato-700.woff2') format('woff2');
+}

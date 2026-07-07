@@ -40,12 +40,14 @@ export function JsonPanel({
   dirty = false,
   onSaved,
   readOnly = false,
+  onPreviewCard,
 }: {
   recipe: CanonicalRecipe
   savedId?: string | null
   dirty?: boolean
   onSaved?: (id: string) => void
   readOnly?: boolean
+  onPreviewCard?: () => void
 }) {
   const [status, setStatus] = useState<JsonPanelStatus>({ phase: 'idle' });
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
@@ -84,6 +86,17 @@ export function JsonPanel({
     setStatus({ phase: 'idle' });
     downloadJson(buildRecipeFilename(recipe.title), recipe);
   }, [recipe]);
+
+  const handlePreviewCard = useCallback(() => {
+    if (!onPreviewCard) return;
+    const parsed = CanonicalRecipeSchema.safeParse(recipe);
+    if (!parsed.success) {
+      setStatus({ phase: 'validation-error', errors: parsed.error.flatten() });
+      return;
+    }
+    setStatus({ phase: 'idle' });
+    onPreviewCard();
+  }, [recipe, onPreviewCard]);
 
   const handleSave = useCallback(() => {
     const parsed = CanonicalRecipeSchema.safeParse(recipe);
@@ -147,6 +160,12 @@ export function JsonPanel({
         <button type="button" onClick={handleDownload}>
           Download JSON
         </button>
+
+        {onPreviewCard ? (
+          <button type="button" onClick={handlePreviewCard}>
+            Preview Card
+          </button>
+        ) : null}
 
         {readOnly ? null : (
           <button type="button" onClick={handleSave} disabled={isSaving}>

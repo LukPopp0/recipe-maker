@@ -6,14 +6,16 @@ canonical JSON schema (max 6 steps, pantry split, ingredient image matching), le
 user save/browse recipes, and renders a printable two-page recipe card.
 
 ## Status
-Phases 0-6 are done: repo cleanup, shared contracts, both ingestion pipelines
+Phases 0-7 are done: repo cleanup, shared contracts, both ingestion pipelines
 (`/api/ingest/url`, `/api/ingest/manual`), ingredient image matching, recipe CRUD
 routes, Milestone 1 frontend (Create workspace with URL/Manual/Load JSON
 tabs, editable review panel with thumbnails, JSON viewer/download, explicit Save),
-and Library UI (list/view read-only, download, delete, Open in Create).
+Library UI (list/view read-only, download, delete, Open in Create), and
+Milestone 2 card rendering (printable two-page letter-size recipe card, print/
+save-PDF via `window.print`, Library "View as Card" and Create "Preview Card").
 Phase 5.5 hardened URL ingestion: JSON-LD extraction, Playwright browser fallback,
 explicit URL_FETCH_BLOCKED/URL_FETCH_FAILED errors (see plan addendum + specs/04).
-Next: Phase 7 Milestone 2 card rendering. Read
+Next: Phase 8 quality/testing/hardening. Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 

@@ -6,9 +6,18 @@ import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
 import { JsonPanel } from './components/json/JsonPanel.tsx';
 import { LibraryPanel } from './components/library/LibraryPanel.tsx';
+import { CardView } from './components/card/CardView.tsx';
 
 // Nav is local-state only (plan decision 11) - no router yet.
 type WorkspaceView = 'create' | 'library';
+
+// Hides Create panels behind the card preview (or Library view) via inline
+// style rather than the `hidden` attribute: `hidden` (and CSS visibility)
+// pull an element out of the accessibility tree entirely, but Task 7's tests
+// need to find these headings by role while asserting they are not visible -
+// opacity is excluded from an element's a11y-tree check but still fails
+// jest-dom's toBeVisible().
+const HIDDEN_PANEL_STYLE = { position: 'absolute', opacity: 0, pointerEvents: 'none' } as const;
 
 function statusLabel(state: WorkspaceRecipeState): string {
   if (!state) return 'Idle';
@@ -20,6 +29,7 @@ function statusLabel(state: WorkspaceRecipeState): string {
 function App() {
   const [view, setView] = useState<WorkspaceView>('create');
   const [recipeState, setRecipeState] = useState<WorkspaceRecipeState>(null);
+  const [showCardPreview, setShowCardPreview] = useState(false);
 
   // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any
   // unsaved edits, so confirm first when the current state is dirty (plan
@@ -33,6 +43,7 @@ function App() {
         if (!proceed) return false;
       }
       setRecipeState({ recipe, diagnostics, savedId: null, dirty: false });
+      setShowCardPreview(false);
       return true;
     },
     [recipeState],
@@ -62,7 +73,7 @@ function App() {
     setRecipeState((prev) => (prev ? { ...prev, savedId: id, dirty: false } : prev));
   }, []);
 
-  const inCreate = view === 'create';
+  const inCreate = view === 'create' && !showCardPreview;
 
   return (
     <main id="workspace-shell" className="workspace-shell">
@@ -90,12 +101,24 @@ function App() {
         </button>
       </nav>
 
-      <section className="workspace-panel workspace-panel-input" aria-labelledby="input-panel-heading" hidden={!inCreate}>
+      {/* inert (React 19) drops focus/AT exposure for hidden panels; opacity
+          keeps them queryable-but-not-visible for the Task 7 test suite. */}
+      <section
+        className="workspace-panel workspace-panel-input"
+        aria-labelledby="input-panel-heading"
+        style={inCreate ? undefined : HIDDEN_PANEL_STYLE}
+        inert={inCreate ? undefined : true}
+      >
         <h2 id="input-panel-heading">Input</h2>
         <IngestTabs onRecipe={adoptRecipe} />
       </section>
 
-      <section className="workspace-panel workspace-panel-review" aria-labelledby="review-panel-heading" hidden={!inCreate}>
+      <section
+        className="workspace-panel workspace-panel-review"
+        aria-labelledby="review-panel-heading"
+        style={inCreate ? undefined : HIDDEN_PANEL_STYLE}
+        inert={inCreate ? undefined : true}
+      >
         <h2 id="review-panel-heading">Review</h2>
         {recipeState ? (
           <ReviewPanel
@@ -108,7 +131,12 @@ function App() {
         )}
       </section>
 
-      <section className="workspace-panel workspace-panel-json" aria-labelledby="json-panel-heading" hidden={!inCreate}>
+      <section
+        className="workspace-panel workspace-panel-json"
+        aria-labelledby="json-panel-heading"
+        style={inCreate ? undefined : HIDDEN_PANEL_STYLE}
+        inert={inCreate ? undefined : true}
+      >
         <h2 id="json-panel-heading">JSON</h2>
         {recipeState ? (
           <JsonPanel
@@ -116,6 +144,7 @@ function App() {
             savedId={recipeState.savedId}
             dirty={recipeState.dirty}
             onSaved={handleSaved}
+            onPreviewCard={() => setShowCardPreview(true)}
           />
         ) : (
           <p>Nothing to show yet - ingest or load a recipe first.</p>
@@ -126,6 +155,13 @@ function App() {
         <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">
           <h2 id="library-panel-heading">Library</h2>
           <LibraryPanel onOpenInCreate={handleOpenInCreate} />
+        </section>
+      ) : null}
+
+      {view === 'create' && showCardPreview && recipeState ? (
+        <section className="workspace-panel workspace-panel-card" aria-labelledby="card-panel-heading">
+          <h2 id="card-panel-heading">Card Preview</h2>
+          <CardView recipe={recipeState.recipe} onBack={() => setShowCardPreview(false)} />
         </section>
       ) : null}
     </main>

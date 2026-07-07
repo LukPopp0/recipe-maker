@@ -1,0 +1,336 @@
+@import '../../assets/fonts/fonts.css';
+
+/* Card geometry uses real-world units: pages are exactly letter size and
+   type is in pt (specs/10 typography table), so the scaled screen preview
+   and the printed page share one layout. 1in = 96px in CSS. */
+
+.card-page {
+  width: 8.5in;
+  height: 11in;
+  padding: 0.4in;
+  background: #ffffff;
+  color: #1a1a1a;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page 1 header */
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.12in;
+}
+
+.card-logo {
+  width: 0.55in;
+  height: 0.55in;
+  object-fit: contain;
+}
+
+.card-wordmark {
+  margin: 0;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 14pt;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+.card-title-block {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0.25in;
+}
+
+.card-title {
+  margin: 0;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 23pt;
+  line-height: 22pt;
+  letter-spacing: -0.06em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-time {
+  margin: 0.14in 0 0;
+  font-family: 'Lato', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 11pt;
+}
+
+.card-tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.12in;
+  margin: 0.1in 0 0;
+  padding: 0;
+}
+
+.card-tag {
+  font-family: 'Lato', Arial, sans-serif;
+  font-size: 10pt;
+  padding: 0.02in 0.16in;
+  border-radius: 999px;
+}
+
+.card-tag-0 { background: #4C5270; color: #ffffff; }
+.card-tag-1 { background: #F3C3BD; color: #C0392B; }
+.card-tag-2 { background: #2E6E32; color: #ffffff; }
+
+/* Page 1 body: main image left, ingredient grid right */
+.card-page-1-body {
+  display: flex;
+  gap: 0.25in;
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.18in;
+}
+
+.card-main-image {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-main-image-missing {
+  background: #efefef;
+}
+
+.card-ingredients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 1.75in;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.16in 0.12in;
+  align-content: start;
+}
+
+.card-ingredient {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.03in;
+}
+
+.card-ingredient-image {
+  width: 0.55in;
+  height: 0.55in;
+  object-fit: contain;
+}
+
+.card-ingredients[data-density='compact'] { gap: 0.09in 0.1in; }
+.card-ingredients[data-density='compact'] .card-ingredient-image { width: 0.42in; height: 0.42in; }
+.card-ingredients[data-density='tight'] { gap: 0.05in 0.08in; }
+.card-ingredients[data-density='tight'] .card-ingredient-image { width: 0.32in; height: 0.32in; }
+
+.card-ingredient-name {
+  font-family: 'DIN Alternate', Bahnschrift, 'Arial Narrow', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 7pt;
+}
+
+.card-ingredient-amount {
+  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 7pt;
+}
+
+/* Page 2: pantry banner + 3x2 step grid */
+.card-pantry {
+  margin: 0;
+  background: #B7C98D;
+  color: #225022;
+  padding: 0.09in 0.15in;
+  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9pt;
+}
+
+.card-pantry-heading {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.card-steps {
+  list-style: none;
+  margin: 0.2in 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 0.25in;
+  flex: 1;
+  min-height: 0;
+}
+
+.card-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.card-step-number {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0.28in;
+  height: 0.28in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2E6E32;
+  color: #ffffff;
+  font-family: 'Lato', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 12pt;
+}
+
+.card-step-image {
+  width: 100%;
+  height: 1.35in;
+  object-fit: cover;
+}
+
+.card-step-title {
+  margin: 0.08in 0 0;
+  background: #2E6E32;
+  color: #ffffff;
+  font-family: 'Lato', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 12pt;
+  padding: 0.05in 0.12in;
+  display: flex;
+  align-items: center;
+  gap: 0.1in;
+}
+
+/* Text-only variant: number sits inline in the title bar, bar moves to top */
+.card-step-title-inline {
+  margin-top: 0;
+}
+
+.card-step-title-inline .card-step-number {
+  position: static;
+  flex: none;
+}
+
+.card-step-description {
+  margin: 0.08in 0 0;
+  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9pt;
+  line-height: 14pt;
+  overflow: hidden;
+}
+
+/* Screen preview wrapper */
+.card-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card-view-toolbar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.card-view-pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.card-view-pages-row {
+  flex-direction: row;
+}
+
+.card-page-frame {
+  overflow: hidden;
+}
+
+.card-page-scaler {
+  transform-origin: top left;
+}
+
+.card-page-label {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Print: only the card pages, 1:1 letter size, one sheet per page.
+   The visibility trick keeps React state intact while hiding the app;
+   !important is required to beat the inline scale/size styles. */
+@page {
+  size: letter;
+  margin: 0;
+}
+
+@media print {
+  /* :has() guards keep these rules inert unless a card is on screen, so
+     printing the normal app still works. */
+  body:has(.card-view) * {
+    visibility: hidden;
+  }
+
+  .card-view,
+  .card-view * {
+    visibility: visible;
+  }
+
+  .card-view {
+    position: absolute;
+    inset: 0 auto auto 0;
+  }
+
+  .card-view-toolbar,
+  .card-page-label {
+    display: none;
+  }
+
+  /* Visibility-hidden app content still occupies layout space; a hidden
+     panel taller than the two card pages would add blank sheets. Collapse
+     the chrome and inert panels entirely (print-only, React state safe). */
+  body:has(.card-view) .workspace-header,
+  body:has(.card-view) .workspace-nav,
+  body:has(.card-view) .workspace-panel[inert] {
+    display: none;
+  }
+
+  .card-view-pages {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .card-page-frame {
+    width: 8.5in !important;
+    height: 11in !important;
+    overflow: visible;
+  }
+
+  .card-page-scaler {
+    transform: none !important;
+  }
+
+  .card-page {
+    box-shadow: none;
+  }
+
+  /* Break only after page 1: a break after the last page would emit a
+     blank third sheet in Chromium. */
+  .card-page-1 {
+    break-after: page;
+  }
+}

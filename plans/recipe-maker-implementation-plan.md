@@ -487,15 +487,15 @@ and the locked design section in specs/10):
   server-side Playwright PDF remains Phase 9.
 
 ### Implementation Tasks
-1. Build card renderer module that accepts canonical JSON only.
-2. Page 1 layout:
+1. Build card renderer module that accepts canonical JSON only. [Done.]
+2. Page 1 layout: [Done.]
    - Header logo/wordmark, title, time, tags, main image, ingredients grid with ingredient images.
-3. Page 2 layout:
+3. Page 2 layout: [Done.]
    - Pantry banner plus exactly rendered compacted steps (max 6), optional step images.
-4. Print mode and PDF baseline:
+4. Print mode and PDF baseline: [Done.]
    - Browser print CSS first.
-5. Empty-state fallbacks for missing images/text.
-6. Add "View as Card" link from the Library view action into the card renderer, plus "Preview Card" from the Create workspace.
+5. Empty-state fallbacks for missing images/text. [Done.]
+6. Add "View as Card" link from the Library view action into the card renderer, plus "Preview Card" from the Create workspace. [Done.]
 
 ### Deliverables
 - Two-page card preview and printable output.

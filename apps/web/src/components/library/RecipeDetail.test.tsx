@@ -72,3 +72,18 @@ describe('RecipeDetail', () => {
     expect(screen.getByRole('button', { name: /back to library/i })).toBeInTheDocument();
   });
 });
+
+describe('View as Card', () => {
+  it('replaces the detail view with the card and returns via Back', async () => {
+    const user = userEvent.setup();
+    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE } });
+    render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
+
+    await user.click(await screen.findByRole('button', { name: /view as card/i }));
+    expect(screen.getByLabelText('Recipe card page 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /open in create/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
+    expect(screen.getByRole('button', { name: /open in create/i })).toBeInTheDocument();
+  });
+});

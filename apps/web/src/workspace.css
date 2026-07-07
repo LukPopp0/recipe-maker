@@ -634,6 +634,11 @@
   grid-column: 1 / -1;
 }
 
+/* Card preview */
+.workspace-panel-card {
+  grid-column: 1 / -1;
+}
+
 .recipe-list {
   list-style: none;
   margin: 0;

@@ -8,6 +8,7 @@ import { getRecipe, type ApiFailure } from '../../api/client.ts';
 import { ReviewPanel } from '../review/ReviewPanel.tsx';
 import { JsonPanel } from '../json/JsonPanel.tsx';
 import { ErrorBanner } from '../ErrorBanner.tsx';
+import { CardView } from '../card/CardView.tsx';
 
 type DetailStatus =
   | { phase: 'loading' }
@@ -26,6 +27,7 @@ export function RecipeDetail({
   onDelete: (id: string) => void
 }) {
   const [status, setStatus] = useState<DetailStatus>({ phase: 'loading' });
+  const [showCard, setShowCard] = useState(false);
 
   const load = useCallback(async () => {
     setStatus({ phase: 'loading' });
@@ -41,6 +43,10 @@ export function RecipeDetail({
     void load();
   }, [load]);
 
+  if (showCard && status.phase === 'loaded') {
+    return <CardView recipe={status.recipe} onBack={() => setShowCard(false)} />;
+  }
+
   return (
     <div className="recipe-detail">
       <div className="recipe-detail-toolbar">
@@ -51,6 +57,9 @@ export function RecipeDetail({
           <>
             <button type="button" onClick={() => onOpenInCreate(status.recipe)}>
               Open in Create
+            </button>
+            <button type="button" onClick={() => setShowCard(true)}>
+              View as Card
             </button>
             <a href={`/api/recipe/download/${encodeURIComponent(id)}`} download>
               Download
