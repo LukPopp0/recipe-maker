@@ -4,6 +4,7 @@
 // description takes the full column.
 import { useState } from 'react';
 import type { CanonicalRecipe } from 'shared';
+import type { CardOrientation } from './CardView.tsx';
 import { emphasizeIngredients } from '../../lib/step-emphasis.ts';
 
 const MAX_STEPS = 6;
@@ -18,13 +19,21 @@ function StepDescription({ description, ingredientNames }: { description: string
   );
 }
 
-export function CardPage2({ recipe }: { recipe: CanonicalRecipe }) {
+export function CardPage2({
+  recipe,
+  orientation = 'portrait',
+}: {
+  recipe: CanonicalRecipe;
+  orientation?: CardOrientation;
+}) {
+  const pageClass =
+    orientation === 'landscape' ? 'card-page card-page-2 card-page--landscape' : 'card-page card-page-2';
   const [failedStepImages, setFailedStepImages] = useState<ReadonlySet<number>>(new Set());
   const ingredientNames = recipe.ingredients.map((ingredient) => ingredient.name);
   const steps = recipe.steps.slice(0, MAX_STEPS);
 
   return (
-    <section className="card-page card-page-2" aria-label="Recipe card page 2">
+    <section className={pageClass} aria-label="Recipe card page 2">
       {recipe.pantry_items.length > 0 ? (
         <p className="card-pantry">
           <strong className="card-pantry-heading">Pantry Items</strong>

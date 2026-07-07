@@ -15,6 +15,8 @@ Milestone 2 card rendering (printable two-page letter-size recipe card, print/
 save-PDF via `window.print`, Library "View as Card" and Create "Preview Card").
 Phase 5.5 hardened URL ingestion: JSON-LD extraction, Playwright browser fallback,
 explicit URL_FETCH_BLOCKED/URL_FETCH_FAILED errors (see plan addendum + specs/04).
+Phase 7.5 added the landscape (default) card orientation with a portrait
+toggle and self-hosted Inter/D-DIN fonts (specs/10 Landscape Variant).
 Next: Phase 8 quality/testing/hardening. Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.

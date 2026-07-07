@@ -74,4 +74,19 @@ describe('CardPage1', () => {
     render(<CardPage1 recipe={makeRecipe({ ingredients: veryMany })} />);
     expect(screen.getAllByRole('list', { name: /ingredients/i })[1]).toHaveAttribute('data-density', 'tight');
   });
+
+  it('adds the landscape page class when orientation is landscape', () => {
+    render(<CardPage1 recipe={makeRecipe()} orientation="landscape" />);
+    expect(screen.getByRole('region', { name: 'Recipe card page 1' })).toHaveClass('card-page--landscape');
+  });
+
+  it('keeps emitting density buckets used by the landscape 3-column rail', () => {
+    const many = Array.from({ length: 14 }, (_, i) => ({
+      name: `Ing ${i}`,
+      amount_text: '1 unit',
+      image: 'ingredient.png',
+    }));
+    render(<CardPage1 recipe={makeRecipe({ ingredients: many })} orientation="landscape" />);
+    expect(screen.getByRole('list', { name: 'Ingredients' })).toHaveAttribute('data-density', 'compact');
+  });
 });

@@ -37,12 +37,16 @@ syntax-highlighted JSON viewer with copy and deterministic-filename
 download, and an explicit Save Recipe action. The Library UI (Phase 6) is
 also implemented: list/view (read-only), download, delete, and Open in Create
 (copy into workspace for editing). Card rendering (Phase 7) is also
-implemented: a printable two-page letter-size recipe card (page 1: header,
-title, time, tag pills, main image, ingredient grid; page 2: pantry banner and
-3x2 step grid with auto-bolded ingredient mentions), styled with Montserrat/Lato
-print CSS and generated via the browser's print/Save-as-PDF (`window.print`) - no
-server-side PDF generation. Reachable from Library ("View as Card" on a saved
-recipe) and from the Create workspace ("Preview Card" on the current draft). See
+implemented: a printable two-page recipe card (page 1: header, title, time,
+tag pills, main image, ingredient grid; page 2: pantry banner and 3x2 step
+grid with auto-bolded ingredient mentions), generated via the browser's
+print/Save-as-PDF (`window.print`) - no server-side PDF generation. Phase 7.5
+added a landscape (11in x 8.5in, the original template orientation) variant
+as the default, with a toolbar toggle to the earlier portrait (8.5in x 11in)
+layout; printing follows the on-screen orientation automatically. Styled with
+self-hosted Montserrat/Lato/Inter/D-DIN print CSS (all SIL OFL). Reachable
+from Library ("View as Card" on a saved recipe) and from the Create workspace
+("Preview Card" on the current draft). See
 `plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
 `specs/` for per-feature specs.
 

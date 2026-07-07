@@ -1,21 +1,34 @@
-// Card preview container: toolbar (Back, Print/Save PDF) plus the two
-// letter-size pages inside scale frames. The frame div reserves the
-// scaled footprint (transform does not affect layout size); print CSS
-// strips the toolbar/labels and resets the scale so output is 1:1.
-import { useRef, type ReactNode } from 'react';
+// Card preview container: toolbar (Back, orientation toggle, Print/Save
+// PDF) plus the two letter-size pages inside scale frames. The frame div
+// reserves the scaled footprint (transform does not affect layout size);
+// print CSS strips the toolbar/labels and resets the scale so output is
+// 1:1. Landscape is the template's original orientation and the default.
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CanonicalRecipe } from 'shared';
-import { CARD_PAGE_HEIGHT_PX, CARD_PAGE_WIDTH_PX } from '../../lib/card-scale.ts';
+import { CARD_LANDSCAPE, CARD_PORTRAIT, type CardPageDimensions } from '../../lib/card-scale.ts';
 import { useCardScale } from './useCardScale.ts';
 import { CardPage1 } from './CardPage1.tsx';
 import { CardPage2 } from './CardPage2.tsx';
 import './card.css';
 
-function PageFrame({ scale, label, children }: { scale: number; label: string; children: ReactNode }) {
+export type CardOrientation = 'landscape' | 'portrait';
+
+function PageFrame({
+  scale,
+  dimensions,
+  label,
+  children,
+}: {
+  scale: number;
+  dimensions: CardPageDimensions;
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div className="card-page-slot">
       <div
         className="card-page-frame"
-        style={{ width: CARD_PAGE_WIDTH_PX * scale, height: CARD_PAGE_HEIGHT_PX * scale }}
+        style={{ width: dimensions.width * scale, height: dimensions.height * scale }}
       >
         <div className="card-page-scaler" style={{ transform: `scale(${scale})` }}>
           {children}
@@ -26,26 +39,49 @@ function PageFrame({ scale, label, children }: { scale: number; label: string; c
   );
 }
 
+// @page rules cannot be scoped by selector, so landscape print orientation
+// is toggled by injecting a style element while the landscape card is shown.
+function useLandscapePageStyle(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const style = document.createElement('style');
+    style.textContent = '@page { size: letter landscape; margin: 0; }';
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, [active]);
+}
+
 export function CardView({ recipe, onBack }: { recipe: CanonicalRecipe; onBack: () => void }) {
+  const [orientation, setOrientation] = useState<CardOrientation>('landscape');
+  const landscape = orientation === 'landscape';
+  const dimensions = landscape ? CARD_LANDSCAPE : CARD_PORTRAIT;
   const pagesRef = useRef<HTMLDivElement>(null);
-  const { scale, sideBySide } = useCardScale(pagesRef);
+  const { scale, sideBySide } = useCardScale(pagesRef, dimensions.width);
+
+  useLandscapePageStyle(landscape);
 
   return (
-    <div className="card-view">
+    <div className={landscape ? 'card-view card-view--landscape' : 'card-view'}>
       <div className="card-view-toolbar">
         <button type="button" onClick={onBack}>
           Back
+        </button>
+        <button
+          type="button"
+          onClick={() => setOrientation(landscape ? 'portrait' : 'landscape')}
+        >
+          {landscape ? 'Portrait layout' : 'Landscape layout'}
         </button>
         <button type="button" onClick={() => window.print()}>
           Print / Save PDF
         </button>
       </div>
       <div ref={pagesRef} className={sideBySide ? 'card-view-pages card-view-pages-row' : 'card-view-pages'}>
-        <PageFrame scale={scale} label="Page 1">
-          <CardPage1 recipe={recipe} />
+        <PageFrame scale={scale} dimensions={dimensions} label="Page 1">
+          <CardPage1 recipe={recipe} orientation={orientation} />
         </PageFrame>
-        <PageFrame scale={scale} label="Page 2">
-          <CardPage2 recipe={recipe} />
+        <PageFrame scale={scale} dimensions={dimensions} label="Page 2">
+          <CardPage2 recipe={recipe} orientation={orientation} />
         </PageFrame>
       </div>
     </div>

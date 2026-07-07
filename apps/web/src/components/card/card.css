@@ -135,13 +135,13 @@
 .card-ingredients[data-density='tight'] .card-ingredient-image { width: 0.32in; height: 0.32in; }
 
 .card-ingredient-name {
-  font-family: 'DIN Alternate', Bahnschrift, 'Arial Narrow', Arial, sans-serif;
+  font-family: 'D-DIN', 'DIN Alternate', Bahnschrift, 'Arial Narrow', Arial, sans-serif;
   font-weight: 700;
   font-size: 7pt;
 }
 
 .card-ingredient-amount {
-  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', Helvetica, 'Helvetica Neue', Arial, sans-serif;
   font-weight: 700;
   font-size: 7pt;
 }
@@ -152,7 +152,7 @@
   background: #B7C98D;
   color: #225022;
   padding: 0.09in 0.15in;
-  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', Helvetica, 'Helvetica Neue', Arial, sans-serif;
   font-size: 9pt;
 }
 
@@ -227,10 +227,52 @@
 
 .card-step-description {
   margin: 0.08in 0 0;
-  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', Helvetica, 'Helvetica Neue', Arial, sans-serif;
   font-size: 9pt;
   line-height: 14pt;
   overflow: hidden;
+}
+
+/* Landscape variant (specs/10 Landscape Variant): same DOM, different
+   geometry. Page is 11in x 8.5in; page 1 keeps image-left/rail-right but
+   the rail may widen to 3 columns (never in portrait); page 2 keeps the
+   3x2 step grid on the wider, shorter page. */
+.card-page--landscape {
+  width: 11in;
+  height: 8.5in;
+}
+
+/* Page 1: slightly wider rail; regular density stays 2 columns x 6 rows */
+.card-page--landscape .card-ingredients {
+  width: 1.9in;
+}
+
+/* More than 12 ingredients: widen to 3 columns, image area narrows */
+.card-page--landscape .card-ingredients[data-density='compact'] {
+  width: 2.7in;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.12in 0.1in;
+}
+.card-page--landscape .card-ingredients[data-density='compact'] .card-ingredient-image {
+  width: 0.5in;
+  height: 0.5in;
+}
+
+/* More than 18: keep 3 columns, shrink tiles so everything still fits */
+.card-page--landscape .card-ingredients[data-density='tight'] {
+  width: 2.7in;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.06in 0.08in;
+}
+.card-page--landscape .card-ingredients[data-density='tight'] .card-ingredient-image {
+  width: 0.38in;
+  height: 0.38in;
+}
+
+/* Page 2: wider, shorter step columns - trim the image band so two rows
+   of steps fit the 7.7in content height */
+.card-page--landscape .card-step-image {
+  height: 1.2in;
 }
 
 /* Screen preview wrapper */
@@ -285,8 +327,11 @@
     visibility: hidden;
   }
 
-  .card-view,
-  .card-view * {
+  /* The body:has() prefix is required for specificity: the hidden rule
+     above is (0,1,1) and would beat a bare .card-view * at (0,1,0),
+     printing blank pages. */
+  body:has(.card-view) .card-view,
+  body:has(.card-view) .card-view * {
     visibility: visible;
   }
 
@@ -318,6 +363,11 @@
     width: 8.5in !important;
     height: 11in !important;
     overflow: visible;
+  }
+
+  .card-view--landscape .card-page-frame {
+    width: 11in !important;
+    height: 8.5in !important;
   }
 
   .card-page-scaler {

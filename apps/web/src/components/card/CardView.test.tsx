@@ -43,4 +43,40 @@ describe('CardView', () => {
     await user.click(screen.getByRole('button', { name: /print/i }));
     expect(printSpy).toHaveBeenCalled();
   });
+
+  describe('orientation toggle', () => {
+    it('defaults to landscape and toggles to portrait and back', async () => {
+      const user = userEvent.setup();
+      render(<CardView recipe={RECIPE} onBack={() => {}} />);
+
+      expect(screen.getByRole('region', { name: 'Recipe card page 1' })).toHaveClass('card-page--landscape');
+
+      await user.click(screen.getByRole('button', { name: 'Portrait layout' }));
+      expect(screen.getByRole('region', { name: 'Recipe card page 1' })).not.toHaveClass('card-page--landscape');
+
+      await user.click(screen.getByRole('button', { name: 'Landscape layout' }));
+      expect(screen.getByRole('region', { name: 'Recipe card page 2' })).toHaveClass('card-page--landscape');
+    });
+
+    it('injects the landscape @page style only while landscape is shown', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<CardView recipe={RECIPE} onBack={() => {}} />);
+
+      const findPageStyle = () =>
+        Array.from(document.head.querySelectorAll('style')).find((el) =>
+          el.textContent?.includes('size: letter landscape'),
+        );
+
+      expect(findPageStyle()).toBeDefined();
+
+      await user.click(screen.getByRole('button', { name: 'Portrait layout' }));
+      expect(findPageStyle()).toBeUndefined();
+
+      await user.click(screen.getByRole('button', { name: 'Landscape layout' }));
+      expect(findPageStyle()).toBeDefined();
+
+      unmount();
+      expect(findPageStyle()).toBeUndefined();
+    });
+  });
 });

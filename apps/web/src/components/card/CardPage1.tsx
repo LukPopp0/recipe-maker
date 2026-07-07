@@ -3,6 +3,7 @@
 // CanonicalRecipe - no fetching, no state beyond image-error fallbacks.
 import { useState } from 'react';
 import type { CanonicalRecipe } from 'shared';
+import type { CardOrientation } from './CardView.tsx';
 import { ingredientImageUrl, INGREDIENT_NOT_FOUND_IMAGE } from '../../lib/ingredient-image.ts';
 import { tagPaletteIndex } from '../../lib/tag-palette.ts';
 import pinaLogo from '../../assets/pina-logo.png';
@@ -32,11 +33,19 @@ function IngredientThumb({ image }: { image: string | undefined }) {
   );
 }
 
-export function CardPage1({ recipe }: { recipe: CanonicalRecipe }) {
+export function CardPage1({
+  recipe,
+  orientation = 'portrait',
+}: {
+  recipe: CanonicalRecipe;
+  orientation?: CardOrientation;
+}) {
+  const pageClass =
+    orientation === 'landscape' ? 'card-page card-page-1 card-page--landscape' : 'card-page card-page-1';
   const [mainImageFailed, setMainImageFailed] = useState(false);
 
   return (
-    <section className="card-page card-page-1" aria-label="Recipe card page 1">
+    <section className={pageClass} aria-label="Recipe card page 1">
       <header className="card-header">
         <img className="card-logo" src={pinaLogo} alt="" />
         <p className="card-wordmark">

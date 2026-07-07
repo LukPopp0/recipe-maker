@@ -472,7 +472,8 @@ and the locked design section in specs/10):
   (`transform: scale()`); print removes the scale and outputs 1:1. No
   responsive reflow of the card itself.
 - Montserrat 700 and Lato 400/700 are self-hosted woff2 (SIL OFL); DIN
-  Alternate and Helvetica come from system font stacks with fallbacks.
+  Alternate and Helvetica came from system font stacks with fallbacks at the
+  time (superseded by self-hosted D-DIN/Inter in Phase 7.5, see below).
 - Pantry items render as a banner at the top of page 2 (specs/10 updated;
   supersedes the old "page 1 bottom" placement).
 - Step descriptions auto-bold ingredient mentions at render time (pure
@@ -504,6 +505,15 @@ and the locked design section in specs/10):
 ### Acceptance Criteria
 - All valid canonical recipes render without layout breakage.
 - Print/PDF output is legible and complete.
+
+## Phase 7.5 (Done): Landscape Card Variant
+Added the landscape (11in x 8.5in, the original template orientation) card
+layout as the default, with a toolbar toggle to the Phase 7 portrait
+(8.5in x 11in) layout; print output follows the on-screen orientation
+automatically. Also replaced the DIN Alternate/Helvetica system font stacks
+with self-hosted D-DIN and Inter (both SIL OFL). See the "Landscape Variant"
+section of `specs/10-recipe-card-renderer.md` and
+`plans/phase-7-5-landscape-card.md` for design and task detail.
 
 ## Phase 8: Quality, Testing, and Hardening
 

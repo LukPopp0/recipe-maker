@@ -23,3 +23,26 @@
   font-display: block;
   src: url('./lato-700.woff2') format('woff2');
 }
+/* Inter (SIL OFL, OFL-inter.txt) serves the template's Helvetica roles;
+   D-DIN (SIL OFL, OFL-d-din.txt) serves the DIN Alternate role. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./inter-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('./inter-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'D-DIN';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('./d-din-700.woff2') format('woff2');
+}
