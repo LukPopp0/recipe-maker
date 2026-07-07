@@ -23,6 +23,7 @@ The visual design follows the product owner's letter-size template
 - Ingredient grid is 2 columns on the right of page 1. More than 12
   ingredients: thumbnails and gaps shrink (density buckets) so all
   ingredients always fit on page 1. Never a third column, never a cap.
+  (Portrait rule - the landscape variant below allows a third column.)
 - Tag pills get a deterministic background from a fixed 3-color palette
   (hash of the tag name), matching the template hues.
 
@@ -40,9 +41,43 @@ The visual design follows the product owner's letter-size template
 | Step description | Helvetica stack | 9pt, 14pt leading |
 
 Montserrat and Lato are self-hosted woff2 (SIL OFL) bundled in the web
-app. DIN Alternate and Helvetica use system font stacks
-(`"DIN Alternate", Bahnschrift, "Arial Narrow", Arial` and
-`Helvetica, "Helvetica Neue", Arial`).
+app. As of the landscape variant (below), the DIN Alternate and Helvetica
+roles are served by self-hosted D-DIN (bold) and Inter (400/700) woff2
+respectively, with the previous system stacks retained as fallbacks
+(`"D-DIN", "DIN Alternate", Bahnschrift, "Arial Narrow", Arial` and
+`Inter, Helvetica, "Helvetica Neue", Arial`). Both orientations use the
+same stacks.
+
+## Landscape Variant (locked 2026-07-07)
+
+The original template is landscape (11in x 8.5in). Phase 7 shipped a
+portrait adaptation; both layouts are kept. Decisions:
+
+- `orientation: 'landscape' | 'portrait'` prop on CardView/CardPage1/
+  CardPage2, rendered as a CSS class (`card-page--landscape`). Data logic
+  (density buckets, ingredient bolding, image fallbacks, max 6 steps) is
+  shared; only layout CSS differs.
+- Default orientation is landscape. A toolbar button in CardView toggles
+  to portrait and back. The choice is per-mount component state - no
+  persistence.
+- Landscape page geometry: 11in x 8.5in (1056 x 816 px at 96dpi).
+  `useCardScale` takes page dimensions as parameters; the card-scale lib
+  exports both dimension sets.
+- Landscape page 1: logo + wordmark top-left; title, time, tag pills to
+  the right of the logo. Below the header, the main image fills the left
+  ~80% width; the ingredient grid is a right rail, 2 columns x up to 6
+  rows. More than 12 ingredients: the rail widens to 3 columns and the
+  image area narrows. More than 18: density buckets shrink tiles further
+  (no hard cap - every ingredient always renders on page 1). The portrait
+  layout's "never a third column" rule applies to portrait only.
+- Landscape page 2: full-width pantry banner, then the same 3x2 step grid
+  and step variants as portrait, laid out for the wider page.
+- Print orientation: when the landscape card is mounted, CardView injects
+  a `<style>` element containing `@page { size: letter landscape;
+  margin: 0 }` and removes it on toggle/unmount. Portrait keeps the
+  static portrait `@page` rule. All existing print guards
+  (`body:has(.card-view)`, break-after page 1, hidden-panel collapse)
+  apply to both orientations.
 
 ## Inputs
 - CanonicalRecipe object.
