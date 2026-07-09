@@ -1,0 +1,20 @@
+{
+  "title": "Golden Test Tacos",
+  "tags": ["should-be-dropped"],
+  "time": 30,
+  "ingredients": [
+    { "name": "ground beef", "amount_text": "500g" },
+    { "name": "shredded cheddar", "amount_text": "1 cup" }
+  ],
+  "pantry_items": [],
+  "steps": [
+    { "step_header": "Cook", "step_description": "Brown the ground beef in a skillet over medium heat." },
+    { "step_header": "Assemble", "step_description": "Fill the taco shells with beef and shredded cheddar." }
+  ],
+  "metadata": {
+    "source_type": "url",
+    "source_url": "https://example.com/should-be-ignored",
+    "language": "en",
+    "warnings": []
+  }
+}

@@ -15,6 +15,7 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   INTERNAL_ERROR: 500,
   NOT_IMPLEMENTED: 501,
   ROUTE_NOT_FOUND: 404,
+  RATE_LIMITED: 429,
 };
 
 // Default user-safe message per error code, used when a caller does not
@@ -33,6 +34,7 @@ export const ERROR_DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   INTERNAL_ERROR: 'An unexpected error occurred.',
   NOT_IMPLEMENTED: 'This feature is not implemented yet.',
   ROUTE_NOT_FOUND: 'The requested route does not exist.',
+  RATE_LIMITED: 'Too many ingestion requests. Wait a moment and try again.',
 };
 
 // Application-level error carrying a standardized error code and optional

@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "requestId": "golden-manual-request-id",
+  "recipe": {
+    "title": "Golden Test Tacos",
+    "tags": [],
+    "time": 30,
+    "ingredients": [
+      { "name": "Ground Beef", "amount_text": "500g", "image": "meat-beef-ground.png" },
+      { "name": "Shredded Cheddar", "amount_text": "1 cup", "image": "cheese-shredded-cheddar.png" }
+    ],
+    "pantry_items": [],
+    "main_image": "http://localhost:8787/images/recipes/__ID__/main-0.jpg",
+    "steps": [
+      {
+        "step_header": "Cook",
+        "step_description": "Brown the ground beef in a skillet over medium heat.",
+        "image": "http://localhost:8787/images/recipes/__ID__/step-0.png"
+      },
+      {
+        "step_header": "Assemble",
+        "step_description": "Fill the taco shells with beef and shredded cheddar.",
+        "image": "http://localhost:8787/images/recipes/__ID__/step-1.png"
+      }
+    ],
+    "metadata": {
+      "source_type": "manual",
+      "source_url": "https://example.com/should-be-ignored",
+      "language": "en",
+      "warnings": []
+    }
+  },
+  "diagnostics": {
+    "extractor": "gemini-primary",
+    "model": "gemini-2.5-pro"
+  }
+}

@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import type { ServerEnv } from './env.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { logger } from './middleware/logger.js';
+import { createRateLimiter } from './middleware/rate-limit.js';
 import { requestId, type AppVariables } from './middleware/request-id.js';
 import { createIngestApp } from './routes/ingest.js';
 import { createHealthApp } from './routes/health.js';
@@ -34,6 +35,8 @@ export function createApp(deps: AppDeps): App {
 
   app.use('*', requestId);
   app.use('*', logger);
+  // Fresh limiter per createApp call keeps test instances isolated from each other.
+  app.use('/api/ingest/*', createRateLimiter({ max: deps.env.RATE_LIMIT_MAX, windowMs: deps.env.RATE_LIMIT_WINDOW_MS }));
 
   const healthApp = createHealthApp({ checkStorageReady: deps.checkStorageReady });
   const recipeApp = createRecipeApp({ recipeRepository: deps.recipeRepository });

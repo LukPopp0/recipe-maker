@@ -40,6 +40,8 @@ const ServerEnvSchema = z.object({
     .string()
     .optional()
     .transform((value) => (value === '' ? undefined : value)),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
 });
 
 // PUBLIC_BASE_URL is optional at the schema level but loadServerEnv always

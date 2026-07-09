@@ -1,0 +1,21 @@
+{
+  "title": "Golden Test Chili",
+  "tags": ["dinner"],
+  "time": 45,
+  "ingredients": [
+    { "name": "ground beef", "amount_text": "400g" },
+    { "name": "lasagna sheets", "amount_text": "200g" }
+  ],
+  "pantry_items": [],
+  "main_image": "https://cdn.example.com/golden-chili.jpg",
+  "steps": [
+    { "step_header": "Brown", "step_description": "Brown the ground beef in a large pot over medium heat." },
+    { "step_header": "Boil", "step_description": "Boil the lasagna sheets until al dente and stir them in." }
+  ],
+  "metadata": {
+    "source_type": "url",
+    "source_url": "https://example.com/golden-chili",
+    "language": "en",
+    "warnings": []
+  }
+}

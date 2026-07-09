@@ -10,7 +10,6 @@ describe('loadGeminiConfig', () => {
     expect(config.retryModel).toBe('gemini-2.5-flash');
     expect(config.timeoutMs).toBe(60000);
     expect(config.tokenBudget).toBe(8000);
-    expect(config.maxRetries).toBe(1);
     expect(config.generationConfig).toEqual({
       temperature: 0,
       topP: 1,
@@ -25,7 +24,6 @@ describe('loadGeminiConfig', () => {
       GEMINI_RETRY_MODEL: 'custom-retry',
       GEMINI_TIMEOUT_MS: '30000',
       GEMINI_TOKEN_BUDGET: '12000',
-      GEMINI_MAX_RETRIES: '2',
     });
 
     expect(config.geminiApiKey).toBe('test-key-123');
@@ -33,7 +31,6 @@ describe('loadGeminiConfig', () => {
     expect(config.retryModel).toBe('custom-retry');
     expect(config.timeoutMs).toBe(30000);
     expect(config.tokenBudget).toBe(12000);
-    expect(config.maxRetries).toBe(2);
   });
 
   it('throws on invalid numeric env value', () => {
@@ -44,19 +41,12 @@ describe('loadGeminiConfig', () => {
     }).toThrow();
   });
 
-  it('throws when GEMINI_MAX_RETRIES exceeds max of 3', () => {
-    expect(() => {
-      loadGeminiConfig({
-        GEMINI_MAX_RETRIES: '4',
-      });
-    }).toThrow();
-  });
-
-  it('accepts GEMINI_MAX_RETRIES at maximum value of 3', () => {
+  it('ignores unknown GEMINI_MAX_RETRIES env var (zod ignores extra keys)', () => {
     const config = loadGeminiConfig({
-      GEMINI_MAX_RETRIES: '3',
+      GEMINI_MAX_RETRIES: '2',
     });
 
-    expect(config.maxRetries).toBe(3);
+    expect(config.primaryModel).toBe('gemini-2.5-pro');
+    expect(config.retryModel).toBe('gemini-2.5-flash');
   });
 });

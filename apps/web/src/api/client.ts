@@ -30,22 +30,24 @@ export type FlattenedErrors = {
   fieldErrors: Record<string, string[]>
 }
 
-function networkFailure(): ClientResult<never> {
+function networkFailure(requestId: string): ClientResult<never> {
   return {
     ok: false,
     error: {
       code: 'NETWORK_ERROR',
       message: 'Could not reach the server. Check your connection and try again.',
+      requestId,
     },
   };
 }
 
-function malformedResponseFailure(): ClientResult<never> {
+function malformedResponseFailure(requestId: string): ClientResult<never> {
   return {
     ok: false,
     error: {
       code: 'INTERNAL_ERROR',
       message: 'The server returned an unexpected response.',
+      requestId,
     },
   };
 }
@@ -54,22 +56,25 @@ function malformedResponseFailure(): ClientResult<never> {
 // failure mode (transport, parsing, and application-level errors) into the
 // same ApiFailure shape. Per-endpoint functions below stay thin wrappers.
 async function request<T extends object>(input: string, init?: RequestInit): Promise<ClientResult<T>> {
+  const requestId = crypto.randomUUID();
+  const headers = { ...(init?.headers as Record<string, string>), 'x-request-id': requestId };
+
   let response: Response;
   try {
-    response = await fetch(input, init);
+    response = await fetch(input, { ...init, headers });
   } catch {
-    return networkFailure();
+    return networkFailure(requestId);
   }
 
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    return malformedResponseFailure();
+    return malformedResponseFailure(requestId);
   }
 
   if (body === null || typeof body !== 'object' || !('ok' in body)) {
-    return malformedResponseFailure();
+    return malformedResponseFailure(requestId);
   }
 
   const envelope = body as ApiResponse<T>;
@@ -87,9 +92,9 @@ async function request<T extends object>(input: string, init?: RequestInit): Pro
     };
   }
 
-  const { ok: isOk, requestId, ...payload } = envelope;
+  const { ok: isOk, requestId: envelopeRequestId, ...payload } = envelope;
   void isOk;
-  void requestId;
+  void envelopeRequestId;
   return { ok: true, value: payload as T };
 }
 

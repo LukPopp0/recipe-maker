@@ -27,29 +27,32 @@ Tooling: Vitest for unit/integration tests; React Testing Library for UI/compone
 - Card rendering with missing images.
 
 ## Observability
-- Structured logs for each ingestion stage.
-- requestId propagation frontend <-> backend.
-- Metrics:
-  - ingestion duration
-  - extraction success rate
-  - schema failure rate
-  - image match fallback rate
+- Structured logs for each ingestion stage, via a `logStage` helper (stages:
+  fetch, extract, host-images, normalize, post-process, image-rehost).
+- requestId propagation frontend <-> backend (`x-request-id` header).
+- Metrics: deferred - stage logs only for now; per-stage rates (extraction
+  success, schema failure, image match fallback) are derivable from logs
+  when needed rather than computed separately.
 
 ## Operational Guardrails
 - External request timeouts.
 - Retry policy for transient failures.
-- Rate limits for ingest endpoints.
+- Rate limits for ingest endpoints: in-memory fixed-window limiter on
+  `/api/ingest/*` only, configured via `RATE_LIMIT_MAX` (default 10) and
+  `RATE_LIMIT_WINDOW_MS` (default 60000); 429 responses use the
+  `RATE_LIMITED` error code.
 - Input size limits for text and files.
 
 ## Gemini Usage Controls
 - Configurable model selection.
 - Token budget controls per request.
-- Fallback model chain for failures/timeouts.
+- Single fixed retry against `GEMINI_RETRY_MODEL` on failure/timeout (not a
+  configurable retry count).
 
 ## Release Gates
 - All critical tests passing.
 - No blocker-level unresolved known issues.
-- Performance thresholds met on representative fixture set.
+- Performance thresholds deferred (no representative fixture set benchmark yet).
 
 ## Acceptance Criteria
 - Reproducible test suite in CI.

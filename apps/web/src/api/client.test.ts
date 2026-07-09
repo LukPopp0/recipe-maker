@@ -104,6 +104,34 @@ describe('api/client', () => {
         expect(result.error.message.length).toBeGreaterThan(0);
       }
     });
+
+    it('sends an x-request-id header alongside Content-Type', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ ok: true, requestId: 'req-1', recipe: fakeRecipe, diagnostics: {} }),
+      );
+
+      await ingestUrl('https://example.com/recipe');
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const headers = init.headers as Record<string, string>;
+      expect(headers['Content-Type']).toBe('application/json');
+      expect(headers['x-request-id']).toEqual(expect.any(String));
+      expect(headers['x-request-id'].length).toBeGreaterThan(0);
+    });
+
+    it('carries the sent x-request-id on a rejected fetch failure', async () => {
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      const result = await ingestUrl('https://example.com/recipe');
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const sentHeaders = init.headers as Record<string, string>;
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.requestId).toBe(sentHeaders['x-request-id']);
+      }
+    });
   });
 
   describe('ingestManual', () => {
@@ -134,6 +162,11 @@ describe('api/client', () => {
       expect(formData.get('stepsText')).toBe('Whisk the eggs.');
       expect(formData.get('mainImage')).toBe(mainImage);
       expect(formData.getAll('stepImages')).toEqual([step1, step2]);
+
+      const headers = init.headers as Record<string, string>;
+      expect(headers['x-request-id']).toEqual(expect.any(String));
+      expect(headers['x-request-id'].length).toBeGreaterThan(0);
+      expect(headers['Content-Type']).toBeUndefined();
     });
   });
 
@@ -220,7 +253,9 @@ describe('api/client', () => {
       const result = await listRecipes();
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.value.recipes).toHaveLength(1);
-      expect(fetchMock).toHaveBeenCalledWith('/api/recipes', undefined);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/recipes');
+      expect((init.headers as Record<string, string>)['x-request-id']).toEqual(expect.any(String));
     });
 
     it('getRecipe hits /api/recipe/:id and unwraps the recipe', async () => {
@@ -228,7 +263,9 @@ describe('api/client', () => {
 
       const result = await getRecipe('some-id');
       expect(result.ok).toBe(true);
-      expect(fetchMock).toHaveBeenCalledWith('/api/recipe/some-id', undefined);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/recipe/some-id');
+      expect((init.headers as Record<string, string>)['x-request-id']).toEqual(expect.any(String));
     });
 
     it('deleteRecipe issues DELETE and surfaces RECIPE_NOT_FOUND failures', async () => {
@@ -243,7 +280,10 @@ describe('api/client', () => {
       const result = await deleteRecipe('x');
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.code).toBe('RECIPE_NOT_FOUND');
-      expect(fetchMock).toHaveBeenCalledWith('/api/recipe/x', { method: 'DELETE' });
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/recipe/x');
+      expect(init.method).toBe('DELETE');
+      expect((init.headers as Record<string, string>)['x-request-id']).toEqual(expect.any(String));
     });
   });
 });

@@ -20,6 +20,7 @@ export const ERROR_CODES = [
   'INTERNAL_ERROR',
   'NOT_IMPLEMENTED',
   'ROUTE_NOT_FOUND',
+  'RATE_LIMITED',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

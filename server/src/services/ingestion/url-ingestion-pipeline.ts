@@ -1,5 +1,6 @@
 import { AppError } from '../../lib/errors.js';
 import { loadServerEnv, type ServerEnv } from '../../env.js';
+import { logStage } from '../../lib/log.js';
 import type { GeminiConfig } from '../ai/config.js';
 import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import { buildUrlIngestionPrompt, buildUrlIngestionRetryPrompt } from '../ai/prompts/url-ingestion.js';
@@ -171,6 +172,14 @@ export async function runUrlIngestionPipeline({
   // Minimum-content pre-check, before any Gemini call. JSON-LD alone is
   // sufficient content even when visible text is thin.
   if (!cleaned.recipeJsonLd && cleaned.cleanedText.trim().length < MIN_CONTENT_CHARS) {
+    // Logged as stage 'fetch' since no extraction attempt has happened yet.
+    logStage({
+      requestId,
+      stage: 'fetch',
+      durationMs: Date.now() - pipelineStart,
+      outcome: 'error',
+      errorCode: 'URL_EXTRACTION_FAILED',
+    });
     throw new AppError(
       'URL_EXTRACTION_FAILED',
       'This page does not contain a recognizable recipe. Try another URL or use manual input.',
@@ -179,6 +188,17 @@ export async function runUrlIngestionPipeline({
   }
 
   const usedJsonLd = cleaned.recipeJsonLd !== null;
+
+  logStage({
+    requestId,
+    stage: 'fetch',
+    durationMs: Date.now() - pipelineStart,
+    outcome: 'ok',
+    fetchMode,
+    usedJsonLd,
+  });
+
+  const extractStart = Date.now();
 
   // Primary Gemini call + structural pre-check.
   const primaryPrompt = buildUrlIngestionPrompt({
@@ -198,6 +218,14 @@ export async function runUrlIngestionPipeline({
   );
 
   if (passesStructuralPreCheck(primaryResult)) {
+    logStage({
+      requestId,
+      stage: 'extract',
+      durationMs: Date.now() - extractStart,
+      outcome: 'ok',
+      extractor: 'gemini-primary',
+      model: geminiConfig.primaryModel,
+    });
     return {
       recipeCandidate: primaryResult,
       diagnostics: {
@@ -230,6 +258,14 @@ export async function runUrlIngestionPipeline({
   );
 
   if (passesStructuralPreCheck(retryResult)) {
+    logStage({
+      requestId,
+      stage: 'extract',
+      durationMs: Date.now() - extractStart,
+      outcome: 'ok',
+      extractor: 'gemini-retry',
+      model: geminiConfig.retryModel,
+    });
     return {
       recipeCandidate: retryResult,
       diagnostics: {
@@ -243,6 +279,13 @@ export async function runUrlIngestionPipeline({
   }
 
   // Both attempts failed.
+  logStage({
+    requestId,
+    stage: 'extract',
+    durationMs: Date.now() - extractStart,
+    outcome: 'error',
+    errorCode: 'URL_EXTRACTION_FAILED',
+  });
   throw new AppError('URL_EXTRACTION_FAILED', 'Could not extract a usable recipe from this URL.', {
     requestId,
     url: effectiveUrl,

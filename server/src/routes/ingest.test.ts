@@ -255,6 +255,49 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
     expect(gemini.generateCanonicalRecipe).not.toHaveBeenCalled();
   });
 
+  it('emits post-process and image-rehost stage logs carrying the response requestId', async () => {
+    mockFetch();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_CANDIDATE),
+      () => Promise.resolve(MATCH_RESPONSE),
+    ));
+
+    const res = await app.request('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/lasagna' }),
+    });
+    const body = (await res.json()) as IngestUrlSuccess;
+
+    expect(res.status).toBe(200);
+
+    const lines = logSpy.mock.calls
+      .map((call) => call[0] as string)
+      .map((line) => {
+        try {
+          return JSON.parse(line) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      })
+      .filter((parsed): parsed is Record<string, unknown> => parsed !== null && 'stage' in parsed);
+
+    const postProcessLine = lines.find((l) => l.stage === 'post-process');
+    const imageRehostLine = lines.find((l) => l.stage === 'image-rehost');
+
+    expect(postProcessLine).toMatchObject({
+      requestId: body.requestId,
+      stage: 'post-process',
+      outcome: 'ok',
+    });
+    expect(imageRehostLine).toMatchObject({
+      requestId: body.requestId,
+      stage: 'image-rehost',
+      outcome: 'ok',
+    });
+  });
+
 });
 
 // A structurally-complete Gemini candidate for manual ingestion (Option B).
@@ -502,5 +545,40 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
     expect(res.status).toBe(502);
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe('AI_NORMALIZATION_FAILED');
+  });
+
+  it('emits a post-process stage log carrying the response requestId', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_MANUAL_CANDIDATE),
+      () => Promise.resolve(MANUAL_MATCH_RESPONSE),
+    ));
+
+    const res = await app.request('/api/ingest/manual', {
+      method: 'POST',
+      body: validFormData(),
+    });
+    const body = (await res.json()) as IngestManualSuccess;
+
+    expect(res.status).toBe(200);
+
+    const lines = logSpy.mock.calls
+      .map((call) => call[0] as string)
+      .map((line) => {
+        try {
+          return JSON.parse(line) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      })
+      .filter((parsed): parsed is Record<string, unknown> => parsed !== null && 'stage' in parsed);
+
+    const postProcessLine = lines.find((l) => l.stage === 'post-process');
+
+    expect(postProcessLine).toMatchObject({
+      requestId: body.requestId,
+      stage: 'post-process',
+      outcome: 'ok',
+    });
   });
 });

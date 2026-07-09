@@ -17,7 +17,16 @@ Phase 5.5 hardened URL ingestion: JSON-LD extraction, Playwright browser fallbac
 explicit URL_FETCH_BLOCKED/URL_FETCH_FAILED errors (see plan addendum + specs/04).
 Phase 7.5 added the landscape (default) card orientation with a portrait
 toggle and self-hosted Inter/D-DIN fonts (specs/10 Landscape Variant).
-Next: Phase 8 quality/testing/hardening. Read
+Phase 8 (quality/testing/hardening) is done: RATE_LIMITED (429) in-memory
+fixed-window rate limiter on `/api/ingest/*` only (`RATE_LIMIT_MAX`,
+`RATE_LIMIT_WINDOW_MS`); per-stage structured logs via `logStage`
+(fetch/extract/host-images/normalize/post-process/image-rehost), metrics
+deferred; golden-fixture integration tests for URL (happy, JSON-LD, blocked,
+non-recipe, timeout) and manual (with/without step images) flows, Load JSON
+stays frontend-tested; `GEMINI_MAX_RETRIES` removed in favor of a fixed
+single retry via `GEMINI_RETRY_MODEL`; CI (`.github/workflows/ci.yml`) runs
+install/typecheck/test with Playwright mocked.
+Next: Phase 9 PDF generation upgrade (future). Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 

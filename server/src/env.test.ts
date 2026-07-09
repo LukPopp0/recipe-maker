@@ -18,6 +18,8 @@ describe('loadServerEnv', () => {
     expect(env.MANUAL_REQUEST_MAX_BYTES).toBe(20_000_000);
     expect(env.INGREDIENT_ASSET_DIR).toBe(path.resolve('../shared/assets/ingredients'));
     expect(env.PUBLIC_BASE_URL).toBe('http://localhost:8787');
+    expect(env.RATE_LIMIT_MAX).toBe(10);
+    expect(env.RATE_LIMIT_WINDOW_MS).toBe(60000);
   });
 
   it('derives PUBLIC_BASE_URL default from a non-default PORT', () => {
@@ -40,6 +42,8 @@ describe('loadServerEnv', () => {
       MANUAL_REQUEST_MAX_BYTES: '3000000',
       INGREDIENT_ASSET_DIR: './tmp/ingredients',
       PUBLIC_BASE_URL: 'https://recipes.example.com',
+      RATE_LIMIT_MAX: '5',
+      RATE_LIMIT_WINDOW_MS: '30000',
     });
 
     expect(env.PORT).toBe(4000);
@@ -54,6 +58,8 @@ describe('loadServerEnv', () => {
     expect(env.MANUAL_REQUEST_MAX_BYTES).toBe(3000000);
     expect(env.INGREDIENT_ASSET_DIR).toBe(path.resolve('./tmp/ingredients'));
     expect(env.PUBLIC_BASE_URL).toBe('https://recipes.example.com');
+    expect(env.RATE_LIMIT_MAX).toBe(5);
+    expect(env.RATE_LIMIT_WINDOW_MS).toBe(30000);
   });
 
   it('resolves an already-absolute RECIPE_DATA_DIR unchanged', () => {

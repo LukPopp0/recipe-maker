@@ -4,6 +4,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { IngestUrlRequestSchema } from 'shared';
 import type { ServerEnv } from '../env.js';
 import { AppError } from '../lib/errors.js';
+import { logStage } from '../lib/log.js';
 import { ok } from '../lib/response.js';
 import type { AppVariables } from '../middleware/request-id.js';
 import { parseJsonBody } from '../middleware/validate.js';
@@ -53,21 +54,35 @@ export function createIngestApp(deps: IngestDeps) {
 
     // 2. Deterministic post-processing -> schema-valid canonical recipe, still
     //    referencing the original remote image URLs at this point.
+    const postProcessStart = Date.now();
     const canonical = await applyPostProcessing(recipeCandidate as RawRecipeCandidate, {
       defaultMainImageUrl,
       ingredientImageMatcher,
+    });
+    logStage({
+      requestId,
+      stage: 'post-process',
+      durationMs: Date.now() - postProcessStart,
+      outcome: 'ok',
     });
 
     // 3. Re-host remote images. recipeId is a fresh UUID used only as the image
     //    storage-key namespace - this is NOT a saved recipe id (save is a
     //    separate explicit user action per Phase 1 / master plan).
     const recipeId = randomUUID();
+    const imageRehostStart = Date.now();
     const { recipe, warnings } = await rehostRecipeImages(canonical, {
       recipeId,
       storageAdapter,
       maxBytes: env.IMAGE_MAX_BYTES,
       defaultMainImageUrl,
       timeoutMs: env.URL_FETCH_TIMEOUT_MS,
+    });
+    logStage({
+      requestId,
+      stage: 'image-rehost',
+      durationMs: Date.now() - imageRehostStart,
+      outcome: 'ok',
     });
 
     // 4. Merge any image warnings into the recipe's own warnings list.
@@ -118,6 +133,7 @@ export function createIngestApp(deps: IngestDeps) {
     //    metadata.source_type is forced to 'manual' server-side, never
     //    trusted from the model's output, since a hallucinated 'url' value
     //    must never leak through.
+    const postProcessStart = Date.now();
     const canonical = await applyPostProcessing(
       {
         ...recipeCandidate,
@@ -125,6 +141,12 @@ export function createIngestApp(deps: IngestDeps) {
       } as RawRecipeCandidate,
       { defaultMainImageUrl, ingredientImageMatcher },
     );
+    logStage({
+      requestId,
+      stage: 'post-process',
+      durationMs: Date.now() - postProcessStart,
+      outcome: 'ok',
+    });
 
     // 5. Merge pipeline warnings (image hosting failures, step-image
     //    assignment mismatches) into the recipe's own warnings list, same

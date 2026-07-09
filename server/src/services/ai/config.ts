@@ -10,7 +10,6 @@ const geminiConfigSchema = z.object({
   // 20-40s (thinking + large JSON output); 20s timed out on the happy path.
   GEMINI_TIMEOUT_MS: z.coerce.number().default(60000),
   GEMINI_TOKEN_BUDGET: z.coerce.number().default(8000),
-  GEMINI_MAX_RETRIES: z.coerce.number().min(0).max(3).default(1),
 });
 
 export type GeminiConfig = {
@@ -19,7 +18,6 @@ export type GeminiConfig = {
   retryModel: string
   timeoutMs: number
   tokenBudget: number
-  maxRetries: number
   generationConfig: {
     temperature: number
     topP: number
@@ -36,7 +34,6 @@ export function loadGeminiConfig(env: Record<string, string | undefined>): Gemin
     retryModel: parsed.GEMINI_RETRY_MODEL,
     timeoutMs: parsed.GEMINI_TIMEOUT_MS,
     tokenBudget: parsed.GEMINI_TOKEN_BUDGET,
-    maxRetries: parsed.GEMINI_MAX_RETRIES,
     generationConfig: {
       temperature: 0,
       topP: 1,

@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "requestId": "golden-test-request-id",
+  "recipe": {
+    "title": "Golden Test Chili",
+    "tags": ["dinner"],
+    "time": 45,
+    "ingredients": [
+      { "name": "Ground Beef", "amount_text": "400g", "image": "meat-beef-ground.png" },
+      { "name": "Lasagna Sheets", "amount_text": "200g", "image": "pasta-linguine.png" }
+    ],
+    "pantry_items": [],
+    "main_image": "http://localhost:8787/images/recipes/__ID__/main-0.jpg",
+    "steps": [
+      { "step_header": "Brown", "step_description": "Brown the ground beef in a large pot over medium heat." },
+      { "step_header": "Boil", "step_description": "Boil the lasagna sheets until al dente and stir them in." }
+    ],
+    "metadata": {
+      "source_type": "url",
+      "source_url": "https://example.com/golden-chili",
+      "language": "en",
+      "warnings": []
+    }
+  },
+  "diagnostics": {
+    "extractor": "gemini-primary",
+    "model": "gemini-2.5-pro",
+    "fetchMode": "static",
+    "usedJsonLd": false
+  }
+}

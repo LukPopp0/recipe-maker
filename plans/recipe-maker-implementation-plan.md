@@ -515,7 +515,22 @@ with self-hosted D-DIN and Inter (both SIL OFL). See the "Landscape Variant"
 section of `specs/10-recipe-card-renderer.md` and
 `plans/phase-7-5-landscape-card.md` for design and task detail.
 
-## Phase 8: Quality, Testing, and Hardening
+## Phase 8: Quality, Testing, and Hardening (Done)
+
+### Scope Note (locked decisions)
+- Rate limiting: in-memory fixed-window limiter, applied to `/api/ingest/*`
+  only (`RATE_LIMIT_MAX` default 10, `RATE_LIMIT_WINDOW_MS` default 60000ms);
+  429 responses use a new `RATE_LIMITED` error code.
+- Logging: per-stage structured logs via a `logStage` helper (stages: fetch,
+  extract, host-images, normalize, post-process, image-rehost); metrics
+  deferred (rates derivable from logs, not computed separately).
+- Integration fixtures: URL happy path, JSON-LD variant, blocked (403),
+  non-recipe, timeout; manual with/without step images. Load JSON flow stays
+  covered by frontend tests only.
+- Gemini retries: `GEMINI_MAX_RETRIES` removed; retry is a fixed single
+  attempt against `GEMINI_RETRY_MODEL` (not configurable count).
+- CI: install, typecheck, test (`.github/workflows/ci.yml`); Playwright is
+  mocked in tests, no real browser download in CI.
 
 ### Implementation Tasks
 1. Unit tests:
@@ -544,6 +559,18 @@ section of `specs/10-recipe-card-renderer.md` and
 ### Acceptance Criteria
 - Critical modules covered by tests.
 - Known failures handled with actionable messages.
+
+### Known Follow-ups (from final branch review, not blocking)
+- Manual ingestion overrides `metadata.source_type` to `manual`
+  (`server/src/routes/ingest.ts`) but does not strip a hallucinated
+  `metadata.source_url` from the Gemini candidate, so a bogus URL can leak into
+  a manual recipe. Fixing this must also update the two manual golden fixtures
+  (`server/src/test-support/fixtures/expected/manual-*.json`), which faithfully
+  capture the current behavior.
+- The rate limiter's in-memory `Map` never evicts stale keys
+  (`server/src/middleware/rate-limit.ts`). Fine single-user/local (one shared
+  `local` bucket); add lazy eviction on window rollover if ever deployed behind
+  a proxy with many client IPs.
 
 ## Phase 9: PDF Generation Upgrade (Future, Post-Milestone 2)
 

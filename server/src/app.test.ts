@@ -138,6 +138,26 @@ describe('createApp', () => {
     });
   });
 
+  describe('rate limiting on /api/ingest/*', () => {
+    it('429s after RATE_LIMIT_MAX ingest requests but never limits /api/recipes', async () => {
+      const env = makeEnv({ RATE_LIMIT_MAX: '2' });
+      const app = createApp({ env, checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() });
+
+      const first = await app.request('/api/ingest/url', { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } });
+      const second = await app.request('/api/ingest/url', { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } });
+      const third = await app.request('/api/ingest/url', { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } });
+
+      expect(first.status).toBe(400);
+      expect(second.status).toBe(400);
+      expect(third.status).toBe(429);
+      const thirdBody = (await third.json()) as ApiErrorEnvelope;
+      expect(thirdBody.error.code).toBe('RATE_LIMITED');
+
+      const recipes = await app.request('/api/recipes');
+      expect(recipes.status).not.toBe(429);
+    });
+  });
+
   describe('GET /ingredient-images/*', () => {
     let ingredientAssetDir: string;
 

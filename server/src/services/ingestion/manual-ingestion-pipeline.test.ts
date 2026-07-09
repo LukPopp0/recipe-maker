@@ -217,4 +217,86 @@ describe('runManualIngestionPipeline', () => {
     expect(first.diagnostics.extractor).toEqual(second.diagnostics.extractor);
     expect(first.diagnostics.model).toEqual(second.diagnostics.model);
   });
+
+  describe('stage logging', () => {
+    function stageLogLines(logSpy: { mock: { calls: unknown[][] } }) {
+      return logSpy.mock.calls
+        .map((call: unknown[]) => call[0] as string)
+        .map((line: string) => {
+          try {
+            return JSON.parse(line) as Record<string, unknown>;
+          } catch {
+            return null;
+          }
+        })
+        .filter((parsed: Record<string, unknown> | null): parsed is Record<string, unknown> => parsed !== null && 'stage' in parsed);
+    }
+
+    it('emits host-images and normalize ok logs on the happy path', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const storageAdapter = makeStorageAdapter();
+      const generateCanonicalRecipe = vi.fn().mockResolvedValue(VALID_CANDIDATE);
+      const geminiClient = fakeGeminiClient(generateCanonicalRecipe);
+
+      const parsed = makeParsed({
+        stepImages: [makeFile({ filename: 'step-1.jpg' })],
+      });
+
+      await runManualIngestionPipeline({
+        parsed,
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        storageAdapter,
+        recipeId: 'recipe-1',
+        maxImageBytes: 1024,
+        requestId: 'req-log-1',
+      });
+
+      const lines = stageLogLines(logSpy);
+      const hostImagesLine = lines.find((l) => l.stage === 'host-images');
+      const normalizeLine = lines.find((l) => l.stage === 'normalize');
+
+      expect(hostImagesLine).toMatchObject({
+        requestId: 'req-log-1',
+        stage: 'host-images',
+        outcome: 'ok',
+      });
+      expect(normalizeLine).toMatchObject({
+        requestId: 'req-log-1',
+        stage: 'normalize',
+        outcome: 'ok',
+      });
+    });
+
+    it('emits a normalize error log when the structural pre-check fails', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const storageAdapter = makeStorageAdapter();
+      const generateCanonicalRecipe = vi.fn().mockResolvedValue(GARBAGE_CANDIDATE);
+      const geminiClient = fakeGeminiClient(generateCanonicalRecipe);
+
+      const parsed = makeParsed();
+
+      await expect(
+        runManualIngestionPipeline({
+          parsed,
+          geminiClient,
+          geminiConfig: makeGeminiConfig(),
+          storageAdapter,
+          recipeId: 'recipe-1',
+          maxImageBytes: 1024,
+          requestId: 'req-log-2',
+        }),
+      ).rejects.toMatchObject({ code: 'AI_NORMALIZATION_FAILED' });
+
+      const lines = stageLogLines(logSpy);
+      const normalizeErrorLine = lines.find((l) => l.stage === 'normalize' && l.outcome === 'error');
+
+      expect(normalizeErrorLine).toMatchObject({
+        requestId: 'req-log-2',
+        stage: 'normalize',
+        outcome: 'error',
+        errorCode: 'AI_NORMALIZATION_FAILED',
+      });
+    });
+  });
 });

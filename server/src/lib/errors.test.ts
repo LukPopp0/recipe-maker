@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AppError, ERROR_STATUS_MAP, serializeError } from './errors.js';
+import { AppError, ERROR_DEFAULT_MESSAGE, ERROR_STATUS_MAP, serializeError } from './errors.js';
 
 describe('ERROR_STATUS_MAP', () => {
   it('maps every error code to its spec-defined HTTP status', () => {
@@ -14,6 +14,14 @@ describe('ERROR_STATUS_MAP', () => {
     expect(ERROR_STATUS_MAP.INTERNAL_ERROR).toBe(500);
     expect(ERROR_STATUS_MAP.NOT_IMPLEMENTED).toBe(501);
     expect(ERROR_STATUS_MAP.ROUTE_NOT_FOUND).toBe(404);
+    expect(ERROR_STATUS_MAP.RATE_LIMITED).toBe(429);
+  });
+});
+
+describe('ERROR_DEFAULT_MESSAGE', () => {
+  it('has a non-empty message for RATE_LIMITED', () => {
+    expect(ERROR_DEFAULT_MESSAGE.RATE_LIMITED).toBeTruthy();
+    expect(ERROR_DEFAULT_MESSAGE.RATE_LIMITED.length).toBeGreaterThan(0);
   });
 });
 
@@ -33,6 +41,13 @@ describe('AppError', () => {
 
     expect(err.details).toBeUndefined();
     expect(err.status).toBe(400);
+  });
+
+  it('RATE_LIMITED has status 429', () => {
+    const err = new AppError('RATE_LIMITED', 'Too many requests');
+
+    expect(err.code).toBe('RATE_LIMITED');
+    expect(err.status).toBe(429);
   });
 });
 
@@ -71,5 +86,14 @@ describe('serializeError', () => {
 
     expect(result.code).toBe('INTERNAL_ERROR');
     expect(result.message).not.toContain('sk-secret-123');
+  });
+
+  it('passes through RATE_LIMITED code', () => {
+    const err = new AppError('RATE_LIMITED', 'Too many ingestion requests. Wait a moment and try again.');
+
+    const result = serializeError(err);
+
+    expect(result.code).toBe('RATE_LIMITED');
+    expect(result.message).toBe('Too many ingestion requests. Wait a moment and try again.');
   });
 });

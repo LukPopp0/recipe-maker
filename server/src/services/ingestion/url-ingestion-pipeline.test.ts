@@ -313,4 +313,103 @@ describe('runUrlIngestionPipeline', () => {
 
     expect(generateCanonicalRecipe).not.toHaveBeenCalled();
   });
+
+  describe('stage logging', () => {
+    function stageLogLines(logSpy: { mock: { calls: unknown[][] } }) {
+      return logSpy.mock.calls
+        .map((call: unknown[]) => call[0] as string)
+        .map((line: string) => {
+          try {
+            return JSON.parse(line) as Record<string, unknown>;
+          } catch {
+            return null;
+          }
+        })
+        .filter((parsed: Record<string, unknown> | null): parsed is Record<string, unknown> => parsed !== null && 'stage' in parsed);
+    }
+
+    it('emits fetch and extract ok logs on the happy path', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(RECIPE_HTML));
+      const generateCanonicalRecipe = vi.fn().mockResolvedValue(VALID_CANDIDATE);
+      const geminiClient = fakeGeminiClient(generateCanonicalRecipe);
+
+      await runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        env: STATIC_ENV,
+        requestId: 'req-log-1',
+      });
+
+      const lines = stageLogLines(logSpy);
+      const fetchLine = lines.find((l) => l.stage === 'fetch');
+      const extractLine = lines.find((l) => l.stage === 'extract');
+
+      expect(fetchLine).toMatchObject({
+        requestId: 'req-log-1',
+        stage: 'fetch',
+        outcome: 'ok',
+        fetchMode: 'static',
+      });
+      expect(extractLine).toMatchObject({
+        requestId: 'req-log-1',
+        stage: 'extract',
+        outcome: 'ok',
+      });
+    });
+
+    it('emits an extract error log when both attempts fail', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(RECIPE_HTML));
+      const generateCanonicalRecipe = vi.fn().mockResolvedValue(GARBAGE_CANDIDATE);
+      const geminiClient = fakeGeminiClient(generateCanonicalRecipe);
+
+      await expect(
+        runUrlIngestionPipeline({
+          url: 'https://example.com/lasagna',
+          geminiClient,
+          geminiConfig: makeGeminiConfig(),
+          env: STATIC_ENV,
+          requestId: 'req-log-2',
+        }),
+      ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
+
+      const lines = stageLogLines(logSpy);
+      const extractErrorLine = lines.find((l) => l.stage === 'extract' && l.outcome === 'error');
+
+      expect(extractErrorLine).toMatchObject({
+        requestId: 'req-log-2',
+        stage: 'extract',
+        outcome: 'error',
+        errorCode: 'URL_EXTRACTION_FAILED',
+      });
+    });
+
+    it('emits a fetch error log for the min-content throw', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(EMPTY_HTML));
+      const geminiClient = fakeGeminiClient(vi.fn());
+
+      await expect(
+        runUrlIngestionPipeline({
+          url: 'https://example.com/empty',
+          geminiClient,
+          geminiConfig: makeGeminiConfig(),
+          env: STATIC_ENV,
+          requestId: 'req-log-3',
+        }),
+      ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
+
+      const lines = stageLogLines(logSpy);
+      const fetchErrorLine = lines.find((l) => l.stage === 'fetch' && l.outcome === 'error');
+
+      expect(fetchErrorLine).toMatchObject({
+        requestId: 'req-log-3',
+        stage: 'fetch',
+        outcome: 'error',
+        errorCode: 'URL_EXTRACTION_FAILED',
+      });
+    });
+  });
 });

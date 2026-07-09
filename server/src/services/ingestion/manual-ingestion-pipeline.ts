@@ -1,4 +1,5 @@
 import { AppError } from '../../lib/errors.js';
+import { logStage } from '../../lib/log.js';
 import type { GeminiConfig } from '../ai/config.js';
 import type { GeminiClient } from '../ai/gemini-client.js';
 import { buildManualIngestionPrompt } from '../ai/prompts/manual-ingestion.js';
@@ -66,6 +67,7 @@ export async function runManualIngestionPipeline({
 }: RunManualIngestionPipelineParams): Promise<RunManualIngestionPipelineResult> {
   const pipelineStart = Date.now();
   const warnings: string[] = [];
+  const hostImagesStart = Date.now();
 
   // Step 1: host the main image. A hosting failure is non-critical - collect
   // the warning and leave main_image unset so finalSanitize's default
@@ -106,7 +108,16 @@ export async function runManualIngestionPipeline({
     }
   }
 
+  logStage({
+    requestId,
+    stage: 'host-images',
+    durationMs: Date.now() - hostImagesStart,
+    outcome: 'ok',
+    imageCount: hostedStepImageUrls.length + (hostedMainImageUrl !== undefined ? 1 : 0),
+  });
+
   // Step 3: single Gemini normalization call over the raw text.
+  const normalizeStart = Date.now();
   const prompt = buildManualIngestionPrompt({
     ingredientsText: parsed.ingredientsText,
     stepsText: parsed.stepsText,
@@ -121,10 +132,24 @@ export async function runManualIngestionPipeline({
 
   // Step 4: structural pre-check - no retry for manual ingestion.
   if (!passesStructuralPreCheck(rawCandidate)) {
+    logStage({
+      requestId,
+      stage: 'normalize',
+      durationMs: Date.now() - normalizeStart,
+      outcome: 'error',
+      errorCode: 'AI_NORMALIZATION_FAILED',
+    });
     throw new AppError('AI_NORMALIZATION_FAILED', 'Could not normalize the provided recipe text.', {
       requestId,
     });
   }
+
+  logStage({
+    requestId,
+    stage: 'normalize',
+    durationMs: Date.now() - normalizeStart,
+    outcome: 'ok',
+  });
 
   // Step 5: assign hosted step images onto the returned steps by index.
   const assignment = assignStepImageUrls(hostedStepImageUrls, rawCandidate.steps.length);
