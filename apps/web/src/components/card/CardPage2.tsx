@@ -69,6 +69,10 @@ export function CardPage2({
           );
         })}
       </ol>
+
+      {recipe.metadata.source_url ? (
+        <p className="card-source">Source: {recipe.metadata.source_url}</p>
+      ) : null}
     </section>
   );
 }

@@ -103,7 +103,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
 - Tests: unit test sanitize/post-processing warning at 241+, none at 240; prompt-text
   assertion if existing prompt tests do that pattern.
 
-## 8. [ ] Show source URL on recipe card (URL-ingested recipes)
+## 8. [x] Show source URL on recipe card (URL-ingested recipes)
 
 - `metadata.source_url` exists (canonical-recipe.ts:24), set by URL ingestion, kept by
   sanitize (sanitize.ts:73-75), rendered nowhere.

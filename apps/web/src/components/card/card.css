@@ -166,6 +166,18 @@
   font-weight: 700;
 }
 
+/* Source URL footer (page 2, URL-ingested recipes only). Single line,
+   ellipsized if the URL is too long to fit the card width. */
+.card-source {
+  margin: 0.12in 0 0;
+  font-family: 'Lato', Arial, sans-serif;
+  font-size: 7.5pt;
+  color: #8a8a8a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .card-steps {
   list-style: none;
   margin: 0.2in 0 0;

@@ -63,6 +63,24 @@ describe('CardPage2', () => {
     expect(screen.getAllByRole('listitem')[0]).toHaveClass('card-step-no-image');
   });
 
+  it('shows the source URL footer for a URL-ingested recipe', () => {
+    const recipe = makeRecipe([STEP_WITHOUT_IMAGE], {
+      metadata: {
+        source_type: 'url',
+        source_url: 'https://example.com/korean-beef-bowls',
+        language: 'en',
+        warnings: [],
+      },
+    });
+    render(<CardPage2 recipe={recipe} />);
+    expect(screen.getByText(/Source: https:\/\/example\.com\/korean-beef-bowls/)).toBeInTheDocument();
+  });
+
+  it('renders no source footer when source_url is absent (manual recipe)', () => {
+    render(<CardPage2 recipe={makeRecipe([STEP_WITHOUT_IMAGE], { metadata: { source_type: 'manual', language: 'en', warnings: [] } })} />);
+    expect(screen.queryByText(/^Source:/)).not.toBeInTheDocument();
+  });
+
   it('never renders more than 6 steps', () => {
     const seven = Array.from({ length: 7 }, (_, i) => ({
       step_header: `Step ${i + 1}`,
