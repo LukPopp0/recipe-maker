@@ -1,109 +1,55 @@
 # Recipe Maker
 
-Ingests recipes (URL or manual text+images) via Gemini, normalizes them into a
-canonical JSON schema, lets you save/browse them, and renders a printable
-two-page recipe card.
+Ingests recipes (URL or manual text+images) via Gemini, normalizes them into a canonical JSON schema, lets you save/browse them, and renders a printable two-page recipe card.
 
-## Status
+## Prerequisites
 
-Phase 0 (repo cleanup), Phase 1 (core contracts and foundations), Phase 2
-(Option A: URL ingestion), Phase 3 (Option B: manual ingestion), Phase 4
-(ingredient image matching), Phase 5 (Milestone 1 frontend completion), and
-Phase 6 (Library UI), and Phase 7 (card rendering) are done.
-Backend now boots, validates config, and exposes working recipe
-save/list/get/delete/download/validate routes backed by a local JSON-file
-`RecipeRepository`. `POST /api/ingest/url` is fully implemented: SSRF-guarded
-fetch, HTML cleaning, Gemini extraction with retry, deterministic
-post-processing (pantry routing, tag normalization, step compaction to
-<=6 steps, sanitation), and local-disk image re-hosting served at
-`/images/*`. `POST /api/ingest/manual` is also fully implemented: multipart
-parsing of raw ingredients/steps text plus a main image and optional step
-images, direct hosting of uploaded buffers (no SSRF path needed - they're
-already local), a single Gemini normalization call (no retry, unlike Option
-A), deterministic step-image assignment by sorted filename index, and reuse
-of the same post-processing module as Option A. Ingredient image matching
-(specs/08, Phase 4) is implemented for both pipelines (see
-`plans/phase-4-ingredient-image-matching.md`): a second Gemini call matches
-each non-pantry ingredient to a bare catalog filename from
-`shared/assets/ingredients` (215 assets incl. `INGREDIENT_NOT_FOUND.png` as
-fallback), with unmatched items surfaced as `metadata.warnings` strings and
-matching failures degrading gracefully instead of failing the request. The
-Phase 5 frontend (see `plans/phase-5-milestone-1-frontend-completion.md`) is
-implemented: the Create workspace with URL/Manual/Load JSON tabs, an
-editable review panel (title, tags via vocabulary chips + custom input,
-time, ingredients with thumbnails served at `/ingredient-images/*`,
-add/remove rows, steps capped at 6), non-blocking warnings, a
-syntax-highlighted JSON viewer with copy and deterministic-filename
-download, and an explicit Save Recipe action. The Library UI (Phase 6) is
-also implemented: list/view (read-only), download, delete, and Open in Create
-(copy into workspace for editing). Card rendering (Phase 7) is also
-implemented: a printable two-page recipe card (page 1: header, title, time,
-tag pills, main image, ingredient grid; page 2: pantry banner and 3x2 step
-grid with auto-bolded ingredient mentions), generated via the browser's
-print/Save-as-PDF (`window.print`) - no server-side PDF generation. Phase 7.5
-added a landscape (11in x 8.5in, the original template orientation) variant
-as the default, with a toolbar toggle to the earlier portrait (8.5in x 11in)
-layout; printing follows the on-screen orientation automatically. Styled with
-self-hosted Montserrat/Lato/Inter/D-DIN print CSS (all SIL OFL). Reachable
-from Library ("View as Card" on a saved recipe) and from the Create workspace
-("Preview Card" on the current draft). See
-`plans/recipe-maker-implementation-plan.md` for the full phase breakdown and
-`specs/` for per-feature specs.
+- Node.js 22 or newer
+- pnpm 9 (the repo pins `pnpm@9.14.2` via the `packageManager` field, so `corepack enable` is enough to get the right version)
+- A Gemini API key (free tier works): create a project at [aistudio.google.com](https://aistudio.google.com), then generate an API key
 
-## Frontend Dev Workflow
+## Getting Started
 
-Run both dev servers in two terminals:
+1. Install dependencies (this also generates the ingredient asset manifest):
 
-```bash
-pnpm --filter server run dev   # backend on port 8787
-pnpm --filter web run dev      # Vite dev server, proxies to the backend
-```
+   ```bash
+   pnpm install
+   ```
 
-Vite proxies `/api`, `/images`, and `/ingredient-images` to
-`http://localhost:8787` (no CORS setup). Frontend tests use Vitest + React
-Testing Library under jsdom: `pnpm --filter web run test`.
+2. Duplicate the backend env template and enter your Gemini API key:
+
+   ```bash
+   cp server/.env.example server/.env
+   # edit server/.env and set GEMINI_API_KEY=<your key>
+   ```
+
+   Without a real key, all routes except `POST /api/ingest/url` and `POST /api/ingest/manual` still work, and the test suite runs fully (tests mock the Gemini client and network calls).
+
+3. Start both dev servers in two terminals:
+
+   ```bash
+   pnpm --filter server run dev   # backend on port 8787 (PORT from server/.env)
+   pnpm dev                       # Vite dev server for the frontend
+   ```
+
+   Vite proxies `/api`, `/images`, and `/ingredient-images` to `http://localhost:8787`, so no CORS setup is needed. Open the printed Vite URL in your browser.
+
+4. Optional: URL ingestion falls back to a headless Chromium (Playwright) for pages whose recipe content requires client-side JavaScript. This needs a one-time browser download:
+
+   ```bash
+   pnpm --filter server exec playwright install chromium
+   ```
+
+   Set `BROWSER_FALLBACK_ENABLED=false` in `server/.env` to skip the download and run URL ingestion with static fetching only.
 
 ## Architecture
 
 This is a pnpm workspace with three sibling packages:
 
 - `apps/web/` - frontend (React + TypeScript + Vite), package `web`.
-- `server/` - backend API (Hono), package `server`. Boots via `pnpm --filter
-  server run dev`, validates env/config and storage readiness on startup,
-  exposes `/health` and `/api/*` routes.
-- `shared/` - types, Zod schema validators, constants, and `assets/ingredients`
-  (ingredient image library used by both frontend and backend), package
-  `shared`.
+- `server/` - backend API (Hono), package `server`. Boots via `pnpm --filter server run dev`, validates env/config and storage readiness on startup, exposes `/health` and `/api/*` routes.
+- `shared/` - types, Zod schema validators, constants, and `assets/ingredients` (ingredient image library used by both frontend and backend), package `shared`.
 - `plans/`, `specs/` - planning docs; read before changing scope.
-
-## Setup
-
-```bash
-pnpm install
-pnpm dev
-```
-
-`pnpm dev` and `pnpm build` automatically regenerate the ingredient asset
-manifest (`shared/src/generated/ingredient-manifest.json`) before starting/building
-- no manual step needed. `pnpm dev` only starts the frontend; run the backend
-separately (see below).
-
-To run the backend: copy `server/.env.example` to `server/.env`, then
-`pnpm --filter server run dev` (starts on `PORT` from `.env`, default 8787).
-A real `GEMINI_API_KEY` is required to exercise `POST /api/ingest/url` or
-`POST /api/ingest/manual` end-to-end; without one, all other routes and the
-test suite still work (tests mock the Gemini client and network calls).
-
-URL ingestion can fall back to a headless Chromium (Playwright) for pages whose
-recipe content requires client-side JavaScript. This needs a one-time browser
-download:
-
-```bash
-pnpm --filter server exec playwright install chromium
-```
-
-Set `BROWSER_FALLBACK_ENABLED=false` in `server/.env` to skip the download and
-run URL ingestion with static fetching only.
 
 ## Scripts
 
@@ -113,10 +59,8 @@ run URL ingestion with static fetching only.
 - `pnpm test` - run tests across all workspace packages (`pnpm -r run test`).
 - `pnpm typecheck` - run TypeScript type checking across all workspace packages (`pnpm -r run typecheck`).
 - `pnpm generate:manifest` - regenerate the ingredient asset manifest manually.
-- `pnpm --filter web run dev|build|lint|preview|test` - run a script for the `web`
-  package only.
-- `pnpm --filter server run dev|start|test|lint|typecheck` - run a script for the
-  `server` package only (`dev` watches, `start` runs once).
+- `pnpm --filter web run dev|build|lint|preview|test` - run a script for the `web` package only.
+- `pnpm --filter server run dev|start|test|lint|typecheck` - run a script for the `server` package only (`dev` watches, `start` runs once).
 
 ## Known Constraints
 
@@ -126,3 +70,20 @@ run URL ingestion with static fetching only.
 - Recipe persistence is flat JSON files on disk (`server/data/recipes/`), not a database.
 - Re-hosted recipe images are stored locally on disk (`server/data/images/`), not a cloud adapter.
 - Single-user, no authentication (local-first).
+
+## Status
+
+- [x] Phase 0: repository cleanup and baseline setup
+- [x] Phase 1: core contracts, schema validators, backend skeleton, RecipeRepository
+- [x] Phase 2: URL ingestion pipeline (`POST /api/ingest/url`) with SSRF guardrails and shared post-processing (pantry routing, tag normalization, step compaction, sanitation)
+- [x] Phase 3: manual ingestion pipeline (`POST /api/ingest/manual`) with uploaded-image hosting and deterministic step-image assignment
+- [x] Phase 4: Gemini-based ingredient image matching against the local catalog (215 assets, `INGREDIENT_NOT_FOUND.png` fallback)
+- [x] Phase 5: Milestone 1 frontend - Create workspace (URL/Manual/Load JSON tabs), editable review panel, JSON viewer/download, explicit Save
+- [x] Phase 5.5: URL ingestion hardening - JSON-LD extraction, Playwright browser fallback, explicit fetch-error codes
+- [x] Phase 6: Library UI - list, read-only view, download, delete, Open in Create
+- [x] Phase 7: Milestone 2 card rendering - printable two-page recipe card via browser print/Save-as-PDF
+- [x] Phase 7.5: landscape card variant (default) with portrait toggle, self-hosted fonts
+- [x] Phase 8: quality, testing, and hardening - golden-fixture integration tests, rate limiting, per-stage structured logs, CI workflow
+- [ ] Phase 9: server-side PDF generation (future)
+
+See `plans/recipe-maker-implementation-plan.md` for the full phase breakdown and `specs/` for per-feature specs.
