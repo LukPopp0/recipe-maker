@@ -13,6 +13,7 @@ export const PANTRY_ALLOWLIST = [
   'oil (olive and vegetable)',
   'milk',
   'flour',
+  'water',
 ];
 
 /**

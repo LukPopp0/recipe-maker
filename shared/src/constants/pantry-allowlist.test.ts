@@ -11,11 +11,12 @@ describe('PANTRY_ALLOWLIST', () => {
       'oil (olive and vegetable)',
       'milk',
       'flour',
+      'water',
     ]);
   });
 
-  it('has exactly 7 entries', () => {
-    expect(PANTRY_ALLOWLIST).toHaveLength(7);
+  it('has exactly 8 entries', () => {
+    expect(PANTRY_ALLOWLIST).toHaveLength(8);
   });
 });
 
@@ -34,6 +35,13 @@ describe('isPantryItem', () => {
     expect(isPantryItem('MILK')).toBe(true);
     expect(isPantryItem('flour')).toBe(true);
     expect(isPantryItem('Flour')).toBe(true);
+    expect(isPantryItem('water')).toBe(true);
+    expect(isPantryItem('Water')).toBe(true);
+  });
+
+  it('does not match "coconut water" (exact match only)', () => {
+    expect(isPantryItem('coconut water')).toBe(false);
+    expect(isPantryItem('Coconut Water')).toBe(false);
   });
 
   it('matches "olive oil" against the oil entry', () => {

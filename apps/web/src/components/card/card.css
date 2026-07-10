@@ -30,10 +30,13 @@
 }
 
 .card-wordmark {
+  /* Size the two-line wordmark so its block height matches the 0.55in logo:
+     2 lines * 21pt * 0.95 line-height ~= 0.55in. (Kept a plain block: the
+     markup uses <br>, which flex/grid would blockify into a stray item.) */
   margin: 0;
   font-family: 'Montserrat', Arial, sans-serif;
   font-weight: 700;
-  font-size: 14pt;
+  font-size: 21pt;
   line-height: 0.95;
   letter-spacing: -0.02em;
 }
@@ -48,8 +51,10 @@
   margin: 0;
   font-family: 'Montserrat', Arial, sans-serif;
   font-weight: 700;
+  /* line-height must exceed font-size or the 2-line clamp + overflow:hidden
+     clips descenders (g/p/y) on the last rendered line. */
   font-size: 23pt;
-  line-height: 22pt;
+  line-height: 1.15;
   letter-spacing: -0.06em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -376,6 +381,10 @@
 
   .card-page {
     box-shadow: none;
+    /* Force background colors (tags, pantry banner, step headers) to print
+       instead of being dropped by the browser's ink-saving default. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   /* Break only after page 1: a break after the last page would emit a
