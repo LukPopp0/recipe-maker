@@ -29,6 +29,11 @@ describe('buildUrlIngestionPrompt', () => {
     expect(prompt).toMatch(/more than 6/);
   });
 
+  it('instructs to merge preparation-only duplicate ingredients', () => {
+    expect(prompt).toMatch(/Merge ingredients that name the same item/);
+    expect(prompt).toMatch(/Do NOT merge/);
+  });
+
   it('instructs on the 600-char step_description limit', () => {
     expect(prompt).toMatch(/600 characters/);
   });

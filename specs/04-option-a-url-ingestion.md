@@ -39,6 +39,9 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
      present) back to Gemini in a retry prompt.
 8. Post-process and validate:
    - pantry split.
+   - ingredient dedupe: merge near-duplicates differing only by preparation
+     words (e.g. "sliced green onions" + "green onions"), keeping the first
+     name/amount and recording a warning; runs before image matching.
    - tags normalization.
    - step compaction.
    - step_description length clamp to 600 chars.
@@ -50,6 +53,8 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 ## Gemini Prompting Requirements
 - Enforce output fields exactly.
 - Instruct model to preserve ingredient ordering.
+- Instruct model to merge ingredients differing only by preparation words into
+  one entry, but never merge items differing in identity.
 - Instruct model to summarize/merge steps only when count > 6.
 - Instruct model to shorten step description per step to below 600 characters if this number is exceeded.
 - Instruct model to route fixed pantry-list items into pantry_items and exclude them from ingredients.

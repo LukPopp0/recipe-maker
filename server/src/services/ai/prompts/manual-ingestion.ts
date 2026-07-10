@@ -32,6 +32,10 @@ ${MANUAL_RECIPE_SHAPE}
 
 Rules:
 - Preserve the original ingredient order exactly as it appears in the source content.
+- Merge ingredients that name the same item and differ only by preparation words
+  (sliced, chopped, diced, minced, grated, fresh, ground, etc.) into a single entry, and
+  combine their amounts when they can be sensibly combined. Do NOT merge ingredients that
+  differ in identity (e.g. "red onion" vs "onion", "green onion" vs "onion").
 - Preserve the sequence and core meaning of the user's steps - do not reorder, invent, or drop steps.
 - The "steps" array must have at most 6 entries. Only merge or summarize steps if the
   source has more than 6 steps; otherwise leave the step count as extracted - do not

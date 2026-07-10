@@ -172,6 +172,42 @@ describe('applyPostProcessing', () => {
     expect(calls[0].map((i) => i.name)).toEqual(['Chicken']);
   });
 
+  it('dedupes near-duplicate ingredients before matching and records a warning', async () => {
+    const candidate: RawRecipeCandidate = {
+      title: 'Stir Fry',
+      tags: [],
+      time: null,
+      ingredients: [
+        { name: 'sliced green onions', amount_text: '2' },
+        { name: 'green onions', amount_text: '3' },
+        { name: 'Chicken', amount_text: '1' },
+      ],
+      pantry_items: [],
+      main_image: 'https://example.com/stirfry.jpg',
+      steps: [{ step_header: 'H', step_description: 'desc' }],
+      metadata: { source_type: 'url', language: 'en', warnings: [] },
+    };
+
+    const { matcher, calls } = makeFakeMatcher({
+      ingredients: [
+        { name: 'sliced green onions', amount_text: '2', image: 'onion.png' },
+        { name: 'Chicken', amount_text: '1', image: 'chicken.png' },
+      ],
+      warnings: [],
+    });
+
+    const result = await applyPostProcessing(candidate, {
+      defaultMainImageUrl: DEFAULT_IMAGE,
+      ingredientImageMatcher: matcher,
+    });
+
+    // Matcher sees the collapsed list (no duplicate green onions).
+    expect(calls[0].map((i) => i.name)).toEqual(['sliced green onions', 'Chicken']);
+    // Dedupe warning surfaces in metadata for the review UI.
+    expect(result.metadata.warnings).toHaveLength(1);
+    expect(result.metadata.warnings[0]).toContain('green onions');
+  });
+
   it('does not call the matcher when there are no non-pantry ingredients', async () => {
     const candidate: RawRecipeCandidate = {
       title: 'Empty',

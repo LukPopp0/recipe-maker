@@ -31,6 +31,11 @@ describe('buildManualIngestionPrompt', () => {
     expect(prompt).toMatch(/do not reorder, invent, or drop steps/i);
   });
 
+  it('instructs to merge preparation-only duplicate ingredients', () => {
+    expect(prompt).toMatch(/Merge ingredients that name the same item/);
+    expect(prompt).toMatch(/Do NOT merge/);
+  });
+
   it('sets metadata.source_type to manual instruction', () => {
     expect(prompt).toMatch(/"metadata\.source_type" to "manual"/);
   });
