@@ -560,17 +560,13 @@ section of `specs/10-recipe-card-renderer.md` and
 - Critical modules covered by tests.
 - Known failures handled with actionable messages.
 
-### Known Follow-ups (from final branch review, not blocking)
-- Manual ingestion overrides `metadata.source_type` to `manual`
-  (`server/src/routes/ingest.ts`) but does not strip a hallucinated
-  `metadata.source_url` from the Gemini candidate, so a bogus URL can leak into
-  a manual recipe. Fixing this must also update the two manual golden fixtures
-  (`server/src/test-support/fixtures/expected/manual-*.json`), which faithfully
-  capture the current behavior.
-- The rate limiter's in-memory `Map` never evicts stale keys
-  (`server/src/middleware/rate-limit.ts`). Fine single-user/local (one shared
-  `local` bucket); add lazy eviction on window rollover if ever deployed behind
-  a proxy with many client IPs.
+### Known Follow-ups (from final branch review; both resolved post-merge)
+- [Resolved] Manual ingestion now strips a hallucinated `metadata.source_url`
+  alongside forcing `source_type: 'manual'` (`server/src/routes/ingest.ts`);
+  the two manual golden fixtures were updated to match.
+- [Resolved] The rate limiter lazily evicts expired buckets on window rollover
+  (`server/src/middleware/rate-limit.ts`), so stale per-IP keys no longer
+  accumulate behind a proxy.
 
 ## Phase 9: PDF Generation Upgrade (Future, Post-Milestone 2)
 
