@@ -130,14 +130,18 @@ export function createIngestApp(deps: IngestDeps) {
     });
 
     // 4. Deterministic post-processing -> schema-valid canonical recipe.
-    //    metadata.source_type is forced to 'manual' server-side, never
-    //    trusted from the model's output, since a hallucinated 'url' value
-    //    must never leak through.
+    //    metadata.source_type is forced to 'manual' and source_url is
+    //    stripped server-side, never trusted from the model's output:
+    //    manual input has no source URL, so any value is hallucinated.
     const postProcessStart = Date.now();
     const canonical = await applyPostProcessing(
       {
         ...recipeCandidate,
-        metadata: { ...recipeCandidate.metadata, source_type: 'manual' },
+        metadata: {
+          ...recipeCandidate.metadata,
+          source_type: 'manual',
+          source_url: undefined,
+        },
       } as RawRecipeCandidate,
       { defaultMainImageUrl, ingredientImageMatcher },
     );

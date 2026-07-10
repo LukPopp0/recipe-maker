@@ -337,9 +337,11 @@ describe('POST /api/ingest/manual golden fixtures', () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(CanonicalRecipeSchema.safeParse(body.recipe).success).toBe(true);
-    // metadata.source_type is forced to 'manual' server-side, never trusting
-    // MANUAL_CANDIDATE's deliberately hallucinated 'url' value.
+    // metadata.source_type is forced to 'manual' server-side and a
+    // hallucinated source_url is stripped, never trusting MANUAL_CANDIDATE's
+    // deliberately wrong values.
     expect(body.recipe.metadata.source_type).toBe('manual');
+    expect(body.recipe.metadata.source_url).toBeUndefined();
 
     const normalized = normalizeManualResponseBody(body);
     expect(normalized).toEqual(EXPECTED_MANUAL_WITH_IMAGES);
@@ -365,6 +367,7 @@ describe('POST /api/ingest/manual golden fixtures', () => {
     expect(body.ok).toBe(true);
     expect(CanonicalRecipeSchema.safeParse(body.recipe).success).toBe(true);
     expect(body.recipe.metadata.source_type).toBe('manual');
+    expect(body.recipe.metadata.source_url).toBeUndefined();
     expect(body.recipe.steps.every((step) => step.image === undefined)).toBe(true);
 
     const normalized = normalizeManualResponseBody(body);
