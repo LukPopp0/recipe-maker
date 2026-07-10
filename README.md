@@ -5,7 +5,7 @@ Ingests recipes (URL or manual text+images) via Gemini, normalizes them into a c
 ## Prerequisites
 
 - Node.js 22 or newer
-- pnpm 9 (the repo pins `pnpm@9.14.2` via the `packageManager` field, so `corepack enable` is enough to get the right version)
+- pnpm 11 (the repo pins `pnpm@11.11.0` via the `packageManager` field, so `corepack enable` is enough to get the right version)
 - A Gemini API key (free tier works): create a project at [aistudio.google.com](https://aistudio.google.com), then generate an API key
 
 ## Getting Started
