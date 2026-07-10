@@ -64,4 +64,28 @@ describe('createRateLimiter', () => {
     expect(clientA2.status).toBe(429);
     expect(clientB1.status).toBe(200);
   });
+
+  it('evicts stale buckets from other keys when a window rolls over', async () => {
+    let now = 0;
+    const limiter = createRateLimiter({ max: 1, windowMs: 1000, now: () => now });
+
+    const app = new Hono<{ Variables: AppVariables }>();
+    app.use('*', async (c, next) => {
+      c.set('requestId', 'test-request-id');
+      await next();
+    });
+    app.use('*', limiter);
+    app.get('/ping', (c) => c.json({ ok: true }));
+    app.onError(errorHandler);
+
+    await app.request('/ping', { headers: { 'x-forwarded-for': '1.1.1.1' } });
+    await app.request('/ping', { headers: { 'x-forwarded-for': '2.2.2.2' } });
+    expect(limiter.bucketCount()).toBe(2);
+
+    // Past the window: the next request (a fresh key) sweeps expired buckets
+    // instead of letting them accumulate forever.
+    now += 1000;
+    await app.request('/ping', { headers: { 'x-forwarded-for': '3.3.3.3' } });
+    expect(limiter.bucketCount()).toBe(1);
+  });
 });
