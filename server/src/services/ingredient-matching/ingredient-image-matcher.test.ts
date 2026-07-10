@@ -202,4 +202,110 @@ describe('createIngredientImageMatcher', () => {
     expect(result.warnings).toHaveLength(1);
     expect(result.ingredients.every((ing) => ing.image === INGREDIENT_NOT_FOUND_IMAGE)).toBe(true);
   });
+
+  describe('attempt diagnostics (phase 8.5 item 9)', () => {
+    // Parse the JSON diagnostic lines the matcher logs to console.log,
+    // ignoring any non-JSON output.
+    function collectImageMatchLogs(spy: ReturnType<typeof vi.spyOn>): Record<string, unknown>[] {
+      return (spy.mock.calls as unknown[][])
+        .map((call) => call[0])
+        .filter((arg): arg is string => typeof arg === 'string')
+        .map((line): Record<string, unknown> | null => {
+          try {
+            return JSON.parse(line) as Record<string, unknown>;
+          } catch {
+            return null;
+          }
+        })
+        .filter((obj): obj is Record<string, unknown> => obj !== null && obj.stage === 'image-match');
+    }
+
+    it('logs an ok line naming the model on the happy path', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const config = makeGeminiConfig();
+      const geminiClient = fakeGeminiClient(async () => [
+        { name: 'Onions', amount_text: '2', image: 'onion.png' },
+        { name: 'Tomato Sauce', amount_text: '400g', unit: 'g', image: 'tomato.png' },
+        { name: 'Ground Beef', amount_text: '1 lb', unit: 'lbs', image: 'beef.png' },
+      ]);
+      const matcher = createIngredientImageMatcher({ geminiClient, geminiConfig: config, catalog: CATALOG });
+
+      await matcher.matchIngredientImages(INPUT);
+
+      const logs = collectImageMatchLogs(spy);
+      expect(logs).toEqual([{ stage: 'image-match', model: config.primaryModel, outcome: 'ok', count: 3 }]);
+      spy.mockRestore();
+    });
+
+    it('logs reason "length-mismatch" with expected/actual on a short response, then ok on retry', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const config = makeGeminiConfig();
+      const generateCanonicalRecipe = vi
+        .fn()
+        .mockResolvedValueOnce([
+          { name: 'Onions', amount_text: '2', image: 'onion.png' },
+          { name: 'Tomato Sauce', amount_text: '400g', unit: 'g', image: 'tomato.png' },
+        ])
+        .mockResolvedValueOnce([
+          { name: 'Onions', amount_text: '2', image: 'onion.png' },
+          { name: 'Tomato Sauce', amount_text: '400g', unit: 'g', image: 'tomato.png' },
+          { name: 'Ground Beef', amount_text: '1 lb', unit: 'lbs', image: 'beef.png' },
+        ]);
+      const matcher = createIngredientImageMatcher({
+        geminiClient: { generateCanonicalRecipe },
+        geminiConfig: config,
+        catalog: CATALOG,
+      });
+
+      await matcher.matchIngredientImages(INPUT);
+
+      const logs = collectImageMatchLogs(spy);
+      expect(logs[0]).toEqual({
+        stage: 'image-match',
+        model: config.primaryModel,
+        outcome: 'error',
+        reason: 'length-mismatch',
+        expectedLength: 3,
+        actualLength: 2,
+      });
+      expect(logs[1]).toMatchObject({ model: config.retryModel, outcome: 'ok', count: 3 });
+      spy.mockRestore();
+    });
+
+    it('logs reason "schema" with a raw snippet on a malformed response', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const generateCanonicalRecipe = vi.fn().mockResolvedValue({ foo: 'bar' });
+      const matcher = createIngredientImageMatcher({
+        geminiClient: { generateCanonicalRecipe },
+        geminiConfig: makeGeminiConfig(),
+        catalog: CATALOG,
+      });
+
+      await matcher.matchIngredientImages(INPUT);
+
+      const logs = collectImageMatchLogs(spy);
+      expect(logs.every((l) => l.reason === 'schema')).toBe(true);
+      expect(logs[0]).toMatchObject({ outcome: 'error', reason: 'schema', rawSnippet: '{"foo":"bar"}' });
+      spy.mockRestore();
+    });
+
+    it('logs reason "transport" with the AppError code when the client throws', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const generateCanonicalRecipe = vi
+        .fn()
+        .mockRejectedValue(new AppError('AI_NORMALIZATION_FAILED', 'boom'));
+      const matcher = createIngredientImageMatcher({
+        geminiClient: { generateCanonicalRecipe },
+        geminiConfig: makeGeminiConfig(),
+        catalog: CATALOG,
+      });
+
+      await matcher.matchIngredientImages(INPUT);
+
+      const logs = collectImageMatchLogs(spy);
+      expect(logs.every((l) => l.reason === 'transport')).toBe(true);
+      expect(logs[0]).toMatchObject({ outcome: 'error', reason: 'transport', errorCode: 'AI_NORMALIZATION_FAILED' });
+      spy.mockRestore();
+    });
+  });
 });
