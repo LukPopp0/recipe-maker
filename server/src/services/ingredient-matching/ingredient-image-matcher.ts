@@ -6,9 +6,13 @@ import type { RawIngredient } from '../post-processing/index.js';
 import { AppError } from '../../lib/errors.js';
 import { INGREDIENT_NOT_FOUND_IMAGE, type IngredientCatalog } from './catalog.js';
 
+// Only name + image are consumed from the match response. amount_text/unit
+// are accepted but ignored - the matching model's job is image selection, and
+// trusting it to re-transcribe amounts made it hallucinate ("not specified")
+// and drop units. Amounts/units are preserved from the extraction input below.
 const matchEntrySchema = z.object({
   name: z.string().trim().min(1),
-  amount_text: z.string().trim().min(1),
+  amount_text: z.string().optional(),
   unit: z.string().optional(),
   image: z.string().min(1),
 });
@@ -158,13 +162,12 @@ export function createIngredientImageMatcher(
           warnings.push(`No image match found for ingredient '${entry.name}'.`);
         }
 
+        // Keep amount_text, amount_value, and unit from the extraction input
+        // (spread); take only the title-cased name and the matched image from
+        // the model response.
         return {
           ...ingredients[index],
           name: entry.name,
-          amount_text: entry.amount_text,
-          // Intentional overwrite: re-normalized unit from the model response,
-          // including when the model omits it (dropped deliberately).
-          unit: entry.unit,
           image,
         };
       });

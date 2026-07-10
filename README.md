@@ -25,12 +25,13 @@ Ingests recipes (URL or manual text+images) via Gemini, normalizes them into a c
 
    Without a real key, all routes except `POST /api/ingest/url` and `POST /api/ingest/manual` still work, and the test suite runs fully (tests mock the Gemini client and network calls).
 
-3. Start both dev servers in two terminals:
+3. Start both dev servers with one command:
 
    ```bash
-   pnpm --filter server run dev   # backend on port 8787 (PORT from server/.env)
-   pnpm dev                       # Vite dev server for the frontend
+   pnpm dev   # regenerates the manifest, then runs web + server in parallel
    ```
+
+   This runs the `web` Vite dev server and the `server` backend (port 8787, `PORT` from `server/.env`) together; the server loads `server/.env` via its own `--env-file`. To run just one, use `pnpm --filter web run dev` or `pnpm --filter server run dev`.
 
    Vite proxies `/api`, `/images`, and `/ingredient-images` to `http://localhost:8787`, so no CORS setup is needed. Open the printed Vite URL in your browser.
 
@@ -53,7 +54,7 @@ This is a pnpm workspace with three sibling packages:
 
 ## Scripts
 
-- `pnpm dev` - regenerate the ingredient manifest, then start the `web` Vite dev server.
+- `pnpm dev` - regenerate the ingredient manifest, then start the `web` Vite dev server and the `server` backend in parallel.
 - `pnpm build` - regenerate the ingredient manifest, then build all workspace packages.
 - `pnpm lint` - run ESLint across all workspace packages (`pnpm -r run lint`).
 - `pnpm test` - run tests across all workspace packages (`pnpm -r run test`).

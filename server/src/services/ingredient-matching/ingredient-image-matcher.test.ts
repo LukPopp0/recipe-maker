@@ -45,11 +45,11 @@ describe('createIngredientImageMatcher', () => {
     expect(generateCanonicalRecipe).not.toHaveBeenCalled();
   });
 
-  it('matches all ingredients on the happy path, preserving amount_value by index', async () => {
+  it('matches all ingredients on the happy path, keeping amounts/units from input and name/image from the model', async () => {
     const geminiClient = fakeGeminiClient(async () => [
-      { name: 'Onions', amount_text: '2', unit: undefined, image: 'onion.png' },
-      { name: 'Tomato Sauce', amount_text: '400g', unit: 'g', image: 'tomato.png' },
-      { name: 'Ground Beef', amount_text: '1 lb', unit: 'lbs', image: 'beef.png' },
+      { name: 'Onions', image: 'onion.png' },
+      { name: 'Tomato Sauce', image: 'tomato.png' },
+      { name: 'Ground Beef', image: 'beef.png' },
     ]);
     const matcher = createIngredientImageMatcher({
       geminiClient,
@@ -60,12 +60,55 @@ describe('createIngredientImageMatcher', () => {
     const result = await matcher.matchIngredientImages(INPUT);
 
     expect(result.warnings).toEqual([]);
+    // name + image from the model; amount_text/amount_value/unit preserved from INPUT.
     expect(result.ingredients).toEqual([
-      { name: 'Onions', amount_text: '2', amount_value: 2, unit: undefined, image: 'onion.png' },
+      { name: 'Onions', amount_text: '2', amount_value: 2, image: 'onion.png' },
       { name: 'Tomato Sauce', amount_text: '400g', amount_value: 400, unit: 'g', image: 'tomato.png' },
-      { name: 'Ground Beef', amount_text: '1 lb', amount_value: 1, unit: 'lbs', image: 'beef.png' },
+      { name: 'Ground Beef', amount_text: '1 lb', amount_value: 1, unit: 'lb', image: 'beef.png' },
     ]);
     expect(geminiClient.generateCanonicalRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores amounts/units the model echoes, keeping the extraction values (e.g. "not specified")', async () => {
+    // Regression: the matcher used to overwrite amount_text/unit with the
+    // model echo, which hallucinated "not specified" and dropped units.
+    const geminiClient = fakeGeminiClient(async () => [
+      { name: 'Onions', amount_text: 'not specified', image: 'onion.png' },
+      { name: 'Tomato Sauce', amount_text: 'not specified', image: 'tomato.png' },
+      { name: 'Ground Beef', amount_text: 'not specified', image: 'beef.png' },
+    ]);
+    const matcher = createIngredientImageMatcher({
+      geminiClient,
+      geminiConfig: makeGeminiConfig(),
+      catalog: CATALOG,
+    });
+
+    const result = await matcher.matchIngredientImages(INPUT);
+
+    expect(result.ingredients.map((i) => i.amount_text)).toEqual(['2', '400g', '1 lb']);
+    expect(result.ingredients.map((i) => i.unit)).toEqual([undefined, 'g', 'lb']);
+  });
+
+  it('does not degrade the batch when an input ingredient has an empty amount', async () => {
+    const input: RawIngredient[] = [
+      { name: 'onions', amount_text: '2', amount_value: 2 },
+      { name: 'cilantro', amount_text: '' },
+    ];
+    const geminiClient = fakeGeminiClient(async () => [
+      { name: 'Onions', image: 'onion.png' },
+      { name: 'Cilantro', image: INGREDIENT_NOT_FOUND_IMAGE },
+    ]);
+    const matcher = createIngredientImageMatcher({
+      geminiClient,
+      geminiConfig: makeGeminiConfig(),
+      catalog: CATALOG,
+    });
+
+    const result = await matcher.matchIngredientImages(input);
+
+    expect(geminiClient.generateCanonicalRecipe).toHaveBeenCalledTimes(1);
+    expect(result.ingredients[0].image).toBe('onion.png');
+    expect(result.ingredients[1]).toEqual({ name: 'Cilantro', amount_text: '', image: INGREDIENT_NOT_FOUND_IMAGE });
   });
 
   it('coerces a non-catalog filename to INGREDIENT_NOT_FOUND.png and warns naming the ingredient', async () => {
@@ -96,7 +139,8 @@ describe('createIngredientImageMatcher', () => {
       name: 'Ground Beef',
       amount_text: '1 lb',
       amount_value: 1,
-      unit: 'lbs',
+      // unit comes from INPUT ('lb'), not the model echo ('lbs').
+      unit: 'lb',
       image: 'beef.png',
     });
   });

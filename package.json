@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.11.0",
   "scripts": {
     "postinstall": "pnpm --filter shared run generate:manifest",
-    "dev": "pnpm --filter shared run generate:manifest && pnpm --filter web run dev",
+    "dev": "pnpm --filter shared run generate:manifest && pnpm --parallel --filter web --filter server run dev",
     "build": "pnpm --filter shared run generate:manifest && pnpm -r run build",
     "lint": "pnpm -r run lint",
     "lint:fix": "pnpm -r run lint:fix",

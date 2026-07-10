@@ -83,6 +83,18 @@ function passesStructuralPreCheck(candidate: unknown): boolean {
   return hasTitle && hasIngredient && hasStep;
 }
 
+// A JSON-LD Recipe node only counts as "complete enough" to skip the browser
+// fallback when it actually carries ingredients. Some sites (RSC/SPA recipe
+// apps like recime.app) embed a recipeIngredient-less Recipe node - steps,
+// times, image only - and render the ingredient list (with amounts) purely
+// client-side. Treating that as sufficient loses every amount, so a node
+// without ingredients must not suppress the render fallback.
+function jsonLdHasIngredients(node: Record<string, unknown> | null): boolean {
+  if (!node) return false;
+  const ingredients = node['recipeIngredient'];
+  return Array.isArray(ingredients) && ingredients.some((entry) => typeof entry === 'string' && entry.trim().length > 0);
+}
+
 // Runs a Gemini extraction call, swallowing any thrown error into `null` so
 // the caller can decide whether to retry - a thrown error here (e.g.
 // AI_NORMALIZATION_FAILED from a timeout or unparseable JSON) is just
@@ -139,11 +151,16 @@ export async function runUrlIngestionPipeline({
   let fetchMode: UrlIngestionFetchMode = 'static';
   let cleaned = cleanHtmlForExtraction(activeHtml, geminiConfig.tokenBudget, effectiveUrl);
 
-  // Browser fallback: only when the static HTML has neither JSON-LD nor
-  // enough visible text to plausibly be a recipe page (client-side-rendered
-  // shell). A page with JSON-LD never needs rendering.
+  // Browser fallback triggers when the static HTML is a client-side-rendered
+  // shell (no JSON-LD and thin visible text) OR when JSON-LD is present but
+  // carries no ingredients - the amounts are then almost certainly rendered
+  // client-side and only a real browser will surface them. The isRicher guard
+  // below still keeps the static result unless the render is actually fuller,
+  // so a genuinely server-rendered ingredient-less page is not regressed.
+  const jsonLdMissingIngredients = cleaned.recipeJsonLd !== null && !jsonLdHasIngredients(cleaned.recipeJsonLd);
   const looksLikeJsShell =
-    !cleaned.recipeJsonLd && cleaned.cleanedText.trim().length < BROWSER_FALLBACK_MIN_CHARS;
+    (!cleaned.recipeJsonLd && cleaned.cleanedText.trim().length < BROWSER_FALLBACK_MIN_CHARS) ||
+    jsonLdMissingIngredients;
 
   if (looksLikeJsShell && resolvedEnv.BROWSER_FALLBACK_ENABLED) {
     const rendered = await browserFetcher.fetchWithBrowser(parsedUrl, {

@@ -20,16 +20,19 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
      wrappers, and @type given as an array.
    - Cleaned visible text fills the remaining character budget after JSON-LD.
 5. Headless-browser fallback (Playwright/Chromium, full JS execution) when the
-   static HTML has neither JSON-LD nor enough visible text to plausibly be a
-   recipe page (client-side-rendered shell):
+   static HTML is a client-side-rendered shell (no JSON-LD and not enough
+   visible text) OR when JSON-LD is present but carries no recipeIngredient
+   (RSC/SPA recipe apps embed steps/times in JSON-LD but render the ingredient
+   list with amounts client-side):
    - re-fetches the page with a real browser, re-extracts, and uses the
-     richer result.
+     richer result (kept only when actually fuller than the static result).
    - SSRF guardrails preserved via request interception: every request the
      page makes (navigation, redirects, subresources, XHR) is host-checked
      against the same blocklist as the static path.
    - configurable via BROWSER_FALLBACK_ENABLED / BROWSER_FETCH_TIMEOUT_MS;
      requires a one-time `playwright install chromium`.
-   - a page with JSON-LD never triggers the fallback.
+   - a page with ingredient-bearing JSON-LD never triggers the fallback;
+     ingredient-less JSON-LD does.
 6. Invoke Gemini extraction and normalization as the primary path:
    - provide URL, JSON-LD (when present, marked authoritative), and cleaned
      page content/context.
@@ -60,6 +63,9 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
   metadata lists them, and never summing unrelated durations.
 - Instruct model to merge ingredients differing only by preparation words into
   one entry, but never merge items differing in identity.
+- Instruct model to emit "unit" in short form (pounds -> lbs, tablespoons -> tbsp,
+  etc.), keeping "amount_text" as the source amount. Amounts/units are owned by
+  extraction; the image matcher no longer transcribes them.
 - Instruct model to summarize/merge steps only when count > 6.
 - Instruct model to shorten step description per step to below 600 characters if this number is exceeded.
 - Instruct model to route fixed pantry-list items into pantry_items and exclude them from ingredients.

@@ -42,6 +42,10 @@ describe('buildUrlIngestionPrompt', () => {
     expect(prompt).toMatch(/use the upper bound/i);
   });
 
+  it('instructs to emit units in short form', () => {
+    expect(prompt).toMatch(/tablespoons -> tbsp/i);
+  });
+
   it('instructs to preserve ingredient order', () => {
     expect(prompt).toMatch(/preserve the original ingredient order/i);
   });

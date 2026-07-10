@@ -35,6 +35,10 @@ describe('buildManualIngestionPrompt', () => {
     expect(prompt).toMatch(/use the upper bound/i);
   });
 
+  it('instructs to emit units in short form', () => {
+    expect(prompt).toMatch(/tablespoons -> tbsp/i);
+  });
+
   it('instructs to merge preparation-only duplicate ingredients', () => {
     expect(prompt).toMatch(/Merge ingredients that name the same item/);
     expect(prompt).toMatch(/Do NOT merge/);

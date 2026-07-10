@@ -36,6 +36,8 @@ Rules:
   (sliced, chopped, diced, minced, grated, fresh, ground, etc.) into a single entry, and
   combine their amounts when they can be sensibly combined. Do NOT merge ingredients that
   differ in identity (e.g. "red onion" vs "onion", "green onion" vs "onion").
+- For "unit", use the short form: pounds -> lbs, tablespoons -> tbsp, teaspoons -> tsp,
+  ounces -> oz, grams -> g, milliliters -> ml. Keep "amount_text" as the source amount.
 - Preserve the sequence and core meaning of the user's steps - do not reorder, invent, or drop steps.
 - For "time", give the active hands-on time in minutes (prep plus cooking). For a range
   like "30 minutes to 1 hour" use the upper bound (60). EXCLUDE long passive/unattended

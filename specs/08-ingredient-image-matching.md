@@ -8,11 +8,14 @@ Use Gemini to normalize recipe ingredients and map each ingredient to the best m
 - Asset filenames from the ingredient library (the committed manifest generated from shared/assets/ingredients, including INGREDIENT_NOT_FOUND.png).
 
 ## Output
-Gemini must return a normalized ingredient list where each ingredient includes:
+Gemini returns one entry per input ingredient (same length and order) with only:
 - name: normalized display name in title case.
-- amount_text: normalized amount string.
-- unit: short unit format when applicable.
 - image: matched asset filename (including extension).
+
+amount_text, amount_value, and unit are NOT requested from or trusted to the
+matching model: they are preserved from the extraction result. Trusting the
+matcher to re-transcribe amounts made it hallucinate values ("not specified")
+and drop units, so it now receives only names and returns only name + image.
 
 If no image can be matched, image must be set to INGREDIENT_NOT_FOUND.png.
 
@@ -28,11 +31,12 @@ serving of ingredient assets is deferred to Phase 5.
    - ingredient-image catalog,
    - normalization and matching instructions,
    - canonical response schema.
-3. Gemini normalizes ingredient names and units, then assigns image filenames.
+3. Gemini normalizes ingredient names and assigns image filenames (amounts/units
+   are not sent to the model).
 4. Backend validates Gemini output:
    - image filename exists in catalog or equals INGREDIENT_NOT_FOUND.png,
-   - name and amount_text are non-empty,
-   - output conforms to canonical schema.
+   - name is non-empty,
+   - output conforms to the match-entry schema (name + image; amount/unit ignored).
 
 ## Normalization Rules for Gemini
 1. Ingredient names must be title case.
@@ -41,14 +45,10 @@ serving of ingredient assets is deferred to Phase 5.
    - Example: medium avocado, cubed -> Medium Avocado
 3. Keep product-form identity in name when the ingredient is sold in that form.
    - Example: can of crushed tomatoes -> Crushed Tomatoes
-4. Normalize units to short forms where possible:
-   - pounds -> lbs
-   - tablespoons -> tbsp
-   - teaspoons -> tsp
-   - ounces -> oz
-   - grams -> g
-   - milliliters -> ml
-5. Preserve ingredient order from source recipe.
+4. Preserve ingredient order from source recipe.
+
+Unit short-form normalization (pounds -> lbs, tablespoons -> tbsp, etc.) happens
+at extraction (spec 04), not here - the matcher no longer receives or returns units.
 
 ## Matching Rules for Gemini
 1. Choose the closest semantic asset filename from the provided catalog.

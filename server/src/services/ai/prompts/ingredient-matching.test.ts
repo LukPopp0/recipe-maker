@@ -36,8 +36,9 @@ describe('buildIngredientMatchingPrompt', () => {
     expect(prompt).toMatch(/same order|preserve.*order|order exactly/i);
   });
 
-  it('instructs a unit-shortening rule', () => {
-    expect(prompt).toMatch(/tablespoons.*tbsp/i);
+  it('does not request amounts or units in the output', () => {
+    expect(prompt).toMatch(/do not output amounts or units/i);
+    expect(prompt).not.toContain('amount_text');
   });
 
   it('ends with the standard closing instruction', () => {

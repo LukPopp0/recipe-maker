@@ -239,6 +239,34 @@ describe('runUrlIngestionPipeline', () => {
       expect(result.diagnostics.usedJsonLd).toBe(true);
     });
 
+    it('uses the browser fallback when JSON-LD is present but carries no ingredients', async () => {
+      // recime.app-style page: authoritative JSON-LD has steps/times but no
+      // recipeIngredient, so amounts live only in the client-rendered DOM.
+      const noIngredientsJsonLd = {
+        '@type': 'Recipe',
+        name: 'Dumpling Lasagna',
+        recipeInstructions: [{ '@type': 'HowToStep', text: 'Layer and steam.' }],
+      };
+      const staticNoIngredients = `<html><head><title>Dumpling Lasagna</title>
+        <script type="application/ld+json">${JSON.stringify(noIngredientsJsonLd)}</script></head>
+        <body><div id="root"></div></body></html>`;
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(staticNoIngredients));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(RENDERED_HTML);
+      const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+      const result = await runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        env: FALLBACK_ENV,
+        browserFetcher: fetcher,
+        requestId: 'req-8b',
+      });
+
+      expect(fetchWithBrowser).toHaveBeenCalledTimes(1);
+      expect(result.diagnostics.fetchMode).toBe('browser');
+    });
+
     it('skips the browser fallback when the static page has enough visible text', async () => {
       const richHtml = `<html><body><article><p>${'Real recipe content. '.repeat(50)}</p></article></body></html>`;
       globalThis.fetch = vi.fn().mockResolvedValue(new Response(richHtml));
