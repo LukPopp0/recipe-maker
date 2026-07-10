@@ -50,21 +50,21 @@ export function RecipeDetail({
   return (
     <div className="recipe-detail">
       <div className="recipe-detail-toolbar">
-        <button type="button" onClick={onBack}>
+        <button type="button" className="btn btn-ghost" onClick={onBack}>
           Back to Library
         </button>
         {status.phase === 'loaded' ? (
           <>
-            <button type="button" onClick={() => onOpenInCreate(status.recipe)}>
+            <button type="button" className="btn btn-secondary" onClick={() => onOpenInCreate(status.recipe)}>
               Open in Create
             </button>
-            <button type="button" onClick={() => setShowCard(true)}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowCard(true)}>
               View as Card
             </button>
-            <a href={`/api/recipe/download/${encodeURIComponent(id)}`} download>
+            <a className="btn btn-ghost" href={`/api/recipe/download/${encodeURIComponent(id)}`} download>
               Download
             </a>
-            <button type="button" onClick={() => onDelete(id)}>
+            <button type="button" className="btn btn-danger" onClick={() => onDelete(id)}>
               Delete
             </button>
           </>
@@ -80,7 +80,7 @@ export function RecipeDetail({
       {status.phase === 'loaded' ? (
         <>
           <ReviewPanel recipe={status.recipe} diagnostics={null} readOnly />
-          <JsonPanel recipe={status.recipe} readOnly />
+          <JsonPanel recipe={status.recipe} />
         </>
       ) : null}
     </div>

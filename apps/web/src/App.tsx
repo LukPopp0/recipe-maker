@@ -5,6 +5,7 @@ import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-typ
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
 import { JsonPanel } from './components/json/JsonPanel.tsx';
+import { ActionTray } from './components/ActionTray.tsx';
 import { LibraryPanel } from './components/library/LibraryPanel.tsx';
 import { CardView } from './components/card/CardView.tsx';
 
@@ -26,10 +27,23 @@ function statusLabel(state: WorkspaceRecipeState): string {
   return 'Recipe loaded';
 }
 
+function statusVariant(state: WorkspaceRecipeState): string {
+  if (!state) return 'idle';
+  if (state.savedId && !state.dirty) return 'saved';
+  if (state.dirty) return 'dirty';
+  return 'loaded';
+}
+
 function App() {
   const [view, setView] = useState<WorkspaceView>('create');
   const [recipeState, setRecipeState] = useState<WorkspaceRecipeState>(null);
   const [showCardPreview, setShowCardPreview] = useState(false);
+  // Wizard flow (phase 8.5 item 11): the Input stage collapses to a slim row
+  // once a recipe arrives, and the JSON stage is a drawer, closed by default.
+  // Collapsed/closed stages stay mounted (hidden attr) so form state survives
+  // reopening; headings stay in the DOM for the panel-visibility tests.
+  const [inputCollapsed, setInputCollapsed] = useState(false);
+  const [jsonOpen, setJsonOpen] = useState(false);
 
   // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any
   // unsaved edits, so confirm first when the current state is dirty (plan
@@ -44,6 +58,7 @@ function App() {
       }
       setRecipeState({ recipe, diagnostics, savedId: null, dirty: false });
       setShowCardPreview(false);
+      setInputCollapsed(true);
       return true;
     },
     [recipeState],
@@ -57,6 +72,7 @@ function App() {
   const handleExtractStart = useCallback(() => {
     setRecipeState(null);
     setShowCardPreview(false);
+    setInputCollapsed(false);
   }, []);
 
   // Open in Create copies a saved recipe into the workspace (specs/13):
@@ -77,7 +93,7 @@ function App() {
     setRecipeState((prev) => (prev ? { ...prev, recipe, dirty: true, savedId: null } : prev));
   }, []);
 
-  // Only JsonPanel's explicit Save Recipe action calls this - it is the
+  // Only the ActionTray's explicit Save Recipe action calls this - it is the
   // single place that marks the workspace saved and clears dirty.
   const handleSaved = useCallback((id: string) => {
     setRecipeState((prev) => (prev ? { ...prev, savedId: id, dirty: false } : prev));
@@ -89,38 +105,58 @@ function App() {
     <main id="workspace-shell" className="workspace-shell">
       <header className="workspace-header">
         <h1>Recipe Maker</h1>
-        <span className="workspace-status">{statusLabel(recipeState)}</span>
+        <nav className="workspace-nav" aria-label="Primary">
+          <button
+            type="button"
+            className="workspace-nav-item"
+            aria-current={view === 'create' ? 'page' : undefined}
+            onClick={() => setView('create')}
+          >
+            Create
+          </button>
+          <button
+            type="button"
+            className="workspace-nav-item"
+            aria-current={view === 'library' ? 'page' : undefined}
+            onClick={() => setView('library')}
+          >
+            Library
+          </button>
+        </nav>
+        <span className={`workspace-status workspace-status--${statusVariant(recipeState)}`}>
+          {statusLabel(recipeState)}
+        </span>
       </header>
-
-      <nav className="workspace-nav" aria-label="Primary">
-        <button
-          type="button"
-          className="workspace-nav-item"
-          aria-current={view === 'create' ? 'page' : undefined}
-          onClick={() => setView('create')}
-        >
-          Create
-        </button>
-        <button
-          type="button"
-          className="workspace-nav-item"
-          aria-current={view === 'library' ? 'page' : undefined}
-          onClick={() => setView('library')}
-        >
-          Library
-        </button>
-      </nav>
 
       {/* inert (React 19) drops focus/AT exposure for hidden panels; opacity
           keeps them queryable-but-not-visible for the Task 7 test suite. */}
       <section
-        className="workspace-panel workspace-panel-input"
+        className={
+          inputCollapsed
+            ? 'workspace-panel workspace-panel-input workspace-panel-collapsed'
+            : 'workspace-panel workspace-panel-input'
+        }
         aria-labelledby="input-panel-heading"
         style={inCreate ? undefined : HIDDEN_PANEL_STYLE}
         inert={inCreate ? undefined : true}
       >
-        <h2 id="input-panel-heading">Input</h2>
-        <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} />
+        <div className="workspace-stage-header">
+          <span className="workspace-stage-number" aria-hidden="true">1</span>
+          <h2 id="input-panel-heading">Input</h2>
+          {recipeState ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm workspace-stage-toggle"
+              aria-expanded={!inputCollapsed}
+              onClick={() => setInputCollapsed((collapsed) => !collapsed)}
+            >
+              {inputCollapsed ? 'Edit input' : 'Collapse'}
+            </button>
+          ) : null}
+        </div>
+        <div hidden={inputCollapsed}>
+          <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} />
+        </div>
       </section>
 
       <section
@@ -129,7 +165,10 @@ function App() {
         style={inCreate ? undefined : HIDDEN_PANEL_STYLE}
         inert={inCreate ? undefined : true}
       >
-        <h2 id="review-panel-heading">Review</h2>
+        <div className="workspace-stage-header">
+          <span className="workspace-stage-number" aria-hidden="true">2</span>
+          <h2 id="review-panel-heading">Review</h2>
+        </div>
         {recipeState ? (
           <ReviewPanel
             recipe={recipeState.recipe}
@@ -137,7 +176,9 @@ function App() {
             onChange={handleRecipeChange}
           />
         ) : (
-          <p>No recipe loaded yet. Ingest a recipe or load a JSON file to get started.</p>
+          <p className="workspace-empty-note">
+            No recipe loaded yet. Ingest a recipe or load a JSON file to get started.
+          </p>
         )}
       </section>
 
@@ -147,19 +188,33 @@ function App() {
         style={inCreate ? undefined : HIDDEN_PANEL_STYLE}
         inert={inCreate ? undefined : true}
       >
-        <h2 id="json-panel-heading">JSON</h2>
-        {recipeState ? (
-          <JsonPanel
-            recipe={recipeState.recipe}
-            savedId={recipeState.savedId}
-            dirty={recipeState.dirty}
-            onSaved={handleSaved}
-            onPreviewCard={() => setShowCardPreview(true)}
-          />
-        ) : (
-          <p>Nothing to show yet - ingest or load a recipe first.</p>
-        )}
+        <div className="workspace-stage-header">
+          <span className="workspace-stage-number" aria-hidden="true">3</span>
+          <h2 id="json-panel-heading">JSON</h2>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm workspace-stage-toggle"
+            aria-expanded={jsonOpen}
+            onClick={() => setJsonOpen((open) => !open)}
+          >
+            {jsonOpen ? 'Hide JSON' : 'Show JSON'}
+          </button>
+        </div>
+        <div hidden={!jsonOpen}>
+          {recipeState ? (
+            <JsonPanel recipe={recipeState.recipe} />
+          ) : (
+            <p className="workspace-empty-note">Nothing to show yet - ingest or load a recipe first.</p>
+          )}
+        </div>
       </section>
+
+      <ActionTray
+        recipeState={recipeState}
+        visible={inCreate}
+        onSaved={handleSaved}
+        onPreviewCard={() => setShowCardPreview(true)}
+      />
 
       {view === 'library' ? (
         <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">

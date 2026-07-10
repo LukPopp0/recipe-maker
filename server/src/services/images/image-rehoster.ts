@@ -1,6 +1,5 @@
 import type { CanonicalRecipe } from 'shared';
-import { AppError } from '../../lib/errors.js';
-import { readBodyBytesWithLimit, resolveAndCheckHost, validateUrlSyntax } from '../url-ingestion/url-security.js';
+import { fetchAndStoreRemoteImage } from './remote-image-fetcher.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 
 // MIME types permitted for re-hosted images per specs/06.
@@ -9,12 +8,6 @@ export const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
 };
-
-// Default hard timeout for downloading main_image, mirroring the spirit of
-// URL_FETCH_TIMEOUT_MS's default (env.ts) for the page fetch. Callers should
-// pass env.URL_FETCH_TIMEOUT_MS explicitly where available; this is only the
-// fallback when timeoutMs is omitted.
-const DEFAULT_IMAGE_FETCH_TIMEOUT_MS = 8000;
 
 export interface RehostRecipeImagesOptions {
   recipeId: string
@@ -57,13 +50,7 @@ export async function rehostRecipeImages(
   recipe: CanonicalRecipe,
   options: RehostRecipeImagesOptions,
 ): Promise<RehostRecipeImagesResult> {
-  const {
-    recipeId,
-    storageAdapter,
-    maxBytes,
-    defaultMainImageUrl,
-    timeoutMs = DEFAULT_IMAGE_FETCH_TIMEOUT_MS,
-  } = options;
+  const { recipeId, storageAdapter, maxBytes, defaultMainImageUrl, timeoutMs } = options;
   const warnings: string[] = [];
 
   const mainImage = recipe.main_image;
@@ -73,64 +60,39 @@ export async function rehostRecipeImages(
     return { recipe, warnings };
   }
 
-  let validatedUrl: URL;
-  try {
-    validatedUrl = validateUrlSyntax(mainImage);
-    await resolveAndCheckHost(validatedUrl.hostname);
-  } catch {
-    warnings.push(`Main image was not re-hosted: "${mainImage}" was blocked or invalid.`);
-    return { recipe, warnings };
+  const result = await fetchAndStoreRemoteImage(mainImage, {
+    storageAdapter,
+    maxBytes,
+    keyPrefix: `recipes/${recipeId}/main-0`,
+    timeoutMs,
+  });
+
+  if (result.ok) {
+    return { recipe: { ...recipe, main_image: result.url }, warnings };
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    // redirect: 'manual' - a redirect target is not re-validated against the
-    // SSRF blocklist, so treat any redirect response as a failure rather than
-    // following it (mirrors fetchWithGuardrails re-validating every redirect
-    // hop, without reimplementing its full redirect loop for this
-    // single-file download).
-    const response = await fetch(validatedUrl, {
-      redirect: 'manual',
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      warnings.push(`Main image was not re-hosted: request to "${mainImage}" failed with status ${response.status}.`);
-      return { recipe, warnings };
-    }
-
-    const contentType = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
-    const ext = ALLOWED_CONTENT_TYPES[contentType];
-    if (!ext) {
+  switch (result.reason) {
+    case 'blocked':
+      warnings.push(`Main image was not re-hosted: "${mainImage}" was blocked or invalid.`);
+      break;
+    case 'status':
+      warnings.push(`Main image was not re-hosted: request to "${mainImage}" failed with status ${result.status}.`);
+      break;
+    case 'unsupported-type':
       warnings.push(
-        `Main image was not re-hosted: unsupported content type "${contentType || 'unknown'}" for "${mainImage}".`,
+        `Main image was not re-hosted: unsupported content type "${result.contentType}" for "${mainImage}".`,
       );
-      return { recipe, warnings };
-    }
-
-    const buffer = await readBodyBytesWithLimit(response, maxBytes, controller);
-
-    const key = `recipes/${recipeId}/main-0.${ext}`;
-    const hostedUrl = await storageAdapter.put(buffer, key, contentType);
-
-    return { recipe: { ...recipe, main_image: hostedUrl }, warnings };
-  } catch (err) {
-    if (err instanceof AppError) {
-      warnings.push(
-        `Main image was not re-hosted: "${mainImage}" exceeded the ${maxBytes}-byte limit.`,
-      );
-      return { recipe, warnings };
-    }
-    if (err instanceof Error && err.name === 'AbortError') {
+      break;
+    case 'oversized':
+      warnings.push(`Main image was not re-hosted: "${mainImage}" exceeded the ${maxBytes}-byte limit.`);
+      break;
+    case 'timeout':
       warnings.push(`Main image was not re-hosted: timed out while downloading "${mainImage}".`);
-      return { recipe, warnings };
-    }
-    const message = err instanceof Error ? err.message : 'unknown error';
-    warnings.push(`Main image was not re-hosted: failed to download "${mainImage}" (${message}).`);
-    return { recipe, warnings };
-  } finally {
-    clearTimeout(timer);
+      break;
+    case 'error':
+      warnings.push(`Main image was not re-hosted: failed to download "${mainImage}" (${result.message}).`);
+      break;
   }
+
+  return { recipe, warnings };
 }

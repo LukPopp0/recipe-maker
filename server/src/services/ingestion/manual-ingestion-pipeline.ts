@@ -3,8 +3,9 @@ import { logStage } from '../../lib/log.js';
 import type { GeminiConfig } from '../ai/config.js';
 import type { GeminiClient } from '../ai/gemini-client.js';
 import { buildManualIngestionPrompt } from '../ai/prompts/manual-ingestion.js';
+import { fetchAndStoreRemoteImage } from '../images/remote-image-fetcher.js';
 import { hostUploadedImage } from '../images/upload-image-hoster.js';
-import type { ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
+import type { ManualImageInput, ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
 import {
   assignStepImageUrls,
   sortStepImageFilenames,
@@ -20,6 +21,60 @@ export interface RunManualIngestionPipelineParams {
   recipeId: string;
   maxImageBytes: number;
   requestId: string;
+  // Hard timeout (ms) for downloading a url-kind image input. Omitted in unit
+  // tests; the route passes env.URL_FETCH_TIMEOUT_MS.
+  imageFetchTimeoutMs?: number;
+}
+
+interface HostManualImageOptions {
+  recipeId: string;
+  storageAdapter: StorageAdapter;
+  maxBytes: number;
+  kind: 'main' | 'step';
+  index: number;
+  timeoutMs?: number;
+}
+
+// Hosts a single manual-ingestion image input regardless of its source:
+// uploaded files go through hostUploadedImage, remote URLs are fetched and
+// stored via fetchAndStoreRemoteImage under the same key scheme. Both paths
+// return the shared { url } | { warning } contract so the pipeline treats them
+// uniformly (a failure is non-critical: warn and continue).
+async function hostManualImage(
+  input: ManualImageInput,
+  options: HostManualImageOptions,
+): Promise<{ url: string } | { warning: string }> {
+  const { recipeId, storageAdapter, maxBytes, kind, index, timeoutMs } = options;
+
+  if (input.kind === 'file') {
+    return hostUploadedImage(input.file, { recipeId, storageAdapter, maxBytes, kind, index });
+  }
+
+  const result = await fetchAndStoreRemoteImage(input.url, {
+    storageAdapter,
+    maxBytes,
+    keyPrefix: `recipes/${recipeId}/${kind}-${index}`,
+    timeoutMs,
+  });
+
+  if (result.ok) {
+    return { url: result.url };
+  }
+
+  switch (result.reason) {
+    case 'blocked':
+      return { warning: `"${input.url}" was not fetched: the URL was blocked or invalid.` };
+    case 'status':
+      return { warning: `"${input.url}" was not fetched: request failed with status ${result.status}.` };
+    case 'unsupported-type':
+      return { warning: `"${input.url}" was not fetched: unsupported content type "${result.contentType}".` };
+    case 'oversized':
+      return { warning: `"${input.url}" was not fetched: exceeded the ${maxBytes}-byte limit.` };
+    case 'timeout':
+      return { warning: `"${input.url}" was not fetched: timed out while downloading.` };
+    case 'error':
+      return { warning: `"${input.url}" was not fetched: failed to download (${result.message}).` };
+  }
 }
 
 export interface RunManualIngestionPipelineResult {
@@ -64,20 +119,23 @@ export async function runManualIngestionPipeline({
   recipeId,
   maxImageBytes,
   requestId,
+  imageFetchTimeoutMs,
 }: RunManualIngestionPipelineParams): Promise<RunManualIngestionPipelineResult> {
   const pipelineStart = Date.now();
   const warnings: string[] = [];
   const hostImagesStart = Date.now();
 
-  // Step 1: host the main image. A hosting failure is non-critical - collect
-  // the warning and leave main_image unset so finalSanitize's default
-  // fallback applies downstream, same as Option A's contract.
-  const mainImageResult = await hostUploadedImage(parsed.mainImage, {
+  // Step 1: host the main image (uploaded file or fetched URL). A hosting
+  // failure is non-critical - collect the warning and leave main_image unset
+  // so finalSanitize's default fallback applies downstream, same as Option A's
+  // contract.
+  const mainImageResult = await hostManualImage(parsed.mainImage, {
     recipeId,
     storageAdapter,
     maxBytes: maxImageBytes,
     kind: 'main',
     index: 0,
+    timeoutMs: imageFetchTimeoutMs,
   });
 
   let hostedMainImageUrl: string | undefined;
@@ -87,18 +145,24 @@ export async function runManualIngestionPipeline({
     hostedMainImageUrl = mainImageResult.url;
   }
 
-  // Step 2: sort step images into a stable order, then host each in turn,
-  // skipping (and warning on) any that fail to host.
-  const sortedStepImages = sortStepImageFilenames(parsed.stepImages);
+  // Step 2: order step images, then host each in turn, skipping (and warning
+  // on) any that fail to host. File uploads are sorted by filename (the user
+  // controls those names); URL images keep their add order because the
+  // server-side stored name is not user-controllable, so filename sort would
+  // be meaningless for them. Sorted files come first, then URLs in add order.
+  const fileStepImages = sortStepImageFilenames(parsed.stepImages.filter((input) => input.kind === 'file'));
+  const urlStepImages = parsed.stepImages.filter((input) => input.kind === 'url');
+  const orderedStepImages = [...fileStepImages, ...urlStepImages];
   const hostedStepImageUrls: string[] = [];
 
-  for (let index = 0; index < sortedStepImages.length; index++) {
-    const result = await hostUploadedImage(sortedStepImages[index], {
+  for (let index = 0; index < orderedStepImages.length; index++) {
+    const result = await hostManualImage(orderedStepImages[index], {
       recipeId,
       storageAdapter,
       maxBytes: maxImageBytes,
       kind: 'step',
       index,
+      timeoutMs: imageFetchTimeoutMs,
     });
 
     if ('warning' in result) {

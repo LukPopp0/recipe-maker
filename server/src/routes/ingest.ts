@@ -127,6 +127,7 @@ export function createIngestApp(deps: IngestDeps) {
       recipeId,
       maxImageBytes: env.IMAGE_MAX_BYTES,
       requestId,
+      imageFetchTimeoutMs: env.URL_FETCH_TIMEOUT_MS,
     });
 
     // 4. Deterministic post-processing -> schema-valid canonical recipe.

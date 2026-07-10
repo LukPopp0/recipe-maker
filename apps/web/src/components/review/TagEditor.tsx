@@ -129,7 +129,7 @@ export function TagEditor({
             onKeyDown={handleCustomKeyDown}
           />
         </label>
-        <button type="button" onClick={handleAddCustom} disabled={atCap}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddCustom} disabled={atCap}>
           Add
         </button>
       </div>

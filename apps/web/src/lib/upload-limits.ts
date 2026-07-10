@@ -15,11 +15,26 @@ export type ManualUploadFields = {
   ingredientsText: string
   stepsText: string
   mainImage: File | undefined
+  // Alternative to mainImage: a remote http(s) URL the server fetches. Exactly
+  // one of mainImage / mainImageUrl must be supplied.
+  mainImageUrl?: string
   stepImages: File[]
+  // Remote http(s) URLs for step images, mixed freely with stepImages files.
+  stepImageUrls?: string[]
 }
 
 function isAcceptedType(type: string): boolean {
   return (ACCEPTED_IMAGE_TYPES as readonly string[]).includes(type);
+}
+
+function isHttpUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return url.protocol === 'http:' || url.protocol === 'https:';
 }
 
 function validateImageFile(file: File, errors: string[]): void {
@@ -45,8 +60,20 @@ export function validateManualUpload(fields: ManualUploadFields): string[] {
     errors.push('Steps text is required.');
   }
 
-  if (!fields.mainImage) {
-    errors.push('A main image is required.');
+  const mainImageUrl = fields.mainImageUrl?.trim() ?? '';
+  const hasMainUrl = mainImageUrl.length > 0;
+
+  if (fields.mainImage && hasMainUrl) {
+    errors.push('Provide either a main image file or a URL, not both.');
+  } else if (!fields.mainImage && !hasMainUrl) {
+    errors.push('A main image file or URL is required.');
+  } else if (hasMainUrl && !isHttpUrl(mainImageUrl)) {
+    errors.push('The main image URL must be a valid http(s) URL.');
+  }
+
+  const stepImageUrls = (fields.stepImageUrls ?? []).map((url) => url.trim()).filter((url) => url.length > 0);
+  if (stepImageUrls.some((url) => !isHttpUrl(url))) {
+    errors.push('One or more step image URLs are not valid http(s) URLs.');
   }
 
   const allFiles = [fields.mainImage, ...fields.stepImages].filter((file): file is File => Boolean(file));

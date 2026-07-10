@@ -137,7 +137,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   images, missing one degrades individually with warning; garbage JSON on both
   attempts -> full degrade (existing behavior); log emitted on failed attempt.
 
-## 10. [ ] Manual ingestion: accept image URLs alongside file upload
+## 10. [x] Manual ingestion: accept image URLs alongside file upload
 
 - Backend:
   - `manual-upload-parser.ts`: accept string fields `mainImageUrl` and `stepImageUrls`
@@ -168,13 +168,19 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   bad URL -> INVALID_INPUT); pipeline integration test with mocked fetch; RTL test
   for XOR validation in ManualTab.
 
-## 11. [ ] UI overhaul - SEPARATE WORK ITEM, plan separately before starting
+## 11. [x] UI overhaul - SEPARATE WORK ITEM, plan separately before starting
 
 - Floating buttons, fixed header, colors, layout. Scope: `apps/web/src/index.css`
   (tokens), `workspace.css` (~715 lines, shell + all component styles),
   `App.tsx:78-167` (markup). Plain CSS + custom properties, no Tailwind.
 - Requires its own session: brainstorming + frontend-design skill, then a dedicated
   plan. Do not start ad hoc.
+- Done 2026-07-10 as the "Fresh Market" overhaul (design spec:
+  `docs/superpowers/specs/2026-07-10-ui-overhaul-design.md`; spec 09 layout
+  section updated): warm pastel palette light+dark, Montserrat/Lato app-wide,
+  sticky merged header with segmented nav + status chip, wizard Create flow
+  (Input collapses, JSON drawer), floating ActionTray owning Save/Preview,
+  shared .btn hierarchy, Library restyle. card.css untouched.
 
 ## Verification (per item)
 

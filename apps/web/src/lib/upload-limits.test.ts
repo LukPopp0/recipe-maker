@@ -54,7 +54,7 @@ describe('validateManualUpload', () => {
     expect(errors).toContain('Steps text is required.');
   });
 
-  it('reports a missing main image', () => {
+  it('reports a missing main image when neither file nor URL is given', () => {
     const errors = validateManualUpload({
       ingredientsText: '2 eggs',
       stepsText: 'Whisk the eggs.',
@@ -62,7 +62,67 @@ describe('validateManualUpload', () => {
       stepImages: [],
     });
 
-    expect(errors).toContain('A main image is required.');
+    expect(errors).toContain('A main image file or URL is required.');
+  });
+
+  it('accepts a main image URL in place of a file', () => {
+    const errors = validateManualUpload({
+      ingredientsText: '2 eggs',
+      stepsText: 'Whisk the eggs.',
+      mainImage: undefined,
+      mainImageUrl: 'https://example.com/main.jpg',
+      stepImages: [],
+    });
+
+    expect(errors).toEqual([]);
+  });
+
+  it('rejects providing both a main image file and a URL', () => {
+    const errors = validateManualUpload({
+      ingredientsText: '2 eggs',
+      stepsText: 'Whisk the eggs.',
+      mainImage: validMainImage,
+      mainImageUrl: 'https://example.com/main.jpg',
+      stepImages: [],
+    });
+
+    expect(errors).toContain('Provide either a main image file or a URL, not both.');
+  });
+
+  it('rejects a non-http(s) main image URL', () => {
+    const errors = validateManualUpload({
+      ingredientsText: '2 eggs',
+      stepsText: 'Whisk the eggs.',
+      mainImage: undefined,
+      mainImageUrl: 'ftp://example.com/main.jpg',
+      stepImages: [],
+    });
+
+    expect(errors).toContain('The main image URL must be a valid http(s) URL.');
+  });
+
+  it('accepts step image URLs alongside a main image', () => {
+    const errors = validateManualUpload({
+      ingredientsText: '2 eggs',
+      stepsText: 'Whisk the eggs.',
+      mainImage: validMainImage,
+      stepImages: [],
+      stepImageUrls: ['https://example.com/step-1.jpg', 'https://example.com/step-2.jpg'],
+    });
+
+    expect(errors).toEqual([]);
+  });
+
+  it('rejects a malformed step image URL', () => {
+    const errors = validateManualUpload({
+      ingredientsText: '2 eggs',
+      stepsText: 'Whisk the eggs.',
+      mainImage: validMainImage,
+      stepImages: [],
+      stepImageUrls: ['not a url'],
+    });
+
+    expect(errors).toContain('One or more step image URLs are not valid http(s) URLs.');
   });
 
   it('reports an oversized file', () => {

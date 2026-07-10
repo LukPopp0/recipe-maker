@@ -1,3 +1,7 @@
+/* App-wide fonts (Montserrat display, Lato body) - same self-hosted files the
+   printable card uses, so app and card share one identity. */
+@import './assets/fonts/fonts.css';
+
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -14,18 +18,24 @@ button, input, textarea, select {
   color: inherit;
 }
 
-/* Design tokens */
+/* Design tokens - "Fresh Market" palette (docs/superpowers/specs/
+   2026-07-10-ui-overhaul-design.md): warm white base, sage/peach tints,
+   market-green primary, soft-coral warm accent. */
 :root {
-  --color-bg: #ffffff;
-  --color-surface: #f7f7f8;
-  --color-text: #1a1a1f;
-  --color-text-muted: #6b6375;
-  --color-border: #e5e4e7;
-  --color-accent: #aa3bff;
+  --color-bg: #fbf8f2;
+  --color-surface: #ffffff;
+  --color-tint: #edf2e4;
+  --color-tint-warm: #fbeedf;
+  --color-text: #2a2a24;
+  --color-text-muted: #6e6a5e;
+  --color-border: #e7e2d6;
+  --color-accent: #35845a;
   --color-accent-contrast: #ffffff;
-  --color-danger: #d1373f;
+  --color-accent-warm: #ef9a6d;
+  --color-accent-warm-contrast: #4a2c14;
+  --color-danger: #c0392b;
   --color-warning: #b8860b;
-  --color-success: #2f8f4e;
+  --color-success: #35845a;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -36,7 +46,8 @@ button, input, textarea, select {
   --space-7: 48px;
   --space-8: 64px;
 
-  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Lato', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Montserrat', var(--font-sans);
   --font-mono: ui-monospace, Consolas, monospace;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
@@ -47,13 +58,14 @@ button, input, textarea, select {
   --font-size-3xl: 40px;
   --line-height-base: 1.45;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
   --radius-full: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -2px rgba(0, 0, 0, 0.08), 0 10px 15px -3px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 2px rgba(58, 50, 32, 0.08);
+  --shadow-md: 0 4px 6px -2px rgba(58, 50, 32, 0.1), 0 10px 15px -3px rgba(58, 50, 32, 0.08);
+  --shadow-lg: 0 8px 16px -4px rgba(58, 50, 32, 0.14), 0 20px 32px -8px rgba(58, 50, 32, 0.12);
 
   --z-base: 0;
   --z-dropdown: 100;
@@ -70,12 +82,23 @@ button, input, textarea, select {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #16171d;
-    --color-surface: #1f2028;
-    --color-text: #f3f4f6;
-    --color-text-muted: #9ca3af;
-    --color-border: #2e303a;
-    --color-accent: #c084fc;
+    --color-bg: #1d1b16;
+    --color-surface: #26231c;
+    --color-tint: #2a3026;
+    --color-tint-warm: #33291f;
+    --color-text: #efede3;
+    --color-text-muted: #a8a296;
+    --color-border: #3a362c;
+    --color-accent: #6fbf8e;
+    --color-accent-contrast: #14251b;
+    --color-accent-warm: #e89b70;
+    --color-accent-warm-contrast: #2e1c0e;
+    --color-danger: #e06a5c;
+    --color-warning: #d4a437;
+    --color-success: #6fbf8e;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -2px rgba(0, 0, 0, 0.35), 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 32px -8px rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -84,6 +107,12 @@ button, input, textarea, select {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+/* Display face for headings; card elements set their own families explicitly
+   in card.css and are unaffected. */
+h1, h2, h3 {
+  font-family: var(--font-display);
 }
 
 /* Accessibility defaults */

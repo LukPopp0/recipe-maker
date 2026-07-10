@@ -3,12 +3,20 @@
 ## Goal
 Provide a single-page workflow to run both ingestion options, review results, and export JSON.
 
-## Layout
-- Top-level navigation: Create (this workspace) and Library (specs/13-recipe-persistence-and-library.md).
-- Header: app title and status indicator.
-- Left panel: input tabs (URL, Manual, Load JSON).
-- Right panel: normalized recipe preview/editor.
-- Bottom utility area: JSON preview + download button.
+## Layout (phase 8.5 item 11, "Fresh Market" -
+docs/superpowers/specs/2026-07-10-ui-overhaul-design.md)
+- Sticky top bar: app title, segmented Create/Library navigation
+  (specs/13-recipe-persistence-and-library.md), and status chip
+  (coral tint dirty, green tint saved, neutral idle).
+- Create is a centered wizard column with numbered stages:
+  1. Input: tabs (URL, Manual, Load JSON); collapses to a slim row after a
+     recipe loads, reopened via "Edit input".
+  2. Review: normalized recipe preview/editor (full-width hero).
+  3. JSON: collapsible drawer, closed by default; syntax-highlighted viewer
+     with Copy and Download.
+- Floating action tray (bottom-center sticky, only when a recipe is loaded
+  in Create): Save Recipe, Preview Card, save-state note. The tray owns the
+  save state machine and pre-save/preview validation.
 
 ## URL Tab
 Fields:
@@ -49,7 +57,8 @@ Controls:
 - Show pantry_items as derived values from fixed pantry allowlist routing.
 - Add/remove tags.
 - Validate recipe before download.
-- "Save Recipe" action (explicit, not automatic): posts to /api/recipe/save and confirms with the returned id.
+- "Save Recipe" action (explicit, not automatic; lives in the floating action
+  tray): posts to /api/recipe/save and confirms with the returned id.
 
 ## JSON Export
 - Show syntax-highlighted canonical JSON.

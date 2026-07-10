@@ -79,7 +79,8 @@ describe('App', () => {
 
     await user.type(titleInput, '!');
 
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    // Header status chip and the action tray note both report the dirty state.
+    expect(screen.getAllByText('Unsaved changes').length).toBeGreaterThanOrEqual(1);
   });
 
   it('wires the loaded recipe into the JSON panel', async () => {
@@ -100,6 +101,69 @@ describe('App', () => {
 
     expect(screen.getByText(/"Test Recipe"/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save recipe/i })).toBeInTheDocument();
+  });
+});
+
+describe('Wizard flow', () => {
+  it('collapses the Input stage after successful extraction and reopens via Edit input', async () => {
+    const user = userEvent.setup();
+    mockedIngestUrl.mockReset();
+    mockedIngestUrl.mockResolvedValueOnce({
+      ok: true,
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+    });
+    render(<App />);
+
+    const urlInput = screen.getByLabelText(/recipe url/i);
+    await user.type(urlInput, 'https://example.com/recipe');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+    await screen.findByLabelText(/title/i);
+
+    expect(screen.getByLabelText(/recipe url/i)).not.toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: /edit input/i }));
+    expect(screen.getByLabelText(/recipe url/i)).toBeVisible();
+  });
+
+  it('keeps the JSON drawer collapsed until toggled', async () => {
+    const user = userEvent.setup();
+    mockedIngestUrl.mockReset();
+    mockedIngestUrl.mockResolvedValueOnce({
+      ok: true,
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+    });
+    render(<App />);
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'https://example.com/recipe');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+    await screen.findByLabelText(/title/i);
+
+    expect(screen.getByText(/"Test Recipe"/)).not.toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: /show json/i }));
+    expect(screen.getByText(/"Test Recipe"/)).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: /hide json/i }));
+    expect(screen.getByText(/"Test Recipe"/)).not.toBeVisible();
+  });
+
+  it('shows the action tray only when a recipe is loaded', async () => {
+    const user = userEvent.setup();
+    mockedIngestUrl.mockReset();
+    mockedIngestUrl.mockResolvedValueOnce({
+      ok: true,
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+    });
+    render(<App />);
+
+    expect(screen.queryByRole('button', { name: /save recipe/i })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'https://example.com/recipe');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+    await screen.findByLabelText(/title/i);
+
+    expect(screen.getByRole('button', { name: /save recipe/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /preview card/i })).toBeVisible();
   });
 });
 

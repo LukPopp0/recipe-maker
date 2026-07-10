@@ -1,56 +1,58 @@
-/* Workspace shell layout (spec 09). Functional/clean grid on top of the
-   index.css token system - visual polish is a Milestone 2 concern. */
+/* Workspace shell - "Fresh Market" overhaul (docs/superpowers/specs/
+   2026-07-10-ui-overhaul-design.md): sticky merged top bar, centered wizard
+   column in Create, floating action tray. */
 
 .workspace-shell {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-areas:
-    'header header'
-    'nav nav'
-    'input review'
-    'json json';
-  gap: var(--space-4);
-  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: 0 var(--space-5) var(--space-8);
   flex: 1;
 }
 
 .workspace-header {
-  grid-area: header;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-dropdown);
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+  margin: 0 calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .workspace-header h1 {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   margin: 0;
 }
 
-.workspace-status {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
+/* Segmented Create/Library control */
 .workspace-nav {
-  grid-area: nav;
-  display: flex;
-  gap: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--space-2);
+  display: inline-flex;
+  gap: 2px;
+  background: var(--color-tint);
+  border-radius: var(--radius-full);
+  padding: 3px;
 }
 
 .workspace-nav-item {
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .workspace-nav-item[aria-current='page'] {
-  border-color: var(--color-accent);
+  background: var(--color-surface);
   color: var(--color-accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .workspace-nav-item:disabled {
@@ -62,11 +64,39 @@
   font-size: var(--font-size-xs);
 }
 
-.workspace-panel {
+/* Status chip: coral tint while dirty, green tint when saved */
+.workspace-status {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 2px var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+}
+
+.workspace-status--dirty {
+  border-color: var(--color-accent-warm);
+  background: var(--color-tint-warm);
+  color: var(--color-text);
+}
+
+.workspace-status--saved {
+  border-color: var(--color-accent);
+  background: var(--color-tint);
+  color: var(--color-text);
+}
+
+/* Wizard column: every panel is a centered stage card */
+.workspace-panel {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
-  padding: var(--space-4);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .workspace-panel h2 {
@@ -74,35 +104,122 @@
   font-size: var(--font-size-lg);
 }
 
-.workspace-panel-input {
-  grid-area: input;
+/* Numbered stage headers (Input -> Review -> JSON is a real sequence) */
+.workspace-stage-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
-.workspace-panel-review {
-  grid-area: review;
+.workspace-stage-header h2 {
+  margin: 0;
 }
 
-.workspace-panel-json {
-  grid-area: json;
+.workspace-stage-number {
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
 }
 
-@media (max-width: 720px) {
-  .workspace-shell {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'header'
-      'nav'
-      'input'
-      'review'
-      'json';
-  }
+.workspace-stage-toggle {
+  margin-left: auto;
+}
+
+/* Collapsed input stage: slim summary row */
+.workspace-panel-input.workspace-panel-collapsed {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-tint);
+}
+
+.workspace-panel-collapsed .workspace-stage-header {
+  margin-bottom: 0;
+}
+
+/* Library and card preview need more room than the wizard column */
+.workspace-panel-library,
+.workspace-panel-card {
+  max-width: 1200px;
+}
+
+/* Buttons - shared pill hierarchy (design spec: docs/superpowers/specs/
+   2026-07-10-ui-overhaul-design.md) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  background: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 88%, var(--color-text));
+}
+
+.btn-secondary {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-tint);
+}
+
+.btn-ghost {
+  color: var(--color-text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-tint);
+  color: var(--color-text);
+}
+
+.btn-danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
 }
 
 /* ErrorBanner */
 .error-banner {
-  border: 1px solid var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-danger) 7%, var(--color-surface));
   padding: var(--space-4);
 }
 
@@ -131,21 +248,22 @@
 .ingest-tabs-list {
   display: flex;
   gap: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .ingest-tabs-tab {
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .ingest-tabs-tab[aria-selected='true'] {
-  border-color: var(--color-accent);
+  background: var(--color-tint);
   color: var(--color-accent);
 }
 
@@ -175,15 +293,6 @@
 
 .url-tab button[type='submit'] {
   align-self: flex-start;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.url-tab button[type='submit']:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
 }
 
 .stage-status {
@@ -230,6 +339,54 @@
   font-size: var(--font-size-sm);
 }
 
+.manual-tab-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-tint);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  word-break: break-all;
+}
+
+.manual-tab-remove {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.manual-tab-remove:hover:not(:disabled) {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.manual-tab-remove:disabled {
+  cursor: not-allowed;
+}
+
+.manual-tab-step-url-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.manual-tab-step-url-row input {
+  flex: 1;
+}
+
+.manual-tab-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .manual-tab-errors {
   color: var(--color-danger);
   font-size: var(--font-size-sm);
@@ -239,15 +396,6 @@
 
 .manual-tab button[type='submit'] {
   align-self: flex-start;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.manual-tab button[type='submit']:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
 }
 
 /* LoadJsonTab */
@@ -270,15 +418,6 @@
 
 .load-json-tab button[type='submit'] {
   align-self: flex-start;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.load-json-tab button[type='submit']:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
 }
 
 /* FieldErrors */
@@ -355,11 +494,11 @@
 }
 
 .review-panel-pantry-list li {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-2);
+  background: var(--color-tint);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .review-panel-diagnostics {
@@ -376,9 +515,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  border: 1px solid var(--color-warning);
-  border-radius: var(--radius-sm);
-  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  color: var(--color-text);
   font-size: var(--font-size-sm);
 }
 
@@ -402,21 +542,6 @@
   object-fit: cover;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
-}
-
-.ingredient-editor button,
-.step-editor button {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  background: none;
-}
-
-.ingredient-editor button:disabled,
-.step-editor button:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
 }
 
 /* StepEditor */
@@ -473,7 +598,8 @@
   align-items: center;
   gap: var(--space-1);
   border: 1px solid var(--color-accent);
-  border-radius: var(--radius-sm);
+  background: var(--color-tint);
+  border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
   color: var(--color-accent);
@@ -495,7 +621,7 @@
 
 .tag-editor-vocab-chip {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
   cursor: pointer;
@@ -533,19 +659,6 @@
   font: inherit;
 }
 
-.tag-editor-custom button {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  background: none;
-}
-
-.tag-editor-custom button:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
-}
-
 .tag-editor-hint {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -580,8 +693,10 @@
   color: var(--color-accent);
 }
 
+/* Strings use the plain text color - success is now the same green as the
+   accent, which made keys and strings indistinguishable. */
 .json-token-string {
-  color: var(--color-success);
+  color: var(--color-text);
 }
 
 .json-token-number,
@@ -599,46 +714,61 @@
   gap: var(--space-2);
 }
 
-.json-panel-actions button {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  background: none;
-}
-
-.json-panel-actions button:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
-}
-
 .json-panel-copied {
   font-size: var(--font-size-sm);
   color: var(--color-success);
 }
 
-.json-panel-unsaved-note {
+/* ActionTray - floating pill with the workspace's primary actions */
+.action-tray-region {
+  position: sticky;
+  bottom: var(--space-4);
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.action-tray {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-lg);
+}
+
+.action-tray-feedback {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 880px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3);
+}
+
+.action-tray-note {
   font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding-right: var(--space-2);
+}
+
+.action-tray-note-saved {
+  color: var(--color-success);
+}
+
+.workspace-empty-note {
   color: var(--color-text-muted);
   margin: 0;
 }
 
-.json-panel-saved-note {
-  font-size: var(--font-size-sm);
-  color: var(--color-success);
-  margin: 0;
-}
-
 /* Library */
-.workspace-panel-library {
-  grid-column: 1 / -1;
-}
-
-/* Card preview */
-.workspace-panel-card {
-  grid-column: 1 / -1;
-}
-
 .recipe-list {
   list-style: none;
   margin: 0;
@@ -651,10 +781,17 @@
 .recipe-list-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  background: var(--color-surface);
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  transition: box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.recipe-list-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
 }
 
 .recipe-list-thumbnail {
@@ -678,8 +815,8 @@
 }
 
 .recipe-list-tag {
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
+  background: var(--color-tint);
+  border-radius: var(--radius-full);
   padding: 0 var(--space-2);
   font-size: var(--font-size-sm);
 }

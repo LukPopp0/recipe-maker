@@ -103,7 +103,7 @@ export function LoadJsonTab({
           {status.message}
         </p>
       ) : null}
-      <button type="submit" disabled={isPending || !file}>
+      <button type="submit" className="btn btn-primary" disabled={isPending || !file}>
         Load Recipe
       </button>
       {status.phase === 'invalid' ? <FieldErrors {...status.errors} /> : null}

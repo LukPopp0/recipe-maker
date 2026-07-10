@@ -100,12 +100,12 @@ export function IngredientEditor({
               onChange={(event) => updateField(index, 'unit', event.target.value)}
             />
           </label>
-          <button type="button" onClick={() => removeRow(index)} aria-label={`Remove ingredient ${index + 1}`}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeRow(index)} aria-label={`Remove ingredient ${index + 1}`}>
             Remove ingredient
           </button>
         </div>
       ))}
-      <button type="button" onClick={addRow}>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={addRow}>
         Add ingredient
       </button>
     </div>

@@ -58,10 +58,10 @@ export function ErrorBanner({
         </details>
       ) : null}
       <div className="error-banner-actions">
-        <button type="button" onClick={onRetry}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
           Retry
         </button>
-        <button type="button" onClick={onDismiss}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onDismiss}>
           Dismiss
         </button>
       </div>

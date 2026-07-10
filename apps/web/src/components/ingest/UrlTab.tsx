@@ -92,7 +92,7 @@ export function UrlTab({
           {inlineError}
         </p>
       ) : null}
-      <button type="submit" disabled={isPending || url.trim().length === 0}>
+      <button type="submit" className="btn btn-primary" disabled={isPending || url.trim().length === 0}>
         Extract Recipe
       </button>
       <StageStatus status={status} />

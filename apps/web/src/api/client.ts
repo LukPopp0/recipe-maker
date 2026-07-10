@@ -109,15 +109,27 @@ export async function ingestUrl(url: string): Promise<ClientResult<IngestResult>
 export async function ingestManual(fields: {
   ingredientsText: string
   stepsText: string
-  mainImage: File
+  mainImage?: File
+  mainImageUrl?: string
   stepImages: File[]
+  stepImageUrls?: string[]
 }): Promise<ClientResult<IngestResult>> {
   const formData = new FormData();
   formData.append('ingredientsText', fields.ingredientsText);
   formData.append('stepsText', fields.stepsText);
-  formData.append('mainImage', fields.mainImage);
+  if (fields.mainImage) {
+    formData.append('mainImage', fields.mainImage);
+  }
+  if (fields.mainImageUrl && fields.mainImageUrl.trim() !== '') {
+    formData.append('mainImageUrl', fields.mainImageUrl.trim());
+  }
   for (const stepImage of fields.stepImages) {
     formData.append('stepImages', stepImage);
+  }
+  for (const stepImageUrl of fields.stepImageUrls ?? []) {
+    if (stepImageUrl.trim() !== '') {
+      formData.append('stepImageUrls', stepImageUrl.trim());
+    }
   }
 
   return request<IngestResult>('/api/ingest/manual', {

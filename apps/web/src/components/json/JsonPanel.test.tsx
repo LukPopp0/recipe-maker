@@ -3,20 +3,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import { JsonPanel } from './JsonPanel.tsx';
-import { saveRecipe } from '../../api/client.ts';
 import { buildRecipeFilename, downloadJson } from '../../lib/download.ts';
-
-vi.mock('../../api/client.ts', async () => {
-  const actual = await vi.importActual<typeof import('../../api/client.ts')>('../../api/client.ts');
-  return { ...actual, saveRecipe: vi.fn() };
-});
 
 vi.mock('../../lib/download.ts', async () => {
   const actual = await vi.importActual<typeof import('../../lib/download.ts')>('../../lib/download.ts');
   return { ...actual, downloadJson: vi.fn() };
 });
 
-const mockedSaveRecipe = vi.mocked(saveRecipe);
 const mockedDownloadJson = vi.mocked(downloadJson);
 
 const RECIPE: CanonicalRecipe = {
@@ -32,37 +25,22 @@ const RECIPE: CanonicalRecipe = {
 
 const INVALID_RECIPE: CanonicalRecipe = { ...RECIPE, title: '' };
 
-function renderPanel(overrides: Partial<{ recipe: CanonicalRecipe; savedId: string | null; dirty: boolean }> = {}) {
-  const onSaved = vi.fn();
-  const props = {
-    recipe: RECIPE,
-    savedId: null as string | null,
-    dirty: false,
-    onSaved,
-    ...overrides,
-  };
-  const view = render(<JsonPanel {...props} />);
-  return { ...view, onSaved, props };
-}
-
 describe('JsonPanel', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders the pretty-printed JSON of the current recipe', () => {
-    renderPanel();
+    render(<JsonPanel recipe={RECIPE} />);
     expect(screen.getByText(/"Spicy Noodles"/)).toBeInTheDocument();
   });
 
   it('reflects live edits when the recipe prop changes', () => {
-    const { rerender } = render(
-      <JsonPanel recipe={RECIPE} savedId={null} dirty={false} onSaved={vi.fn()} />,
-    );
+    const { rerender } = render(<JsonPanel recipe={RECIPE} />);
     expect(screen.getByText(/"Spicy Noodles"/)).toBeInTheDocument();
 
     const changed = { ...RECIPE, title: 'Mild Noodles' };
-    rerender(<JsonPanel recipe={changed} savedId={null} dirty={false} onSaved={vi.fn()} />);
+    rerender(<JsonPanel recipe={changed} />);
 
     expect(screen.queryByText(/"Spicy Noodles"/)).not.toBeInTheDocument();
     expect(screen.getByText(/"Mild Noodles"/)).toBeInTheDocument();
@@ -76,7 +54,7 @@ describe('JsonPanel', () => {
       configurable: true,
     });
 
-    renderPanel();
+    render(<JsonPanel recipe={RECIPE} />);
     await user.click(screen.getByRole('button', { name: /copy json/i }));
 
     expect(writeText).toHaveBeenCalledWith(JSON.stringify(RECIPE, null, 2));
@@ -90,7 +68,7 @@ describe('JsonPanel', () => {
       configurable: true,
     });
 
-    renderPanel();
+    render(<JsonPanel recipe={RECIPE} />);
     await user.click(screen.getByRole('button', { name: /copy json/i }));
 
     expect(await screen.findByText(/copy failed.*select the json text manually/i)).toBeInTheDocument();
@@ -105,7 +83,7 @@ describe('JsonPanel', () => {
       configurable: true,
     });
 
-    renderPanel();
+    render(<JsonPanel recipe={RECIPE} />);
     await user.click(screen.getByRole('button', { name: /copy json/i }));
 
     expect(await screen.findByText(/copy failed.*select the json text manually/i)).toBeInTheDocument();
@@ -114,7 +92,7 @@ describe('JsonPanel', () => {
 
   it('blocks download on an invalid recipe and shows the failing field, without calling downloadJson', async () => {
     const user = userEvent.setup();
-    renderPanel({ recipe: INVALID_RECIPE });
+    render(<JsonPanel recipe={INVALID_RECIPE} />);
 
     await user.click(screen.getByRole('button', { name: /download json/i }));
 
@@ -124,7 +102,7 @@ describe('JsonPanel', () => {
 
   it('downloads the deterministic filename with the current recipe state when valid', async () => {
     const user = userEvent.setup();
-    renderPanel();
+    render(<JsonPanel recipe={RECIPE} />);
 
     await user.click(screen.getByRole('button', { name: /download json/i }));
 
@@ -132,128 +110,9 @@ describe('JsonPanel', () => {
     expect(mockedDownloadJson).toHaveBeenCalledWith(buildRecipeFilename(RECIPE.title), RECIPE);
   });
 
-  it('saves the exact current recipe and shows the returned id on success', async () => {
-    const user = userEvent.setup();
-    mockedSaveRecipe.mockResolvedValueOnce({ ok: true, value: { id: 'recipe-123' } });
-    const { onSaved } = renderPanel();
-
-    await user.click(screen.getByRole('button', { name: /save recipe/i }));
-
-    expect(mockedSaveRecipe).toHaveBeenCalledWith(RECIPE);
-    expect(await screen.findByText(/saved.*recipe-123/i)).toBeInTheDocument();
-    expect(onSaved).toHaveBeenCalledWith('recipe-123');
-  });
-
-  it('blocks save on an invalid recipe without calling saveRecipe', async () => {
-    const user = userEvent.setup();
-    renderPanel({ recipe: INVALID_RECIPE });
-
-    await user.click(screen.getByRole('button', { name: /save recipe/i }));
-
-    expect(await screen.findByText(/too small/i)).toBeInTheDocument();
-    expect(mockedSaveRecipe).not.toHaveBeenCalled();
-  });
-
-  it('renders server-flattened field errors on a 422 save failure', async () => {
-    const user = userEvent.setup();
-    mockedSaveRecipe.mockResolvedValueOnce({
-      ok: false,
-      error: {
-        code: 'SCHEMA_VALIDATION_FAILED',
-        message: 'Validation failed',
-        details: { issues: { formErrors: [], fieldErrors: { title: ['Title is required'] } } },
-      },
-    });
-    renderPanel();
-
-    await user.click(screen.getByRole('button', { name: /save recipe/i }));
-
-    expect(await screen.findByText('Title is required')).toBeInTheDocument();
-  });
-
-  it('renders an ErrorBanner instead of throwing on malformed 422 details', async () => {
-    const user = userEvent.setup();
-    mockedSaveRecipe.mockResolvedValueOnce({
-      ok: false,
-      error: {
-        code: 'SCHEMA_VALIDATION_FAILED',
-        message: 'Validation failed',
-        details: { issues: { formErrors: [] } },
-      },
-    });
-    renderPanel();
-
-    await user.click(screen.getByRole('button', { name: /save recipe/i }));
-
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Validation failed')).toBeInTheDocument();
-  });
-
-  it('renders an ErrorBanner on a non-validation save failure', async () => {
-    const user = userEvent.setup();
-    mockedSaveRecipe.mockResolvedValueOnce({
-      ok: false,
-      error: { code: 'INTERNAL_ERROR', message: 'Something went wrong on the server.' },
-    });
-    renderPanel();
-
-    await user.click(screen.getByRole('button', { name: /save recipe/i }));
-
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Something went wrong on the server.')).toBeInTheDocument();
-  });
-
-  it('never calls saveRecipe automatically on mount or recipe prop changes', () => {
-    const { rerender } = render(<JsonPanel recipe={RECIPE} savedId={null} dirty={false} onSaved={vi.fn()} />);
-    rerender(
-      <JsonPanel recipe={{ ...RECIPE, title: 'Changed' }} savedId={null} dirty onSaved={vi.fn()} />,
-    );
-
-    expect(mockedSaveRecipe).not.toHaveBeenCalled();
-  });
-
-  it('shows an unsaved-changes note when dirty and not yet saved', () => {
-    renderPanel({ dirty: true, savedId: null });
-    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
-  });
-
-  it('does not show the unsaved-changes note once saved', () => {
-    renderPanel({ dirty: false, savedId: 'recipe-123' });
-    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
-  });
-
-  describe('readOnly mode', () => {
-    it('hides Save and the unsaved note, keeps Copy and Download', () => {
-      render(<JsonPanel recipe={RECIPE} readOnly />);
-      expect(screen.queryByRole('button', { name: /save recipe/i })).not.toBeInTheDocument();
-      expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /copy json/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /download json/i })).toBeInTheDocument();
-    });
-  });
-});
-
-describe('Preview Card action', () => {
-  it('renders no preview button when onPreviewCard is not provided', () => {
-    render(<JsonPanel recipe={RECIPE} savedId={null} dirty={false} onSaved={vi.fn()} />);
+  it('has no Save or Preview Card actions (they live in the ActionTray)', () => {
+    render(<JsonPanel recipe={RECIPE} />);
+    expect(screen.queryByRole('button', { name: /save recipe/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /preview card/i })).not.toBeInTheDocument();
-  });
-
-  it('calls onPreviewCard for a valid recipe', async () => {
-    const user = userEvent.setup();
-    const onPreviewCard = vi.fn();
-    render(<JsonPanel recipe={RECIPE} savedId={null} dirty={false} onSaved={vi.fn()} onPreviewCard={onPreviewCard} />);
-    await user.click(screen.getByRole('button', { name: /preview card/i }));
-    expect(onPreviewCard).toHaveBeenCalled();
-  });
-
-  it('blocks preview and shows validation errors for an invalid recipe', async () => {
-    const user = userEvent.setup();
-    const onPreviewCard = vi.fn();
-    const invalid = { ...RECIPE, title: '' };
-    render(<JsonPanel recipe={invalid} savedId={null} dirty={false} onSaved={vi.fn()} onPreviewCard={onPreviewCard} />);
-    await user.click(screen.getByRole('button', { name: /preview card/i }));
-    expect(onPreviewCard).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toBeInTheDocument(); // FieldErrors container
   });
 });

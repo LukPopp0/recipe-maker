@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import dns from 'node:dns';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadGeminiConfig } from '../ai/config.js';
 import type { GeminiClient } from '../ai/gemini-client.js';
-import type { ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
+import type { ManualImageInput, ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 import { runManualIngestionPipeline } from './manual-ingestion-pipeline.js';
 
@@ -17,23 +18,37 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
   };
 }
 
-function makeFile(overrides: Partial<{ buffer: Buffer; contentType: string; filename: string }> = {}) {
-  return {
-    buffer: Buffer.from([1, 2, 3, 4]),
-    contentType: 'image/jpeg',
-    filename: 'photo.jpg',
-    ...overrides,
-  };
+// Builds a file-kind image input (the discriminated-union variant the parser
+// produces for uploaded files).
+function fileInput(overrides: Partial<{ buffer: Buffer; contentType: string; filename: string }> = {}): ManualImageInput {
+  const file = { buffer: Buffer.from([1, 2, 3, 4]), contentType: 'image/jpeg', filename: 'photo.jpg', ...overrides };
+  return { kind: 'file', filename: file.filename, file };
+}
+
+// Builds a url-kind image input; the pipeline fetches these via the mocked
+// global fetch.
+function urlInput(url: string, filename?: string): ManualImageInput {
+  const segments = new URL(url).pathname.split('/').filter(Boolean);
+  return { kind: 'url', filename: filename ?? segments[segments.length - 1] ?? url, url };
 }
 
 function makeParsed(overrides: Partial<ParsedManualUpload> = {}): ParsedManualUpload {
   return {
     ingredientsText: '2 eggs\n1 cup flour',
     stepsText: 'Mix everything.\nBake at 180C.',
-    mainImage: makeFile({ filename: 'main.jpg' }),
+    mainImage: fileInput({ filename: 'main.jpg' }),
     stepImages: [],
     ...overrides,
   };
+}
+
+// Stubs DNS + a 200 image response so url-kind image inputs resolve and
+// download successfully through the SSRF guard without real network I/O.
+function mockImageFetch(contentType = 'image/jpeg') {
+  vi.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address: '93.184.216.34', family: 4 }] as never);
+  globalThis.fetch = vi.fn().mockResolvedValue(
+    new Response(new Uint8Array([9, 9, 9, 9]), { status: 200, headers: { 'content-type': contentType } }),
+  ) as unknown as typeof fetch;
 }
 
 function fakeGeminiClient(handler: (params: unknown) => Promise<unknown>): GeminiClient {
@@ -60,6 +75,115 @@ function makeGeminiConfig() {
 }
 
 describe('runManualIngestionPipeline', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    globalThis.fetch = originalFetch;
+  });
+
+  it('fetches and hosts a url-kind main image', async () => {
+    mockImageFetch();
+    const storageAdapter = makeStorageAdapter();
+    const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+    const parsed = makeParsed({ mainImage: urlInput('https://cdn.example.com/main.jpg') });
+
+    const result = await runManualIngestionPipeline({
+      parsed,
+      geminiClient,
+      geminiConfig: makeGeminiConfig(),
+      storageAdapter,
+      recipeId: 'recipe-1',
+      maxImageBytes: 1024,
+      requestId: 'req-url-1',
+    });
+
+    expect(result.warnings).toEqual([]);
+    expect(result.recipeCandidate.main_image).toContain('recipes/recipe-1/main-0.jpg');
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+  });
+
+  it('orders mixed file and url step images deterministically by filename', async () => {
+    mockImageFetch();
+    const storageAdapter = makeStorageAdapter();
+    const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+    // step-b.jpg (url) sorts after step-a.jpg (file) -> file assigned to step 0.
+    const parsed = makeParsed({
+      stepImages: [urlInput('https://cdn.example.com/step-b.jpg'), fileInput({ filename: 'step-a.jpg' })],
+    });
+
+    const result = await runManualIngestionPipeline({
+      parsed,
+      geminiClient,
+      geminiConfig: makeGeminiConfig(),
+      storageAdapter,
+      recipeId: 'recipe-1',
+      maxImageBytes: 1024,
+      requestId: 'req-url-2',
+    });
+
+    expect(result.warnings).toEqual([]);
+    expect(result.recipeCandidate.steps[0].image).toContain('recipes/recipe-1/step-0.jpg');
+    expect(result.recipeCandidate.steps[1].image).toContain('recipes/recipe-1/step-1.jpg');
+  });
+
+  it('hosts url step images in add order, not filename order', async () => {
+    mockImageFetch();
+    const storageAdapter = makeStorageAdapter();
+    const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+    // Added z.jpg then a.jpg. Filename sort would host a.jpg first; add order
+    // must host z.jpg first because the server-side stored name is not
+    // user-controllable for URL images.
+    const parsed = makeParsed({
+      stepImages: [
+        urlInput('https://cdn.example.com/z.jpg'),
+        urlInput('https://cdn.example.com/a.jpg'),
+      ],
+    });
+
+    await runManualIngestionPipeline({
+      parsed,
+      geminiClient,
+      geminiConfig: makeGeminiConfig(),
+      storageAdapter,
+      recipeId: 'recipe-1',
+      maxImageBytes: 1024,
+      requestId: 'req-url-order',
+    });
+
+    const fetchedUrls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map((call) =>
+      String(call[0]),
+    );
+    expect(fetchedUrls).toEqual(['https://cdn.example.com/z.jpg', 'https://cdn.example.com/a.jpg']);
+  });
+
+  it('warns and leaves main_image unset when a url main image fails to fetch', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address: '93.184.216.34', family: 4 }] as never);
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 })) as unknown as typeof fetch;
+    const storageAdapter = makeStorageAdapter();
+    const geminiClient = fakeGeminiClient(vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+    const parsed = makeParsed({ mainImage: urlInput('https://cdn.example.com/missing.jpg') });
+
+    const result = await runManualIngestionPipeline({
+      parsed,
+      geminiClient,
+      geminiConfig: makeGeminiConfig(),
+      storageAdapter,
+      recipeId: 'recipe-1',
+      maxImageBytes: 1024,
+      requestId: 'req-url-3',
+    });
+
+    expect(result.recipeCandidate.main_image).toBeUndefined();
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain('https://cdn.example.com/missing.jpg');
+    expect(storageAdapter.put).not.toHaveBeenCalled();
+  });
+
   it('hosts the main image, assigns step images by index, and returns no warnings on the happy path', async () => {
     const storageAdapter = makeStorageAdapter();
     const generateCanonicalRecipe = vi.fn().mockResolvedValue(VALID_CANDIDATE);
@@ -67,8 +191,8 @@ describe('runManualIngestionPipeline', () => {
 
     const parsed = makeParsed({
       stepImages: [
-        makeFile({ filename: 'step-2.jpg' }),
-        makeFile({ filename: 'step-1.jpg' }),
+        fileInput({ filename: 'step-2.jpg' }),
+        fileInput({ filename: 'step-1.jpg' }),
       ],
     });
 
@@ -100,7 +224,7 @@ describe('runManualIngestionPipeline', () => {
     const geminiClient = fakeGeminiClient(generateCanonicalRecipe);
 
     const parsed = makeParsed({
-      mainImage: makeFile({ buffer: Buffer.alloc(2048), filename: 'main.jpg' }),
+      mainImage: fileInput({ buffer: Buffer.alloc(2048), filename: 'main.jpg' }),
     });
 
     const result = await runManualIngestionPipeline({
@@ -125,9 +249,9 @@ describe('runManualIngestionPipeline', () => {
 
     const parsed = makeParsed({
       stepImages: [
-        makeFile({ filename: 'step-1.jpg' }),
-        makeFile({ filename: 'step-2.jpg' }),
-        makeFile({ filename: 'step-3.jpg' }),
+        fileInput({ filename: 'step-1.jpg' }),
+        fileInput({ filename: 'step-2.jpg' }),
+        fileInput({ filename: 'step-3.jpg' }),
       ],
     });
 
@@ -190,7 +314,7 @@ describe('runManualIngestionPipeline', () => {
 
   it('is deterministic: the same input run twice produces identical recipeCandidate (excluding durationMs)', async () => {
     const parsed = makeParsed({
-      stepImages: [makeFile({ filename: 'step-1.jpg' }), makeFile({ filename: 'step-2.jpg' })],
+      stepImages: [fileInput({ filename: 'step-1.jpg' }), fileInput({ filename: 'step-2.jpg' })],
     });
 
     const run = async () => {
@@ -239,7 +363,7 @@ describe('runManualIngestionPipeline', () => {
       const geminiClient = fakeGeminiClient(generateCanonicalRecipe);
 
       const parsed = makeParsed({
-        stepImages: [makeFile({ filename: 'step-1.jpg' })],
+        stepImages: [fileInput({ filename: 'step-1.jpg' })],
       });
 
       await runManualIngestionPipeline({

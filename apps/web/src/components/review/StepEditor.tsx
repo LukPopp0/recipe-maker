@@ -82,6 +82,7 @@ export function StepEditor({
           ) : null}
           <button
             type="button"
+            className="btn btn-ghost btn-sm"
             onClick={() => removeStep(index)}
             aria-label={`Remove step ${index + 1}`}
             disabled={atFloor}
@@ -90,7 +91,7 @@ export function StepEditor({
           </button>
         </div>
       ))}
-      <button type="button" onClick={addStep} disabled={atCap}>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={addStep} disabled={atCap}>
         Add step
       </button>
       {atCap ? <p className="step-editor-cap-hint">Recipes support a max 6 steps.</p> : null}

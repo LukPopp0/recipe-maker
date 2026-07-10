@@ -63,16 +63,17 @@ export function CardView({ recipe, onBack }: { recipe: CanonicalRecipe; onBack: 
   return (
     <div className={landscape ? 'card-view card-view--landscape' : 'card-view'}>
       <div className="card-view-toolbar">
-        <button type="button" onClick={onBack}>
+        <button type="button" className="btn btn-ghost" onClick={onBack}>
           Back
         </button>
         <button
           type="button"
+          className="btn btn-secondary"
           onClick={() => setOrientation(landscape ? 'portrait' : 'landscape')}
         >
           {landscape ? 'Portrait layout' : 'Landscape layout'}
         </button>
-        <button type="button" onClick={() => window.print()}>
+        <button type="button" className="btn btn-primary" onClick={() => window.print()}>
           Print / Save PDF
         </button>
       </div>
