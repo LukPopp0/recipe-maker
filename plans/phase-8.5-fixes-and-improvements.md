@@ -86,7 +86,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   "red onion" vs "onion" NOT merged (containment alone insufficient - only strip words
   from the preparation list); case-insensitive exact dupes merged.
 
-## 7. [ ] Time extraction: implausible values (780 min for "30 min to 1 hour")
+## 7. [x] Time extraction: implausible values (780 min for "30 min to 1 hour")
 
 - Today: value passes through untouched (post-processing/index.ts:69, sanitize.ts:57);
   only bound is schema 0-1440 (canonical-recipe.ts:42).

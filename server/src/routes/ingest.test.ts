@@ -156,7 +156,7 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
     expect(CanonicalRecipeSchema.safeParse(body.recipe).success).toBe(true);
     // Diagnostics from the pipeline are surfaced.
     expect(body.diagnostics.extractor).toBe('gemini-primary');
-    expect(body.diagnostics.model).toBe('gemini-2.5-pro');
+    expect(body.diagnostics.model).toBe('gemini-3.1-flash-lite');
     expect(body.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
     // main_image was re-hosted onto our own /images/ mount, not left remote.
     expect(body.recipe.main_image).toContain('/images/');

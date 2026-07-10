@@ -38,6 +38,10 @@ describe('buildUrlIngestionPrompt', () => {
     expect(prompt).toMatch(/600 characters/);
   });
 
+  it('instructs to use the upper bound of a time range', () => {
+    expect(prompt).toMatch(/use the upper bound/i);
+  });
+
   it('instructs to preserve ingredient order', () => {
     expect(prompt).toMatch(/preserve the original ingredient order/i);
   });

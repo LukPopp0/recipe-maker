@@ -35,6 +35,12 @@ Rules:
   (sliced, chopped, diced, minced, grated, fresh, ground, etc.) into a single entry, and
   combine their amounts when they can be sensibly combined. Do NOT merge ingredients that
   differ in identity (e.g. "red onion" vs "onion", "green onion" vs "onion").
+- For "time", give the active hands-on time in minutes (prep plus cooking). For a range
+  like "30 minutes to 1 hour" use the upper bound (60). EXCLUDE long passive/unattended
+  waits such as overnight freezing, marinating, soaking, resting, chilling, rising, or
+  proofing - do not add these to the total even if the source lists them (e.g. a
+  structured prepTime of "PT12H" for freezing overnight). Typical recipes run from 1
+  minute to about 4 hours; never sum unrelated durations.
 - The "steps" array must have at most 6 entries. Only merge or summarize steps if the
   source has more than 6 steps; otherwise leave the step count as extracted - do not
   merge steps just because you can.

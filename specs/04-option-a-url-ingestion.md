@@ -45,6 +45,7 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
    - tags normalization.
    - step compaction.
    - step_description length clamp to 600 chars.
+   - implausible-time flag: warning (no clamp) when time > 240 minutes.
    - default main_image fallback when missing/invalid.
    - image hosting.
 9. Return canonical recipe with diagnostics: extractor (gemini-primary or
@@ -53,6 +54,10 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 ## Gemini Prompting Requirements
 - Enforce output fields exactly.
 - Instruct model to preserve ingredient ordering.
+- Instruct model to report "time" as active hands-on minutes, using the upper bound for
+  ranges (e.g. "30 minutes to 1 hour" -> 60), excluding long passive waits (overnight
+  freezing, marinating, soaking, resting, chilling, proofing) even when structured
+  metadata lists them, and never summing unrelated durations.
 - Instruct model to merge ingredients differing only by preparation words into
   one entry, but never merge items differing in identity.
 - Instruct model to summarize/merge steps only when count > 6.

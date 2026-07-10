@@ -3,6 +3,10 @@ import { AppError } from '../../lib/errors.js';
 
 const MAX_STEP_DESCRIPTION_LENGTH = 600;
 
+// Above this, the extracted total time is likely wrong (e.g. summed unrelated
+// durations). We flag it for review but never clamp - time stays user-editable.
+const IMPLAUSIBLE_TIME_MINUTES = 240;
+
 // Trim + collapse internal whitespace (specs/02 normalization rules).
 function clean(value: string): string {
   return (value ?? '').replace(/\s+/g, ' ').trim();
@@ -27,6 +31,8 @@ function dedupeCaseInsensitive(items: string[]): string[] {
  * - trims all strings and collapses multi-spaces,
  * - hard-clamps each step_description to 600 chars, recording a metadata.warnings entry
  *   whenever a description was actually truncated (content may have been lost),
+ * - flags an implausible time (over 240 min) with a metadata.warnings entry, without
+ *   clamping it (time stays user-editable in the review UI),
  * - resolves the main_image default via applyMainImageFallback,
  * - dedupes tags and pantry_items case-insensitively,
  * - re-validates against CanonicalRecipeSchema.
@@ -36,6 +42,11 @@ function dedupeCaseInsensitive(items: string[]): string[] {
  */
 export function finalSanitize(recipe: CanonicalRecipe, defaultMainImageUrl: string): CanonicalRecipe {
   const truncationWarnings: string[] = [];
+
+  const timeWarnings: string[] =
+    recipe.time !== null && recipe.time > IMPLAUSIBLE_TIME_MINUTES
+      ? [`Extracted time is ${recipe.time} minutes (over 4 hours); please verify.`]
+      : [];
 
   const steps = recipe.steps.map((step, index) => {
     const cleanedDescription = clean(step.step_description);
@@ -77,6 +88,7 @@ export function finalSanitize(recipe: CanonicalRecipe, defaultMainImageUrl: stri
       warnings: [
         ...(recipe.metadata.warnings ?? []).map(clean).filter((warning) => warning.length > 0),
         ...truncationWarnings,
+        ...timeWarnings,
       ],
     },
   };

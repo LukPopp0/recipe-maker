@@ -78,6 +78,27 @@ describe('finalSanitize', () => {
     expect(result.pantry_items).toEqual(['Salt']);
   });
 
+  it('flags an implausible time (over 240 min) without clamping it', () => {
+    const recipe = validRecipe({ time: 241 });
+    const result = finalSanitize(recipe, DEFAULT_IMAGE);
+    expect(result.time).toBe(241);
+    expect(result.metadata.warnings).toEqual([
+      'Extracted time is 241 minutes (over 4 hours); please verify.',
+    ]);
+  });
+
+  it('does not flag a time exactly at the 240-min threshold', () => {
+    const recipe = validRecipe({ time: 240 });
+    const result = finalSanitize(recipe, DEFAULT_IMAGE);
+    expect(result.metadata.warnings).toEqual([]);
+  });
+
+  it('does not flag a null time', () => {
+    const recipe = validRecipe({ time: null });
+    const result = finalSanitize(recipe, DEFAULT_IMAGE);
+    expect(result.metadata.warnings).toEqual([]);
+  });
+
   it('throws SCHEMA_VALIDATION_FAILED with Zod issue details when still invalid', () => {
     const recipe = validRecipe({ steps: [] });
     try {

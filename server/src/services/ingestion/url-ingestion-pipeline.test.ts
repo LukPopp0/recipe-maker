@@ -89,7 +89,7 @@ describe('runUrlIngestionPipeline', () => {
 
     expect(result.recipeCandidate).toBe(VALID_CANDIDATE);
     expect(result.diagnostics.extractor).toBe('gemini-primary');
-    expect(result.diagnostics.model).toBe('gemini-2.5-pro');
+    expect(result.diagnostics.model).toBe('gemini-3.1-flash-lite');
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
     expect(generateCanonicalRecipe).toHaveBeenCalledTimes(1);
   });
