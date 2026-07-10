@@ -26,6 +26,8 @@ non-recipe, timeout) and manual (with/without step images) flows, Load JSON
 stays frontend-tested; `GEMINI_MAX_RETRIES` removed in favor of a fixed
 single retry via `GEMINI_RETRY_MODEL`; CI (`.github/workflows/ci.yml`) runs
 install/typecheck/test with Playwright mocked.
+Phase 8.5 fix backlog from end-to-end testing:
+`plans/phase-8.5-fixes-and-improvements.md` (check items off as fixed).
 Next: Phase 9 PDF generation upgrade (future). Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
