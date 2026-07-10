@@ -39,7 +39,7 @@ describe('UrlTab', () => {
 
   it('disables the submit button when the URL field is empty or whitespace', async () => {
     const user = userEvent.setup();
-    render(<UrlTab onRecipe={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     const button = screen.getByRole('button', { name: /extract recipe/i });
     const input = screen.getByLabelText(/recipe url/i);
@@ -52,7 +52,7 @@ describe('UrlTab', () => {
 
   it('shows an inline error for an obviously invalid URL without calling the client', async () => {
     const user = userEvent.setup();
-    render(<UrlTab onRecipe={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'not-a-url');
@@ -64,7 +64,7 @@ describe('UrlTab', () => {
 
   it('shows an inline error for a non-http(s) URL without calling the client', async () => {
     const user = userEvent.setup();
-    render(<UrlTab onRecipe={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'ftp://example.com/recipe');
@@ -82,7 +82,7 @@ describe('UrlTab', () => {
       value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
     });
 
-    render(<UrlTab onRecipe={onRecipe} />);
+    render(<UrlTab onRecipe={onRecipe} onExtractStart={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'https://example.com/recipe');
@@ -99,7 +99,7 @@ describe('UrlTab', () => {
     const pending = deferred<Awaited<ReturnType<typeof ingestUrl>>>();
     mockedIngestUrl.mockReturnValueOnce(pending.promise);
 
-    render(<UrlTab onRecipe={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'https://example.com/recipe');
@@ -124,7 +124,7 @@ describe('UrlTab', () => {
       error: { code: 'URL_EXTRACTION_FAILED', message: 'Could not extract that recipe.' },
     });
 
-    render(<UrlTab onRecipe={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'https://example.com/recipe');
@@ -140,5 +140,37 @@ describe('UrlTab', () => {
 
     expect(mockedIngestUrl).toHaveBeenLastCalledWith('https://example.com/recipe');
     expect(mockedIngestUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('fires onExtractStart before the request resolves (item 5)', async () => {
+    const user = userEvent.setup();
+    const onExtractStart = vi.fn();
+    const pending = deferred<Awaited<ReturnType<typeof ingestUrl>>>();
+    mockedIngestUrl.mockReturnValueOnce(pending.promise);
+
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={onExtractStart} />);
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'https://example.com/recipe');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+
+    // Cleared up front, while the call is still pending.
+    expect(onExtractStart).toHaveBeenCalledTimes(1);
+
+    pending.resolve({
+      ok: true,
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+    });
+  });
+
+  it('does not fire onExtractStart when validation fails (item 5)', async () => {
+    const user = userEvent.setup();
+    const onExtractStart = vi.fn();
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={onExtractStart} />);
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'not-a-url');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(onExtractStart).not.toHaveBeenCalled();
   });
 });

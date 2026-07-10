@@ -5,7 +5,7 @@ import { IngestTabs } from './IngestTabs.tsx';
 
 describe('IngestTabs', () => {
   it('renders three tabs in a tablist named "Ingestion method"', () => {
-    render(<IngestTabs onRecipe={vi.fn()} />);
+    render(<IngestTabs onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     const tablist = screen.getByRole('tablist', { name: 'Ingestion method' });
     const tabs = screen.getAllByRole('tab');
@@ -15,7 +15,7 @@ describe('IngestTabs', () => {
   });
 
   it('selects the URL tab by default', () => {
-    render(<IngestTabs onRecipe={vi.fn()} />);
+    render(<IngestTabs onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     expect(screen.getByRole('tab', { name: 'URL' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Manual' })).toHaveAttribute('aria-selected', 'false');
@@ -25,7 +25,7 @@ describe('IngestTabs', () => {
 
   it('switches to the Manual panel when the Manual tab is clicked', async () => {
     const user = userEvent.setup();
-    render(<IngestTabs onRecipe={vi.fn()} />);
+    render(<IngestTabs onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await user.click(screen.getByRole('tab', { name: 'Manual' }));
 
@@ -36,7 +36,7 @@ describe('IngestTabs', () => {
 
   it('switches to the Load JSON panel when the Load JSON tab is clicked', async () => {
     const user = userEvent.setup();
-    render(<IngestTabs onRecipe={vi.fn()} />);
+    render(<IngestTabs onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await user.click(screen.getByRole('tab', { name: 'Load JSON' }));
 

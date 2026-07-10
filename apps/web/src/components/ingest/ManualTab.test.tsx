@@ -50,7 +50,7 @@ describe('ManualTab', () => {
 
   it('blocks submit and shows itemized errors when text fields and main image are empty, without calling the API', async () => {
     const user = userEvent.setup();
-    render(<ManualTab onRecipe={vi.fn()} />);
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: /normalize recipe/i }));
 
@@ -63,7 +63,7 @@ describe('ManualTab', () => {
 
   it('surfaces the specific limit error for an oversized main image', async () => {
     const user = userEvent.setup();
-    render(<ManualTab onRecipe={vi.fn()} />);
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await fillTextFields(user);
     const oversized = makeFile('big.jpg', 'image/jpeg', 9_000_000);
@@ -79,7 +79,7 @@ describe('ManualTab', () => {
     // would otherwise silently reject this file before it reaches our
     // validation, defeating the point of the test.
     const user = userEvent.setup({ applyAccept: false });
-    render(<ManualTab onRecipe={vi.fn()} />);
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await fillTextFields(user);
     const wrongType = makeFile('recipe.gif', 'image/gif', 1000);
@@ -98,7 +98,7 @@ describe('ManualTab', () => {
       value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 } },
     });
 
-    render(<ManualTab onRecipe={onRecipe} />);
+    render(<ManualTab onRecipe={onRecipe} onExtractStart={vi.fn()} />);
 
     await fillTextFields(user);
     const mainImage = makeFile('main.jpg', 'image/jpeg', 1000);
@@ -131,7 +131,7 @@ describe('ManualTab', () => {
     const pending = deferred<Awaited<ReturnType<typeof ingestManual>>>();
     mockedIngestManual.mockReturnValueOnce(pending.promise);
 
-    render(<ManualTab onRecipe={vi.fn()} />);
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await fillTextFields(user);
     const mainImage = makeFile('main.jpg', 'image/jpeg', 1000);
@@ -157,7 +157,7 @@ describe('ManualTab', () => {
       error: { code: 'INTERNAL_ERROR', message: 'Could not normalize that recipe.' },
     });
 
-    render(<ManualTab onRecipe={vi.fn()} />);
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
 
     await fillTextFields(user);
     const mainImage = makeFile('main.jpg', 'image/jpeg', 1000);
@@ -179,5 +179,37 @@ describe('ManualTab', () => {
       mainImage,
       stepImages: [],
     });
+  });
+
+  it('fires onExtractStart before the request resolves (item 5)', async () => {
+    const user = userEvent.setup();
+    const onExtractStart = vi.fn();
+    const pending = deferred<Awaited<ReturnType<typeof ingestManual>>>();
+    mockedIngestManual.mockReturnValueOnce(pending.promise);
+
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={onExtractStart} />);
+
+    await fillTextFields(user);
+    await user.upload(screen.getByLabelText(/main image/i), makeFile('main.jpg', 'image/jpeg', 1000));
+    await user.click(screen.getByRole('button', { name: /normalize recipe/i }));
+
+    // Cleared up front, while the call is still pending.
+    expect(onExtractStart).toHaveBeenCalledTimes(1);
+
+    pending.resolve({
+      ok: true,
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 } },
+    });
+  });
+
+  it('does not fire onExtractStart when validation fails (item 5)', async () => {
+    const user = userEvent.setup();
+    const onExtractStart = vi.fn();
+    render(<ManualTab onRecipe={vi.fn()} onExtractStart={onExtractStart} />);
+
+    await user.click(screen.getByRole('button', { name: /normalize recipe/i }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(onExtractStart).not.toHaveBeenCalled();
   });
 });

@@ -18,8 +18,10 @@ function isValidHttpUrl(value: string): boolean {
 
 export function UrlTab({
   onRecipe,
+  onExtractStart,
 }: {
   onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null) => void
+  onExtractStart: () => void
 }) {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<IngestStatus>({ phase: 'idle' });
@@ -27,6 +29,9 @@ export function UrlTab({
 
   const submit = useCallback(
     async (value: string) => {
+      // Clear the current recipe before the long-running call (item 5). Only
+      // reached after handleSubmit's validation passes, or via retry.
+      onExtractStart();
       setInlineError(null);
       setStatus({ phase: 'submitting' });
       setStatus({
@@ -42,7 +47,7 @@ export function UrlTab({
         setStatus({ phase: 'error', error: result.error });
       }
     },
-    [onRecipe],
+    [onRecipe, onExtractStart],
   );
 
   const handleSubmit = useCallback(

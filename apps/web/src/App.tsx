@@ -49,6 +49,16 @@ function App() {
     [recipeState],
   );
 
+  // A new extraction (URL or Manual) clears the current recipe up front so
+  // the stale Review/JSON panels don't linger during the ~1 min run. Extraction
+  // is an explicit user action, so we drop unsaved edits without a confirm
+  // (phase 8.5 item 5). Validation failures never reach here, so a rejected
+  // submit keeps the current recipe on screen.
+  const handleExtractStart = useCallback(() => {
+    setRecipeState(null);
+    setShowCardPreview(false);
+  }, []);
+
   // Open in Create copies a saved recipe into the workspace (specs/13):
   // saving it again creates a new id, the library original is untouched.
   const handleOpenInCreate = useCallback(
@@ -110,7 +120,7 @@ function App() {
         inert={inCreate ? undefined : true}
       >
         <h2 id="input-panel-heading">Input</h2>
-        <IngestTabs onRecipe={adoptRecipe} />
+        <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} />
       </section>
 
       <section

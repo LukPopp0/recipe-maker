@@ -19,8 +19,10 @@ function formatBytes(bytes: number): string {
 
 export function ManualTab({
   onRecipe,
+  onExtractStart,
 }: {
   onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null) => void
+  onExtractStart: () => void
 }) {
   const [ingredientsText, setIngredientsText] = useState('');
   const [stepsText, setStepsText] = useState('');
@@ -60,6 +62,9 @@ export function ManualTab({
       setErrors(validationErrors);
       return;
     }
+    // Clear the current recipe before the long-running call (item 5), only
+    // once validation has passed so a rejected submit keeps it on screen.
+    onExtractStart();
     setErrors([]);
     setStatus({ phase: 'submitting' });
     setStatus({
@@ -79,7 +84,7 @@ export function ManualTab({
     } else {
       setStatus({ phase: 'error', error: result.error });
     }
-  }, [ingredientsText, stepsText, mainImage, stepImages, onRecipe]);
+  }, [ingredientsText, stepsText, mainImage, stepImages, onRecipe, onExtractStart]);
 
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
