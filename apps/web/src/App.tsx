@@ -6,6 +6,7 @@ import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
 import { JsonPanel } from './components/json/JsonPanel.tsx';
 import { ActionTray } from './components/ActionTray.tsx';
+import { useTheme } from './lib/use-theme.ts';
 import { LibraryPanel } from './components/library/LibraryPanel.tsx';
 import { CardView } from './components/card/CardView.tsx';
 
@@ -44,6 +45,7 @@ function App() {
   // reopening; headings stay in the DOM for the panel-visibility tests.
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [jsonOpen, setJsonOpen] = useState(false);
+  const [theme, toggleTheme] = useTheme();
 
   // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any
   // unsaved edits, so confirm first when the current state is dirty (plan
@@ -126,6 +128,14 @@ function App() {
         <span className={`workspace-status workspace-status--${statusVariant(recipeState)}`}>
           {statusLabel(recipeState)}
         </span>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          aria-pressed={theme === 'dark'}
+          onClick={toggleTheme}
+        >
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
       </header>
 
       {/* inert (React 19) drops focus/AT exposure for hidden panels; opacity

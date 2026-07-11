@@ -80,8 +80,12 @@ button, input, textarea, select {
   color-scheme: light dark;
 }
 
+/* Dark tokens apply two ways: OS preference (unless the user explicitly chose
+   light via the header toggle) and an explicit data-theme="dark" choice. The
+   block is duplicated because plain CSS cannot share a declaration list
+   between a media query and an attribute selector - keep both in sync. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --color-bg: #1d1b16;
     --color-surface: #26231c;
     --color-tint: #2a3026;
@@ -100,6 +104,31 @@ button, input, textarea, select {
     --shadow-md: 0 4px 6px -2px rgba(0, 0, 0, 0.35), 0 10px 15px -3px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 8px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 32px -8px rgba(0, 0, 0, 0.35);
   }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #1d1b16;
+  --color-surface: #26231c;
+  --color-tint: #2a3026;
+  --color-tint-warm: #33291f;
+  --color-text: #efede3;
+  --color-text-muted: #a8a296;
+  --color-border: #3a362c;
+  --color-accent: #6fbf8e;
+  --color-accent-contrast: #14251b;
+  --color-accent-warm: #e89b70;
+  --color-accent-warm-contrast: #2e1c0e;
+  --color-danger: #e06a5c;
+  --color-warning: #d4a437;
+  --color-success: #6fbf8e;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -2px rgba(0, 0, 0, 0.35), 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 32px -8px rgba(0, 0, 0, 0.35);
 }
 
 /* Baseline layout */

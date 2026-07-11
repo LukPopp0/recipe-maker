@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
@@ -101,6 +101,42 @@ describe('App', () => {
 
     expect(screen.getByText(/"Test Recipe"/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save recipe/i })).toBeInTheDocument();
+  });
+});
+
+describe('Theme toggle', () => {
+  afterEach(() => {
+    localStorage.removeItem('theme');
+    delete document.documentElement.dataset.theme;
+  });
+
+  it('toggles to dark, stamps data-theme on <html>, and persists the choice', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Dark mode' }));
+
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('theme')).toBe('dark');
+    expect(screen.getByRole('button', { name: 'Light mode' })).toBeInTheDocument();
+  });
+
+  it('toggles back to light from an explicit dark theme', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Dark mode' }));
+    await user.click(screen.getByRole('button', { name: 'Light mode' }));
+
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(localStorage.getItem('theme')).toBe('light');
+  });
+
+  it('honors a stored dark theme on load', () => {
+    localStorage.setItem('theme', 'dark');
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'Light mode' })).toBeInTheDocument();
   });
 });
 
