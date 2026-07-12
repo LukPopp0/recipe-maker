@@ -2,7 +2,7 @@
 // main image left, 2-column ingredient grid right. Pure render from
 // CanonicalRecipe - no fetching, no state beyond image-error fallbacks.
 import { useState } from 'react';
-import type { CanonicalRecipe } from 'shared';
+import { formatIngredientAmount, type CanonicalRecipe } from 'shared';
 import type { CardOrientation } from './CardView.tsx';
 import { ingredientImageUrl, INGREDIENT_NOT_FOUND_IMAGE } from '../../lib/ingredient-image.ts';
 import { tagColorClass } from '../../lib/tag-palette.ts';
@@ -94,8 +94,7 @@ export function CardPage1({
               <IngredientThumb image={ingredient.image} />
               <span className="card-ingredient-name">{ingredient.name}</span>
               <span className="card-ingredient-amount">
-                {ingredient.amount_text}
-                {ingredient.unit ? ` ${ingredient.unit}` : ''}
+                {formatIngredientAmount(ingredient.amount_text, ingredient.unit)}
               </span>
             </li>
           ))}

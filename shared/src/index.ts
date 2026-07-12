@@ -18,6 +18,8 @@ export type { ErrorCode, ApiError, ApiSuccessEnvelope, ApiErrorEnvelope, ApiResp
 
 export type { RecipeSummary } from './contracts/recipe-repository.js';
 
+export { amountContainsUnit, formatIngredientAmount } from './lib/ingredient-amount.js';
+
 export { PANTRY_ALLOWLIST, isPantryItem } from './constants/pantry-allowlist.js';
 export { TAG_VOCABULARY } from './constants/tag-vocabulary.js';
 

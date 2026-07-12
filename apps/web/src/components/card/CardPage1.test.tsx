@@ -66,6 +66,19 @@ describe('CardPage1', () => {
     expect(thumbs[1]).toHaveAttribute('src', INGREDIENT_NOT_FOUND_IMAGE);
   });
 
+  it('does not repeat the unit when amount_text already contains it', () => {
+    const ingredients = [
+      { name: 'Oyster Mushrooms', amount_text: '5 oz', unit: 'oz' },
+      { name: 'Ground Pork', amount_text: '1 lb', unit: 'lbs' },
+      { name: 'Noodles', amount_text: '200g', unit: 'g' },
+    ];
+    render(<CardPage1 recipe={makeRecipe({ ingredients })} />);
+    expect(screen.getByText('5 oz')).toBeInTheDocument();
+    expect(screen.queryByText('5 oz oz')).not.toBeInTheDocument();
+    expect(screen.getByText('1 lb')).toBeInTheDocument();
+    expect(screen.getByText('200g')).toBeInTheDocument();
+  });
+
   it('uses density buckets so long ingredient lists compress instead of overflowing', () => {
     const many = Array.from({ length: 14 }, (_, i) => ({ name: `Item ${i}`, amount_text: '1' }));
     render(<CardPage1 recipe={makeRecipe({ ingredients: many })} />);

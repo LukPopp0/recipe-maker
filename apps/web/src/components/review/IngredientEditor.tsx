@@ -3,7 +3,7 @@
 // inputs, and a remove button. All updates are immutable - every callback
 // builds a fresh array/object and never mutates the `ingredients` prop.
 import { useState, type SyntheticEvent } from 'react';
-import type { Ingredient } from 'shared';
+import { formatIngredientAmount, type Ingredient } from 'shared';
 import { ingredientImageUrl, INGREDIENT_NOT_FOUND_IMAGE } from '../../lib/ingredient-image.ts';
 
 function IngredientThumbnail({ image }: { image: string | undefined }) {
@@ -59,8 +59,7 @@ export function IngredientEditor({
             <IngredientThumbnail key={ingredient.image ?? 'no-image'} image={ingredient.image} />
             <span className="ingredient-editor-static-name">{ingredient.name}</span>
             <span className="ingredient-editor-static-amount">
-              {ingredient.amount_text}
-              {ingredient.unit ? ` ${ingredient.unit}` : ''}
+              {formatIngredientAmount(ingredient.amount_text, ingredient.unit)}
             </span>
           </div>
         ))}

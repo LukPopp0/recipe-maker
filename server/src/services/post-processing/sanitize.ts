@@ -1,4 +1,4 @@
-import { applyMainImageFallback, CanonicalRecipeSchema, type CanonicalRecipe } from 'shared';
+import { amountContainsUnit, applyMainImageFallback, CanonicalRecipeSchema, type CanonicalRecipe } from 'shared';
 import { AppError } from '../../lib/errors.js';
 
 const MAX_STEP_DESCRIPTION_LENGTH = 600;
@@ -66,16 +66,22 @@ export function finalSanitize(recipe: CanonicalRecipe, defaultMainImageUrl: stri
     title: clean(recipe.title),
     tags: dedupeCaseInsensitive(recipe.tags.map(clean).filter((tag) => tag.length > 0)),
     time: recipe.time,
-    ingredients: recipe.ingredients.map((ingredient) => ({
-      name: clean(ingredient.name),
-      amount_text: clean(ingredient.amount_text),
+    ingredients: recipe.ingredients.map((ingredient) => {
+      const amountText = clean(ingredient.amount_text);
       // Gemini emits null (not omission) when it has no value; treat both as "absent".
-      ...(ingredient.amount_value !== undefined && ingredient.amount_value !== null
-        ? { amount_value: ingredient.amount_value }
-        : {}),
-      ...(ingredient.unit !== undefined && ingredient.unit !== null ? { unit: clean(ingredient.unit) } : {}),
-      ...(ingredient.image !== undefined && ingredient.image !== null ? { image: ingredient.image.trim() } : {}),
-    })),
+      const unit = ingredient.unit !== undefined && ingredient.unit !== null ? clean(ingredient.unit) : undefined;
+      return {
+        name: clean(ingredient.name),
+        amount_text: amountText,
+        ...(ingredient.amount_value !== undefined && ingredient.amount_value !== null
+          ? { amount_value: ingredient.amount_value }
+          : {}),
+        // Drop the unit when amount_text already names it ("5 oz" + "oz"),
+        // so renderers can append unit without doubling it.
+        ...(unit !== undefined && !amountContainsUnit(amountText, unit) ? { unit } : {}),
+        ...(ingredient.image !== undefined && ingredient.image !== null ? { image: ingredient.image.trim() } : {}),
+      };
+    }),
     pantry_items: dedupeCaseInsensitive(recipe.pantry_items.map(clean).filter((item) => item.length > 0)),
     main_image: applyMainImageFallback((recipe.main_image ?? '').trim(), defaultMainImageUrl),
     steps,

@@ -110,6 +110,18 @@ describe('IngredientEditor', () => {
     expect(onChange).toHaveBeenLastCalledWith([]);
   });
 
+  it('does not repeat the unit in the read-only amount when amount_text already contains it', () => {
+    render(
+      <IngredientEditor
+        ingredients={[{ name: 'Flour', amount_text: '2 cups', unit: 'cups' }]}
+        onChange={vi.fn()}
+        readOnly
+      />,
+    );
+    expect(screen.getByText('2 cups')).toBeInTheDocument();
+    expect(screen.queryByText('2 cups cups')).not.toBeInTheDocument();
+  });
+
   it('renders no ingredient rows when the list is empty', () => {
     render(<IngredientEditor ingredients={[]} onChange={vi.fn()} />);
     expect(screen.queryAllByRole('img')).toHaveLength(0);

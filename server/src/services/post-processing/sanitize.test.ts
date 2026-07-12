@@ -68,6 +68,27 @@ describe('finalSanitize', () => {
     expect(result.steps[0].step_description).toBe('Do this then that.');
   });
 
+  it('drops the unit when amount_text already contains it', () => {
+    const recipe = validRecipe({
+      ingredients: [
+        { name: 'Oyster Mushrooms', amount_text: '5 oz', unit: 'oz' },
+        { name: 'Ground Pork', amount_text: '1 lb', unit: 'lbs' },
+        { name: 'Noodles', amount_text: '200g', unit: 'g' },
+      ],
+    });
+    const result = finalSanitize(recipe, DEFAULT_IMAGE);
+    expect(result.ingredients.map((i) => i.unit)).toEqual([undefined, undefined, undefined]);
+    expect(result.ingredients.map((i) => i.amount_text)).toEqual(['5 oz', '1 lb', '200g']);
+  });
+
+  it('keeps the unit when amount_text does not contain it', () => {
+    const recipe = validRecipe({
+      ingredients: [{ name: 'Garlic', amount_text: '2', unit: 'pc' }],
+    });
+    const result = finalSanitize(recipe, DEFAULT_IMAGE);
+    expect(result.ingredients[0].unit).toBe('pc');
+  });
+
   it('dedupes tags and pantry_items case-insensitively as a final guarantee', () => {
     const recipe = validRecipe({
       tags: ['Quick', 'quick'],
