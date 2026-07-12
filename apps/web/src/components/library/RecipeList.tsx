@@ -3,6 +3,7 @@
 // Download is a plain anchor because the server sets the filename via
 // Content-Disposition on GET /api/recipe/download/:id.
 import type { RecipeSummary } from 'shared';
+import { tagColorClass } from '../../lib/tag-palette.ts';
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -38,7 +39,7 @@ export function RecipeList({
           {recipe.tags.length > 0 ? (
             <ul className="recipe-list-tags" aria-label={`Tags for ${recipe.title}`}>
               {recipe.tags.map((tag) => (
-                <li key={tag} className="recipe-list-tag">{tag}</li>
+                <li key={tag} className={`recipe-list-tag ${tagColorClass(tag)}`}>{tag}</li>
               ))}
             </ul>
           ) : null}

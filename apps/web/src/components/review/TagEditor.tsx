@@ -4,6 +4,7 @@
 // Every add/remove builds a fresh array via onChange - never mutates `tags`.
 import { useState, type KeyboardEvent } from 'react';
 import { TAG_VOCABULARY } from 'shared';
+import { tagColorClass } from '../../lib/tag-palette.ts';
 
 const MAX_TAGS = 5;
 const MAX_TAG_LENGTH = 40;
@@ -73,7 +74,7 @@ export function TagEditor({
         {tags.length > 0 ? (
           <ul className="tag-editor-applied" aria-label="Applied tags">
             {tags.map((tag) => (
-              <li key={tag} className="tag-editor-chip">
+              <li key={tag} className={`tag-editor-chip ${tagColorClass(tag)}`}>
                 <span>{tag}</span>
               </li>
             ))}
@@ -90,7 +91,7 @@ export function TagEditor({
       {tags.length > 0 ? (
         <ul className="tag-editor-applied" aria-label="Applied tags">
           {tags.map((tag) => (
-            <li key={tag} className="tag-editor-chip">
+            <li key={tag} className={`tag-editor-chip ${tagColorClass(tag)}`}>
               <span>{tag}</span>
               <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove tag ${tag}`}>
                 Remove
@@ -107,7 +108,7 @@ export function TagEditor({
             <button
               key={tag}
               type="button"
-              className="tag-editor-vocab-chip"
+              className={`tag-editor-vocab-chip ${tagColorClass(tag)}`}
               aria-pressed={applied}
               disabled={!applied && atCap}
               onClick={() => toggleVocabTag(tag)}

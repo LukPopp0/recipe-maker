@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RecipeSummary } from 'shared';
 import { RecipeList } from './RecipeList.tsx';
+import { tagColorClass } from '../../lib/tag-palette.ts';
 
 const SUMMARIES: RecipeSummary[] = [
   { id: 'id-1', title: 'Soup', tags: ['dinner'], main_image: '/images/soup.png', createdAt: '2026-01-02T00:00:00.000Z' },
@@ -14,6 +15,7 @@ describe('RecipeList', () => {
     render(<RecipeList recipes={SUMMARIES} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Soup')).toBeInTheDocument();
     expect(screen.getByText('dinner')).toBeInTheDocument();
+    expect(screen.getByText('dinner')).toHaveClass(tagColorClass('dinner'));
     expect(screen.getByRole('img', { name: 'Soup' })).toHaveAttribute('src', '/images/soup.png');
   });
 

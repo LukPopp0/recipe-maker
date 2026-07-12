@@ -49,6 +49,13 @@ describe('TagEditor', () => {
     expect(screen.getByRole('button', { name: 'Spicy' })).toHaveAttribute('aria-pressed', 'false');
   });
 
+  it('gives applied chips and vocabulary chips their tag color class', () => {
+    render(<TagEditor tags={['Quick']} onChange={vi.fn()} />);
+    expect(screen.getByText('Quick', { selector: '.tag-editor-chip span' }).closest('li'))
+      .toHaveClass('tag-color-quick');
+    expect(screen.getByRole('button', { name: 'Spicy' })).toHaveClass('tag-color-spicy');
+  });
+
   it('clicking an applied vocabulary chip removes it', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

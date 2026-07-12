@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { CanonicalRecipe } from 'shared';
 import type { CardOrientation } from './CardView.tsx';
 import { ingredientImageUrl, INGREDIENT_NOT_FOUND_IMAGE } from '../../lib/ingredient-image.ts';
-import { tagPaletteIndex } from '../../lib/tag-palette.ts';
+import { tagColorClass } from '../../lib/tag-palette.ts';
 import pinaLogo from '../../assets/pina-logo.png';
 
 // Density buckets keep any ingredient count on page 1 (specs/10: shrink,
@@ -59,7 +59,7 @@ export function CardPage1({
           {recipe.tags.length > 0 ? (
             <ul className="card-tags" aria-label="Tags">
               {recipe.tags.map((tag) => (
-                <li key={tag} className={`card-tag card-tag-${tagPaletteIndex(tag)}`}>
+                <li key={tag} className={`card-tag ${tagColorClass(tag)}`}>
                   {tag}
                 </li>
               ))}

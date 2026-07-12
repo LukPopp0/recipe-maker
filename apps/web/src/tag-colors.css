@@ -1,0 +1,23 @@
+/* Per-tag pill colors. Each preset tag gets a fixed hue keyed to its meaning;
+   custom tags cycle the 3-color fallback (former card palette hues). Values
+   are the light pair (tint background + dark text) used verbatim on the
+   printable card (always white paper). App chips derive dark-theme colors
+   from these via color-mix in workspace.css. */
+.tag-color-spicy { --tag-bg: #f9d7d2; --tag-fg: #c0392b; }
+.tag-color-comfort-meal { --tag-bg: #f6dfd4; --tag-fg: #a6482c; }
+.tag-color-family-friendly { --tag-bg: #fce5c9; --tag-fg: #b35f14; }
+.tag-color-quick { --tag-bg: #fdf1b8; --tag-fg: #8a6d00; }
+.tag-color-chickeny { --tag-bg: #f5e3c2; --tag-fg: #96652a; }
+.tag-color-beefy { --tag-bg: #ebdcce; --tag-fg: #6b4226; }
+.tag-color-balanced { --tag-bg: #e9ecd3; --tag-fg: #5f6b2c; }
+.tag-color-vegetarian { --tag-bg: #ddedd8; --tag-fg: #2e6e32; }
+.tag-color-calorie-smart { --tag-bg: #d3ede7; --tag-fg: #16705f; }
+.tag-color-refreshing { --tag-bg: #d6f0f5; --tag-fg: #1a7a8c; }
+.tag-color-fishy { --tag-bg: #d8e8f7; --tag-fg: #1f5e96; }
+.tag-color-high-protein { --tag-bg: #e2e5f1; --tag-fg: #4c5270; }
+.tag-color-exotic { --tag-bg: #ebdff4; --tag-fg: #6c3e91; }
+.tag-color-dessert { --tag-bg: #fadae8; --tag-fg: #b23a6f; }
+
+.tag-color-fallback-0 { --tag-bg: #e2e5f1; --tag-fg: #4c5270; }
+.tag-color-fallback-1 { --tag-bg: #f9d7d2; --tag-fg: #c0392b; }
+.tag-color-fallback-2 { --tag-bg: #ddedd8; --tag-fg: #2e6e32; }

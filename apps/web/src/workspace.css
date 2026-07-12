@@ -597,12 +597,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  border: 1px solid var(--color-accent);
-  background: var(--color-tint);
+  border: 1px solid var(--tag-fg, var(--color-accent));
+  background: var(--tag-bg, var(--color-tint));
   border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
-  color: var(--color-accent);
+  color: var(--tag-fg, var(--color-accent));
 }
 
 .tag-editor-chip button {
@@ -629,13 +629,35 @@
 }
 
 .tag-editor-vocab-chip[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--tag-fg, var(--color-accent));
+  background: var(--tag-bg, var(--color-tint));
+  color: var(--tag-fg, var(--color-accent));
 }
 
 .tag-editor-vocab-chip:disabled {
   cursor: not-allowed;
   color: var(--color-text-muted);
+}
+
+/* Dark theme: derive chip colors from the light pair (deepened background,
+   pale tint as text). Card pills are untouched - card paper stays white.
+   Duplicated media/attribute blocks per the index.css convention. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .tag-editor-chip,
+  :root:not([data-theme='light']) .tag-editor-vocab-chip[aria-pressed='true'],
+  :root:not([data-theme='light']) .recipe-list-tag {
+    background: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 28%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 55%, var(--color-surface));
+    color: var(--tag-bg, var(--color-tint));
+  }
+}
+
+:root[data-theme='dark'] .tag-editor-chip,
+:root[data-theme='dark'] .tag-editor-vocab-chip[aria-pressed='true'],
+:root[data-theme='dark'] .recipe-list-tag {
+  background: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 28%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 55%, var(--color-surface));
+  color: var(--tag-bg, var(--color-tint));
 }
 
 .tag-editor-custom {
@@ -815,7 +837,8 @@
 }
 
 .recipe-list-tag {
-  background: var(--color-tint);
+  background: var(--tag-bg, var(--color-tint));
+  color: var(--tag-fg, var(--color-text));
   border-radius: var(--radius-full);
   padding: 0 var(--space-2);
   font-size: var(--font-size-sm);

@@ -2,6 +2,9 @@
    printable card uses, so app and card share one identity. */
 @import './assets/fonts/fonts.css';
 
+/* Per-tag pill colors (--tag-bg/--tag-fg), shared by app chips and card */
+@import './tag-colors.css';
+
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;

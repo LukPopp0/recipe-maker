@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { CanonicalRecipe } from 'shared';
 import { CardPage1 } from './CardPage1.tsx';
 import { INGREDIENT_NOT_FOUND_IMAGE } from '../../lib/ingredient-image.ts';
-import { tagPaletteIndex } from '../../lib/tag-palette.ts';
+import { tagColorClass } from '../../lib/tag-palette.ts';
 
 function makeRecipe(overrides: Partial<CanonicalRecipe> = {}): CanonicalRecipe {
   return {
@@ -30,7 +30,8 @@ describe('CardPage1', () => {
     expect(screen.getByRole('heading', { name: 'Korean Beef Bowls' })).toBeInTheDocument();
     expect(screen.getByText('15 Minutes')).toBeInTheDocument();
     const tag = screen.getByText('High Protein');
-    expect(tag).toHaveClass(`card-tag-${tagPaletteIndex('High Protein')}`);
+    expect(tag).toHaveClass(tagColorClass('High Protein'));
+    expect(tag).toHaveClass('tag-color-high-protein');
   });
 
   it('omits time and tags rows when absent', () => {
