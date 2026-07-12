@@ -645,6 +645,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .tag-editor-chip,
   :root:not([data-theme='light']) .tag-editor-vocab-chip[aria-pressed='true'],
+  :root:not([data-theme='light']) .library-filter-tag[aria-pressed='true'],
   :root:not([data-theme='light']) .recipe-list-tag {
     background: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 28%, var(--color-surface));
     border-color: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 55%, var(--color-surface));
@@ -654,6 +655,7 @@
 
 :root[data-theme='dark'] .tag-editor-chip,
 :root[data-theme='dark'] .tag-editor-vocab-chip[aria-pressed='true'],
+:root[data-theme='dark'] .library-filter-tag[aria-pressed='true'],
 :root[data-theme='dark'] .recipe-list-tag {
   background: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 28%, var(--color-surface));
   border-color: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 55%, var(--color-surface));
@@ -788,6 +790,113 @@
 .workspace-empty-note {
   color: var(--color-text-muted);
   margin: 0;
+}
+
+/* Library filter/sort bar */
+.library-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.library-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.library-filter-search {
+  flex: 1;
+  min-width: 12rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.library-filter-sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.library-filter-sort select {
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.library-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.library-filter-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.library-filter-chip {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  background: none;
+}
+
+/* Pressed state: plain chips (time buckets) use theme tokens so both themes
+   work without overrides; tag chips override below with their fixed pair. */
+.library-filter-chip[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.library-filter-tag[aria-pressed='true'] {
+  border-color: var(--tag-fg, var(--color-accent));
+  background: var(--tag-bg, var(--color-tint));
+  color: var(--tag-fg, var(--color-accent));
+}
+
+.library-filter-segment {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.library-filter-segment button {
+  border: none;
+  background: none;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.library-filter-segment button[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.library-filter-status {
+  justify-content: space-between;
+}
+
+.library-filter-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 /* Library */

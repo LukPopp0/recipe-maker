@@ -67,6 +67,20 @@ describe('LocalJsonFileRecipeRepository', () => {
     expect(typeof list[0].createdAt).toBe('string');
   });
 
+  it('includes time and source_type in summaries', async () => {
+    const repo = new LocalJsonFileRecipeRepository(dataDir);
+
+    await repo.save(makeRecipe({ time: 45, metadata: { source_type: 'url', source_url: 'https://example.com/r', language: 'en', warnings: [] } }));
+    await repo.save(makeRecipe({ time: null }));
+
+    const list = await repo.list();
+    const urlSummary = list.find((s) => s.source_type === 'url');
+    const manualSummary = list.find((s) => s.source_type === 'manual');
+
+    expect(urlSummary?.time).toBe(45);
+    expect(manualSummary?.time).toBeNull();
+  });
+
   it('delete removes the recipe from get and list', async () => {
     const repo = new LocalJsonFileRecipeRepository(dataDir);
     const { id } = await repo.save(makeRecipe());

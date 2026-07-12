@@ -15,8 +15,8 @@ const mockedListRecipes = vi.mocked(listRecipes);
 const mockedDeleteRecipe = vi.mocked(deleteRecipe);
 
 const SUMMARIES: RecipeSummary[] = [
-  { id: 'id-old', title: 'Older', tags: [], main_image: '/images/a.png', createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: 'id-new', title: 'Newer', tags: [], main_image: '/images/b.png', createdAt: '2026-02-01T00:00:00.000Z' },
+  { id: 'id-old', title: 'Older', tags: [], main_image: '/images/a.png', createdAt: '2026-01-01T00:00:00.000Z', time: 60, source_type: 'url' },
+  { id: 'id-new', title: 'Newer', tags: [], main_image: '/images/b.png', createdAt: '2026-02-01T00:00:00.000Z', time: 20, source_type: 'manual' },
 ];
 
 describe('LibraryPanel', () => {
@@ -83,6 +83,71 @@ describe('LibraryPanel', () => {
     await user.click(await screen.findByRole('button', { name: 'Delete Older' }));
     expect(await screen.findByText(/no recipe exists/i)).toBeInTheDocument();
     expect(screen.getByText('Older')).toBeInTheDocument();
+  });
+
+  it('narrows the list from the search box and shows the match count', async () => {
+    mockedListRecipes.mockResolvedValueOnce({ ok: true, value: { recipes: SUMMARIES } });
+    const user = userEvent.setup();
+    render(<LibraryPanel onOpenInCreate={vi.fn()} />);
+
+    await user.type(await screen.findByRole('searchbox', { name: /search/i }), 'newer');
+    expect(screen.getByText('Newer')).toBeInTheDocument();
+    expect(screen.queryByText('Older')).not.toBeInTheDocument();
+    expect(screen.getByText('1 of 2 recipes')).toBeInTheDocument();
+  });
+
+  it('shows a no-match message with a working clear-filters reset', async () => {
+    mockedListRecipes.mockResolvedValueOnce({ ok: true, value: { recipes: SUMMARIES } });
+    const user = userEvent.setup();
+    render(<LibraryPanel onOpenInCreate={vi.fn()} />);
+
+    await user.type(await screen.findByRole('searchbox', { name: /search/i }), 'zzz');
+    expect(screen.getByText(/no recipes match/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /clear filters/i }));
+    expect(screen.getByText('Newer')).toBeInTheDocument();
+    expect(screen.getByText('Older')).toBeInTheDocument();
+  });
+
+  it('reorders the list when the sort changes', async () => {
+    mockedListRecipes.mockResolvedValueOnce({ ok: true, value: { recipes: SUMMARIES } });
+    const user = userEvent.setup();
+    render(<LibraryPanel onOpenInCreate={vi.fn()} />);
+
+    await screen.findByText('Newer');
+    await user.selectOptions(screen.getByRole('combobox', { name: /sort/i }), 'name-asc');
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings.map((h) => h.textContent)).toEqual(['Newer', 'Older']);
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /sort/i }), 'name-desc');
+    const reversed = screen.getAllByRole('heading', { level: 3 });
+    expect(reversed.map((h) => h.textContent)).toEqual(['Older', 'Newer']);
+  });
+
+  it('hides the filter bar in the detail view', async () => {
+    mockedListRecipes.mockResolvedValueOnce({ ok: true, value: { recipes: SUMMARIES } });
+    const mockedGetRecipe = vi.mocked(getRecipe);
+    mockedGetRecipe.mockResolvedValue({
+      ok: true,
+      value: {
+        recipe: {
+          title: 'Newer',
+          tags: [],
+          time: null,
+          ingredients: [],
+          pantry_items: [],
+          main_image: '/images/b.png',
+          steps: [{ step_header: 'S', step_description: 'D' }],
+          metadata: { source_type: 'url', language: 'en', warnings: [] },
+        },
+      },
+    });
+    const user = userEvent.setup();
+    render(<LibraryPanel onOpenInCreate={vi.fn()} />);
+
+    await user.click(await screen.findByRole('button', { name: 'View Newer' }));
+    await screen.findByRole('button', { name: /back to library/i });
+    expect(screen.queryByRole('searchbox', { name: /search/i })).not.toBeInTheDocument();
   });
 
   it('opens the detail view on View and returns on Back', async () => {

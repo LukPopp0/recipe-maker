@@ -6,8 +6,8 @@ import { RecipeList } from './RecipeList.tsx';
 import { tagColorClass } from '../../lib/tag-palette.ts';
 
 const SUMMARIES: RecipeSummary[] = [
-  { id: 'id-1', title: 'Soup', tags: ['dinner'], main_image: '/images/soup.png', createdAt: '2026-01-02T00:00:00.000Z' },
-  { id: 'id-2', title: 'Cake', tags: [], main_image: '/images/cake.png', createdAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'id-1', title: 'Soup', tags: ['dinner'], main_image: '/images/soup.png', createdAt: '2026-01-02T00:00:00.000Z', time: 30, source_type: 'manual' },
+  { id: 'id-2', title: 'Cake', tags: [], main_image: '/images/cake.png', createdAt: '2026-01-01T00:00:00.000Z', time: 60, source_type: 'url' },
 ];
 
 describe('RecipeList', () => {

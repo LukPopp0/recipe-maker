@@ -5,7 +5,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CanonicalRecipe, RecipeSummary } from 'shared';
 import { deleteRecipe, listRecipes, type ApiFailure } from '../../api/client.ts';
+import { applyLibraryQuery, collectTags, EMPTY_FILTERS, type LibraryFilters, type LibrarySort } from '../../lib/library-query.ts';
 import { ErrorBanner } from '../ErrorBanner.tsx';
+import { LibraryFilterBar } from './LibraryFilterBar.tsx';
 import { RecipeList } from './RecipeList.tsx';
 import { RecipeDetail } from './RecipeDetail.tsx';
 
@@ -13,10 +15,6 @@ type ListStatus =
   | { phase: 'loading' }
   | { phase: 'error'; error: ApiFailure }
   | { phase: 'ready' };
-
-function sortNewestFirst(recipes: RecipeSummary[]): RecipeSummary[] {
-  return [...recipes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
 
 export function LibraryPanel({
   onOpenInCreate,
@@ -26,6 +24,10 @@ export function LibraryPanel({
   const [summaries, setSummaries] = useState<RecipeSummary[]>([]);
   const [status, setStatus] = useState<ListStatus>({ phase: 'loading' });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Filter/sort state resets on each Library visit (component remounts) -
+  // deliberate: a stale filter hiding recipes days later would look like data loss.
+  const [filters, setFilters] = useState<LibraryFilters>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<LibrarySort>('newest');
   // Delete failures render alongside the list/detail rather than replacing
   // them - the recipe still exists, so its card must stay visible.
   const [deleteFailure, setDeleteFailure] = useState<{ id: string; error: ApiFailure } | null>(null);
@@ -34,7 +36,7 @@ export function LibraryPanel({
     setStatus({ phase: 'loading' });
     const result = await listRecipes();
     if (result.ok) {
-      setSummaries(sortNewestFirst(result.value.recipes));
+      setSummaries(result.value.recipes);
       setStatus({ phase: 'ready' });
     } else {
       setStatus({ phase: 'error', error: result.error });
@@ -88,9 +90,29 @@ export function LibraryPanel({
           {status.phase === 'error' ? (
             <ErrorBanner error={status.error} onRetry={() => void load()} onDismiss={() => void load()} />
           ) : null}
-          {status.phase === 'ready' ? (
-            <RecipeList recipes={summaries} onView={setSelectedId} onDelete={handleDelete} />
-          ) : null}
+          {status.phase === 'ready' ? (() => {
+            const visible = applyLibraryQuery(summaries, filters, sort);
+            return (
+              <>
+                {summaries.length > 0 ? (
+                  <LibraryFilterBar
+                    filters={filters}
+                    sort={sort}
+                    availableTags={collectTags(summaries)}
+                    matchCount={visible.length}
+                    totalCount={summaries.length}
+                    onFiltersChange={setFilters}
+                    onSortChange={setSort}
+                  />
+                ) : null}
+                {summaries.length > 0 && visible.length === 0 ? (
+                  <p className="recipe-list-empty">No recipes match the current filters.</p>
+                ) : (
+                  <RecipeList recipes={visible} onView={setSelectedId} onDelete={handleDelete} />
+                )}
+              </>
+            );
+          })() : null}
         </>
       )}
     </div>

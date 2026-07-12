@@ -246,7 +246,7 @@ describe('api/client', () => {
         jsonResponse({
           ok: true,
           requestId: 'r1',
-          recipes: [{ id: 'a', title: 'T', tags: [], main_image: '/images/x.png', createdAt: '2026-01-01T00:00:00.000Z' }],
+          recipes: [{ id: 'a', title: 'T', tags: [], main_image: '/images/x.png', createdAt: '2026-01-01T00:00:00.000Z', time: 60, source_type: 'url' }],
         }),
       );
 

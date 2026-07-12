@@ -8,4 +8,7 @@ export type RecipeSummary = {
   tags: string[]
   main_image: string
   createdAt: string
+  // Library filter/sort fields, lifted from the stored recipe at list() time
+  time: number | null
+  source_type: 'url' | 'manual'
 }

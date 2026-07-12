@@ -90,6 +90,8 @@ export class LocalJsonFileRecipeRepository implements RecipeRepository {
         tags: envelope.recipe.tags,
         main_image: envelope.recipe.main_image,
         createdAt: envelope.createdAt,
+        time: envelope.recipe.time,
+        source_type: envelope.recipe.metadata.source_type,
       });
     }
 
