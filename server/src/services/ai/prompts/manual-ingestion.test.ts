@@ -27,8 +27,15 @@ describe('buildManualIngestionPrompt', () => {
     expect(prompt).toMatch(/600 characters/);
   });
 
-  it('instructs not to reorder, invent, or drop steps', () => {
-    expect(prompt).toMatch(/do not reorder, invent, or drop steps/i);
+  it('instructs not to reorder, invent, or drop steps, with the cutting-prep carve-out', () => {
+    expect(prompt).toMatch(/do not reorder, invent, or\s+drop steps/i);
+    expect(prompt).toMatch(/one\s+allowed\s+exception/i);
+  });
+
+  it('instructs to carry ingredient-list cutting prep into the steps', () => {
+    expect(prompt).toMatch(/missing cutting instructions/i);
+    expect(prompt).toMatch(/would still have at most 6 steps/i);
+    expect(prompt).toMatch(/do not duplicate cutting/i);
   });
 
   it('instructs to use the upper bound of a time range', () => {

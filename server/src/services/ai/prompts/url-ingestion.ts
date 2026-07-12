@@ -37,6 +37,15 @@ Rules:
   differ in identity (e.g. "red onion" vs "onion", "green onion" vs "onion").
 - For "unit", use the short form: pounds -> lbs, tablespoons -> tbsp, teaspoons -> tsp,
   ounces -> oz, grams -> g, milliliters -> ml. Keep "amount_text" as the source amount.
+- Ingredient lists often carry cutting instructions ("1 onion, diced", "chicken breast,
+  cut into strips"). When the steps never tell the cook to do that cutting, add the
+  missing cutting instructions to the start of the recipe so no knife work is lost when
+  ingredient names are normalized: either prepend them to the first step's description
+  (e.g. "Dice the onion and cut the chicken into strips. " before its existing text) or,
+  if the recipe would still have at most 6 steps, add them as a new first preparation
+  step. Only carry over cutting/knife work (dice, slice, chop, mince, cube, julienne,
+  halve, cut into ...); do not move other preparation (rinsing, peeling, draining), and
+  do not duplicate cutting the steps already describe.
 - For "time", give the active hands-on time in minutes (prep plus cooking). For a range
   like "30 minutes to 1 hour" use the upper bound (60). EXCLUDE long passive/unattended
   waits such as overnight freezing, marinating, soaking, resting, chilling, rising, or
