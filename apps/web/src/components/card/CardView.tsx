@@ -66,6 +66,17 @@ export function CardView({ recipe, onBack }: { recipe: CanonicalRecipe; onBack: 
     if (window.scrollY > 0) window.scrollTo(0, 0);
   }, []);
 
+  // Browsers use document.title as the default save-PDF filename, so the
+  // printed card is named after the recipe instead of the app.
+  useEffect(() => {
+    const previous = document.title;
+    const slug = recipe.title.toLowerCase().trim().replace(/\s+/g, '-');
+    if (slug) document.title = slug;
+    return () => {
+      document.title = previous;
+    };
+  }, [recipe.title]);
+
   return (
     <div className={landscape ? 'card-view card-view--landscape' : 'card-view'}>
       <div className="card-view-toolbar">

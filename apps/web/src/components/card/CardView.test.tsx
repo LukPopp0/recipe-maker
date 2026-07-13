@@ -38,6 +38,16 @@ describe('CardView', () => {
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
   });
 
+  it('sets the document title to the slugified recipe title while mounted', () => {
+    const originalTitle = document.title;
+    const { unmount } = render(<CardView recipe={RECIPE} onBack={vi.fn()} />);
+
+    expect(document.title).toBe('korean-beef-bowls');
+
+    unmount();
+    expect(document.title).toBe(originalTitle);
+  });
+
   it('fires onBack from the Back button', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
