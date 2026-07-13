@@ -27,7 +27,9 @@ function makeRecipe(overrides: Partial<CanonicalRecipe> = {}): CanonicalRecipe {
 
 function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> } {
   return {
-    put: vi.fn().mockResolvedValue('http://localhost:8787/images/recipes/recipe-1/main-0.jpg'),
+    put: vi.fn().mockImplementation((_buffer: Buffer, key: string) =>
+      Promise.resolve(`http://localhost:8787/images/${key}`),
+    ),
     get: vi.fn(),
     delete: vi.fn(),
   };
@@ -207,6 +209,87 @@ describe('rehostRecipeImages', () => {
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/timed out/i);
     expect(storageAdapter.put).not.toHaveBeenCalled();
+  });
+
+  it('re-hosts remote step images under step-{index} keys and rewrites steps[].image', async () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    // Fresh Response per call - a shared instance's body stream can only be
+    // consumed once.
+    globalThis.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(bytes, { status: 200, headers: { 'content-type': 'image/jpeg' } })),
+    );
+    const storageAdapter = makeStorageAdapter();
+    const recipe = makeRecipe({
+      steps: [
+        { step_header: 'Chop', step_description: 'Chop it.', image: 'https://source.example.com/step1.jpg' },
+        { step_header: 'Cook', step_description: 'Cook it.' },
+        { step_header: 'Serve', step_description: 'Serve it.', image: 'https://source.example.com/step3.jpg' },
+      ],
+    });
+
+    const result = await rehostRecipeImages(recipe, {
+      recipeId: 'recipe-1',
+      storageAdapter,
+      maxBytes: 1_000_000,
+    });
+
+    expect(result.warnings).toEqual([]);
+    expect(result.recipe.steps[0].image).toBe('http://localhost:8787/images/recipes/recipe-1/step-0.jpg');
+    expect(result.recipe.steps[1].image).toBeUndefined();
+    expect(result.recipe.steps[2].image).toBe('http://localhost:8787/images/recipes/recipe-1/step-2.jpg');
+    expect(storageAdapter.put).toHaveBeenCalledWith(Buffer.from(bytes), 'recipes/recipe-1/step-0.jpg', 'image/jpeg');
+    expect(storageAdapter.put).toHaveBeenCalledWith(Buffer.from(bytes), 'recipes/recipe-1/step-2.jpg', 'image/jpeg');
+  });
+
+  it('drops a step image and warns when its download fails, leaving other steps intact', async () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    globalThis.fetch = vi.fn().mockImplementation((input: string | URL) => {
+      const url = String(input);
+      if (url.includes('bad')) {
+        return Promise.resolve(new Response(null, { status: 404 }));
+      }
+      return Promise.resolve(new Response(bytes, { status: 200, headers: { 'content-type': 'image/jpeg' } }));
+    });
+    const storageAdapter = makeStorageAdapter();
+    const recipe = makeRecipe({
+      steps: [
+        { step_header: 'Chop', step_description: 'Chop it.', image: 'https://source.example.com/bad.jpg' },
+        { step_header: 'Cook', step_description: 'Cook it.', image: 'https://source.example.com/good.jpg' },
+      ],
+    });
+
+    const result = await rehostRecipeImages(recipe, {
+      recipeId: 'recipe-1',
+      storageAdapter,
+      maxBytes: 1_000_000,
+    });
+
+    expect(result.recipe.steps[0].image).toBeUndefined();
+    expect(result.recipe.steps[1].image).toBe('http://localhost:8787/images/recipes/recipe-1/step-1.jpg');
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/^Step 1 image was not re-hosted/);
+  });
+
+  it('does not attempt to download non-http(s) step images (e.g. already local paths)', async () => {
+    const bytes = new Uint8Array([1, 2]);
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(bytes, { status: 200, headers: { 'content-type': 'image/jpeg' } }),
+    );
+    const storageAdapter = makeStorageAdapter();
+    const recipe = makeRecipe({
+      main_image: '/images/recipes/recipe-1/main-0.jpg',
+      steps: [{ step_header: 'Cook', step_description: 'Cook it.', image: '/images/recipes/recipe-1/step-0.jpg' }],
+    });
+
+    const result = await rehostRecipeImages(recipe, {
+      recipeId: 'recipe-1',
+      storageAdapter,
+      maxBytes: 1_000_000,
+    });
+
+    expect(result.recipe.steps[0].image).toBe('/images/recipes/recipe-1/step-0.jpg');
+    expect(result.warnings).toEqual([]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it('does not attempt to download a non-http(s) main_image (e.g. already a local path)', async () => {

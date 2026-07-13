@@ -28,13 +28,19 @@ single retry via `GEMINI_RETRY_MODEL`; CI (`.github/workflows/ci.yml`) runs
 install/typecheck/test with Playwright mocked.
 Phase 8.5 fix backlog from end-to-end testing:
 `plans/phase-8.5-fixes-and-improvements.md` (check items off as fixed).
+Phase 10 (specs/14) is done: URL ingestion extracts step images (JSON-LD
+HowToStep.image overlay + Gemini candidate mapping, prompt v4, re-hosted like
+main_image), ingest responses return `imageNamespaceId`, `POST /api/image/step`
+uploads a step image from the review panel (upload-only, per-step thumbnail),
+and a "Copy image prompt" button copies a generation prompt for Gemini's web
+UI (server-side AI image generation rejected - no API free tier).
 Next: Phase 9 PDF generation upgrade (future). Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 
 ## Key docs
 - `plans/recipe-maker-implementation-plan.md` - phases, order, definition of done, risks
-- `specs/01` through `specs/13` - one spec per concern, referenced by phase in the plan
+- `specs/01` through `specs/14` - one spec per concern, referenced by phase in the plan
 - `specs/12-shared-constants.md` - pantry allowlist + tag vocabulary (actual values)
 - `specs/13-recipe-persistence-and-library.md` - RecipeRepository, save/library flow
 

@@ -1,0 +1,28 @@
+<html>
+  <head>
+    <title>JSON-LD Chili With Step Images</title>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      "name": "Golden Test JSON-LD Chili ZXQ7MARKER",
+      "recipeIngredient": ["400g ground beef", "200g lasagna sheets"],
+      "recipeInstructions": [
+        {
+          "@type": "HowToStep",
+          "text": "Brown the ground beef in a large pot over medium heat.",
+          "image": "https://cdn.example.com/steps/brown.jpg"
+        },
+        {
+          "@type": "HowToStep",
+          "text": "Boil the lasagna sheets until al dente and stir them in.",
+          "image": { "@type": "ImageObject", "url": "https://cdn.example.com/steps/boil.jpg" }
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div>Chili</div>
+  </body>
+</html>

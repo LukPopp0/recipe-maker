@@ -27,7 +27,7 @@ const RECIPE: CanonicalRecipe = {
 const INVALID_RECIPE: CanonicalRecipe = { ...RECIPE, title: '' };
 
 function stateFor(recipe: CanonicalRecipe, overrides: Partial<{ savedId: string | null; dirty: boolean }> = {}): WorkspaceRecipeState {
-  return { recipe, diagnostics: null, savedId: null, dirty: false, ...overrides };
+  return { recipe, diagnostics: null, savedId: null, dirty: false, imageNamespaceId: 'ns-test', ...overrides };
 }
 
 function renderTray(

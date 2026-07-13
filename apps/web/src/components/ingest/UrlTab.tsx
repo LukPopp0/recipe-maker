@@ -20,7 +20,7 @@ export function UrlTab({
   onRecipe,
   onExtractStart,
 }: {
-  onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null) => void
+  onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string) => void
   onExtractStart: () => void
 }) {
   const [url, setUrl] = useState('');
@@ -42,7 +42,7 @@ export function UrlTab({
       const result = await ingestUrl(value);
       if (result.ok) {
         setStatus({ phase: 'complete' });
-        onRecipe(result.value.recipe, result.value.diagnostics);
+        onRecipe(result.value.recipe, result.value.diagnostics, result.value.imageNamespaceId);
       } else {
         setStatus({ phase: 'error', error: result.error });
       }

@@ -22,6 +22,10 @@ export type WorkspaceRecipeState = {
   diagnostics: IngestDiagnostics | null
   savedId: string | null
   dirty: boolean
+  // Storage-key namespace review-panel step-image uploads go into. Comes from
+  // the ingest response when available; minted client-side for recipes that
+  // never went through ingestion (Load JSON, Open in Create).
+  imageNamespaceId: string
 } | null;
 
 // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any

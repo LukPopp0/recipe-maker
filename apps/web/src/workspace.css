@@ -566,9 +566,35 @@
   align-self: flex-end;
 }
 
-.step-editor-image-indicator {
+.step-editor-image-thumb {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.step-editor-image-upload {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+}
+
+.step-editor-image-status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.step-editor-image-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger, #b3261e);
+  margin: 0;
+}
+
+.review-panel-steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .step-editor-cap-hint {

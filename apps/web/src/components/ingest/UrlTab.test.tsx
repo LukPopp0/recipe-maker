@@ -79,7 +79,7 @@ describe('UrlTab', () => {
     const onRecipe = vi.fn();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
 
     render(<UrlTab onRecipe={onRecipe} onExtractStart={vi.fn()} />);
@@ -90,7 +90,7 @@ describe('UrlTab', () => {
 
     expect(mockedIngestUrl).toHaveBeenCalledWith('https://example.com/recipe');
     await vi.waitFor(() => {
-      expect(onRecipe).toHaveBeenCalledWith(RECIPE, { extractor: 'url', model: 'gemini', durationMs: 100 });
+      expect(onRecipe).toHaveBeenCalledWith(RECIPE, { extractor: 'url', model: 'gemini', durationMs: 100 }, 'ns-test');
     });
   });
 
@@ -110,7 +110,7 @@ describe('UrlTab', () => {
 
     pending.resolve({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     await vi.waitFor(() => {
       expect(screen.getByText(/complete/i)).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe('UrlTab', () => {
 
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 50 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 50 }, imageNamespaceId: 'ns-test' },
     });
     await user.click(screen.getByRole('button', { name: /retry/i }));
 
@@ -158,7 +158,7 @@ describe('UrlTab', () => {
 
     pending.resolve({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
   });
 

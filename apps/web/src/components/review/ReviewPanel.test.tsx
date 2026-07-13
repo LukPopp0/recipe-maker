@@ -168,6 +168,35 @@ describe('ReviewPanel', () => {
 
     expect(RECIPE).toEqual(before);
   });
+
+  it('copies a one-shot image prompt with the dish name and every step description', async () => {
+    // fireEvent instead of userEvent: userEvent installs its own clipboard
+    // stub, which would shadow this spy.
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const recipe: CanonicalRecipe = {
+      ...RECIPE,
+      steps: [
+        { step_header: 'Boil', step_description: 'Boil the pasta.' },
+        { step_header: 'Sauce', step_description: 'Simmer the sauce.' },
+      ],
+    };
+    render(<ReviewPanel recipe={recipe} diagnostics={null} onChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /copy step image generation prompt/i }));
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const prompt = writeText.mock.calls[0][0] as string;
+    expect(prompt).toContain('"Spaghetti"');
+    expect(prompt).toContain('<steps>');
+    expect(prompt).toContain('<step-1>\n  1. Boil the pasta.\n</step-1>');
+    expect(prompt).toContain('<step-2>\n  2. Simmer the sauce.\n</step-2>');
+    // Generation instruction with an explicit count comes AFTER the steps -
+    // leading with it makes the model produce a single image.
+    expect(prompt.indexOf('</steps>')).toBeLessThan(prompt.indexOf('generate one photorealistic'));
+    expect(prompt).toContain('There should be 2 separate images.');
+    expect(await screen.findByRole('button', { name: /copied/i })).toBeInTheDocument();
+  });
 });
 
 describe('readOnly mode', () => {

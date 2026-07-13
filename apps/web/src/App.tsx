@@ -60,14 +60,22 @@ function App() {
   // unsaved edits, so confirm first when the current state is dirty (plan
   // decision 12).
   const adoptRecipe = useCallback(
-    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null): boolean => {
+    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string): boolean => {
       if (shouldConfirmReplace(recipeState)) {
         const proceed = window.confirm(
           'Loading a new recipe will discard your unsaved changes. Continue?',
         );
         if (!proceed) return false;
       }
-      setRecipeState({ recipe, diagnostics, savedId: null, dirty: false });
+      // Recipes that never went through ingestion (Load JSON, Open in Create)
+      // get a fresh client-minted namespace for step-image uploads.
+      setRecipeState({
+        recipe,
+        diagnostics,
+        savedId: null,
+        dirty: false,
+        imageNamespaceId: imageNamespaceId ?? crypto.randomUUID(),
+      });
       setShowCardPreview(false);
       setInputCollapsed(true);
       return true;
@@ -193,6 +201,7 @@ function App() {
             recipe={recipeState.recipe}
             diagnostics={recipeState.diagnostics}
             onChange={handleRecipeChange}
+            imageNamespaceId={recipeState.imageNamespaceId}
           />
         ) : (
           <p className="workspace-empty-note">

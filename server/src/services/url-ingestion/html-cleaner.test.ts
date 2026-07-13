@@ -73,7 +73,7 @@ describe('cleanHtmlForExtraction', () => {
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
-    expect(result.candidateImageUrls).toContain('https://example.com/images/hero.jpg');
+    expect(result.candidateImages).toContainEqual({ url: 'https://example.com/images/hero.jpg' });
   });
 
   it('extracts twitter:image content', () => {
@@ -85,7 +85,7 @@ describe('cleanHtmlForExtraction', () => {
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
-    expect(result.candidateImageUrls).toContain('https://cdn.example.com/twit.jpg');
+    expect(result.candidateImages).toContainEqual({ url: 'https://cdn.example.com/twit.jpg' });
   });
 
   it('resolves relative <img> src values to absolute URLs', () => {
@@ -98,8 +98,58 @@ describe('cleanHtmlForExtraction', () => {
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
-    expect(result.candidateImageUrls).toContain('https://example.com/assets/step1.jpg');
-    expect(result.candidateImageUrls).toContain('https://cdn.example.com/absolute.jpg');
+    expect(result.candidateImages).toContainEqual({ url: 'https://example.com/assets/step1.jpg' });
+    expect(result.candidateImages).toContainEqual({ url: 'https://cdn.example.com/absolute.jpg' });
+  });
+
+  it('carries <img> alt text along as a step-mapping hint', () => {
+    const html = `
+      <html><body>
+        <img src="https://cdn.example.com/step2.jpg" alt="  browning   the beef " />
+        <img src="https://cdn.example.com/plain.jpg" alt="" />
+      </body></html>
+    `;
+
+    const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
+
+    expect(result.candidateImages).toContainEqual({
+      url: 'https://cdn.example.com/step2.jpg',
+      alt: 'browning the beef',
+    });
+    expect(result.candidateImages).toContainEqual({ url: 'https://cdn.example.com/plain.jpg' });
+  });
+
+  it('reads lazy-load attributes (data-src, srcset) when src is absent', () => {
+    const html = `
+      <html><body>
+        <img data-src="https://cdn.example.com/lazy.jpg" />
+        <img data-lazy-src="https://cdn.example.com/lazier.jpg" />
+        <img srcset="https://cdn.example.com/small.jpg 480w, https://cdn.example.com/large.jpg 1024w" />
+      </body></html>
+    `;
+
+    const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
+    const urls = result.candidateImages.map((img) => img.url);
+
+    expect(urls).toContain('https://cdn.example.com/lazy.jpg');
+    expect(urls).toContain('https://cdn.example.com/lazier.jpg');
+    expect(urls).toContain('https://cdn.example.com/small.jpg');
+  });
+
+  it('skips data: URIs, SVGs, and tiny icon-sized images', () => {
+    const html = `
+      <html><body>
+        <img src="data:image/png;base64,AAAA" />
+        <img src="https://cdn.example.com/sprite.svg" />
+        <img src="https://cdn.example.com/icon.jpg" width="32" height="32" />
+        <img src="https://cdn.example.com/photo.jpg" width="800" height="600" />
+      </body></html>
+    `;
+
+    const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
+    const urls = result.candidateImages.map((img) => img.url);
+
+    expect(urls).toEqual(['https://cdn.example.com/photo.jpg']);
   });
 
   it('deduplicates candidate image URLs', () => {
@@ -114,16 +164,16 @@ describe('cleanHtmlForExtraction', () => {
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
-    expect(result.candidateImageUrls).toEqual(['https://cdn.example.com/hero.jpg']);
+    expect(result.candidateImages).toEqual([{ url: 'https://cdn.example.com/hero.jpg' }]);
   });
 
-  it('caps candidate image URLs at 10', () => {
-    const imgs = Array.from({ length: 15 }, (_, i) => `<img src="https://cdn.example.com/${i}.jpg" />`).join('\n');
+  it('caps candidate images at 30', () => {
+    const imgs = Array.from({ length: 40 }, (_, i) => `<img src="https://cdn.example.com/${i}.jpg" />`).join('\n');
     const html = `<html><body>${imgs}</body></html>`;
 
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
-    expect(result.candidateImageUrls).toHaveLength(10);
+    expect(result.candidateImages).toHaveLength(30);
   });
 
   it('ignores empty/missing img src values without throwing', () => {
@@ -132,7 +182,7 @@ describe('cleanHtmlForExtraction', () => {
     expect(() => cleanHtmlForExtraction(html, 1000, BASE_URL)).not.toThrow();
     const result = cleanHtmlForExtraction(html, 1000, BASE_URL);
 
-    expect(result.candidateImageUrls).toEqual([]);
+    expect(result.candidateImages).toEqual([]);
   });
 
   it('extracts the title from <title>', () => {
@@ -200,7 +250,7 @@ describe('cleanHtmlForExtraction', () => {
   it('handles empty HTML without throwing', () => {
     expect(() => cleanHtmlForExtraction('', 1000, BASE_URL)).not.toThrow();
     const result = cleanHtmlForExtraction('', 1000, BASE_URL);
-    expect(result).toEqual({ cleanedText: '', candidateImageUrls: [], titleHint: null, recipeJsonLd: null });
+    expect(result).toEqual({ cleanedText: '', candidateImages: [], titleHint: null, recipeJsonLd: null });
   });
 
   it('handles malformed HTML without throwing', () => {

@@ -1,7 +1,10 @@
 import { parse, type HTMLElement } from 'node-html-parser';
 import { extractRecipeJsonLd } from './jsonld-extractor.js';
 
-const MAX_CANDIDATE_IMAGES = 10;
+const MAX_CANDIDATE_IMAGES = 30;
+// Images whose width/height attributes are both below this are treated as
+// icons/sprites and skipped during candidate collection.
+const MIN_CANDIDATE_IMAGE_DIMENSION = 100;
 const TAGS_TO_STRIP = ['script', 'style', 'noscript'];
 
 // Block-level tags after which a text boundary must be inserted before text
@@ -17,9 +20,16 @@ const BLOCK_TAGS = [
   'figure', 'figcaption', 'dl', 'dt', 'dd', 'address', 'hr',
 ];
 
+export interface CandidateImage {
+  url: string
+  // alt text of the source <img>, when present - the main signal Gemini has
+  // for mapping a candidate image to a specific recipe step.
+  alt?: string
+}
+
 export interface CleanedHtml {
   cleanedText: string
-  candidateImageUrls: string[]
+  candidateImages: CandidateImage[]
   titleHint: string | null
   // Raw schema.org Recipe node from a <script type="application/ld+json">
   // block, when the page embeds one. Serialized length counts against the
@@ -104,18 +114,59 @@ function resolveUrl(value: string | null | undefined, baseUrl: string): string |
   }
 }
 
-// Collects og:image / twitter:image meta content and <img src> values,
-// resolves them to absolute URLs against baseUrl, dedupes, and caps at 10.
-function extractCandidateImageUrls(root: HTMLElement, baseUrl: string): string[] {
-  const urls: string[] = [];
+// Returns true for candidate URLs that can never be useful step/main images:
+// data: URIs and SVGs (icons/sprites).
+function isUnusableImageUrl(url: string): boolean {
+  if (/^data:/i.test(url)) return true;
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    if (pathname.endsWith('.svg')) return true;
+  } catch {
+    return true;
+  }
+  return false;
+}
+
+// Returns true when both width and height attributes are present and below
+// MIN_CANDIDATE_IMAGE_DIMENSION - a strong icon/sprite signal. Images without
+// numeric dimension attributes are kept.
+function isTinyImage(img: HTMLElement): boolean {
+  const width = Number.parseInt(img.getAttribute('width') ?? '', 10);
+  const height = Number.parseInt(img.getAttribute('height') ?? '', 10);
+  if (Number.isNaN(width) || Number.isNaN(height)) return false;
+  return width < MIN_CANDIDATE_IMAGE_DIMENSION && height < MIN_CANDIDATE_IMAGE_DIMENSION;
+}
+
+// Picks the best available source URL for an <img>, checking src first and
+// falling back to common lazy-load attributes and the first srcset entry.
+function pickImgSource(img: HTMLElement): string | null {
+  const direct = img.getAttribute('src') ?? img.getAttribute('data-src') ?? img.getAttribute('data-lazy-src');
+  if (direct && direct.trim() && !/^data:/i.test(direct.trim())) return direct;
+
+  const srcset = img.getAttribute('srcset') ?? img.getAttribute('data-srcset');
+  if (srcset) {
+    const first = srcset.split(',')[0]?.trim().split(/\s+/)[0];
+    if (first) return first;
+  }
+
+  return direct ?? null;
+}
+
+// Collects og:image / twitter:image meta content and <img> sources (src plus
+// lazy-load attributes), resolves them to absolute URLs against baseUrl,
+// filters icons/sprites, dedupes, and caps at MAX_CANDIDATE_IMAGES. <img> alt
+// text is carried along as a step-mapping hint for the extraction prompt.
+function extractCandidateImages(root: HTMLElement, baseUrl: string): CandidateImage[] {
+  const images: CandidateImage[] = [];
   const seen = new Set<string>();
 
-  const addUrl = (raw: string | null | undefined) => {
-    if (urls.length >= MAX_CANDIDATE_IMAGES) return;
+  const addUrl = (raw: string | null | undefined, alt?: string) => {
+    if (images.length >= MAX_CANDIDATE_IMAGES) return;
     const resolved = resolveUrl(raw, baseUrl);
-    if (!resolved || seen.has(resolved)) return;
+    if (!resolved || seen.has(resolved) || isUnusableImageUrl(resolved)) return;
     seen.add(resolved);
-    urls.push(resolved);
+    const trimmedAlt = alt ? collapseWhitespace(alt) : '';
+    images.push(trimmedAlt ? { url: resolved, alt: trimmedAlt } : { url: resolved });
   };
 
   for (const meta of root.querySelectorAll('meta')) {
@@ -126,10 +177,11 @@ function extractCandidateImageUrls(root: HTMLElement, baseUrl: string): string[]
   }
 
   for (const img of root.querySelectorAll('img')) {
-    addUrl(img.getAttribute('src'));
+    if (isTinyImage(img)) continue;
+    addUrl(pickImgSource(img), img.getAttribute('alt') ?? undefined);
   }
 
-  return urls.slice(0, MAX_CANDIDATE_IMAGES);
+  return images.slice(0, MAX_CANDIDATE_IMAGES);
 }
 
 // Extracts a title hint from <title> or, failing that, og:title meta content.
@@ -158,11 +210,11 @@ export function cleanHtmlForExtraction(
   try {
     root = parse(html ?? '');
   } catch {
-    return { cleanedText: '', candidateImageUrls: [], titleHint: null, recipeJsonLd: null };
+    return { cleanedText: '', candidateImages: [], titleHint: null, recipeJsonLd: null };
   }
 
   const titleHint = extractTitleHint(root);
-  const candidateImageUrls = extractCandidateImageUrls(root, baseUrl);
+  const candidateImages = extractCandidateImages(root, baseUrl);
 
   // JSON-LD must be read before stripNonVisibleNodes removes script tags.
   const recipeJsonLd = extractRecipeJsonLd(root);
@@ -177,5 +229,5 @@ export function cleanHtmlForExtraction(
   const textBudget = Math.max(tokenBudgetChars - jsonLdChars, 0);
   const cleanedText = primaryText.slice(0, Math.max(textBudget, 0));
 
-  return { cleanedText, candidateImageUrls, titleHint, recipeJsonLd };
+  return { cleanedText, candidateImages, titleHint, recipeJsonLd };
 }

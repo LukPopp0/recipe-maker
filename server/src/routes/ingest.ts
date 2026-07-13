@@ -83,6 +83,9 @@ export function createIngestApp(deps: IngestDeps) {
       stage: 'image-rehost',
       durationMs: Date.now() - imageRehostStart,
       outcome: 'ok',
+      imageCount:
+        (recipe.main_image === canonical.main_image ? 0 : 1) +
+        recipe.steps.filter((step) => step.image !== undefined).length,
     });
 
     // 4. Merge any image warnings into the recipe's own warnings list.
@@ -94,7 +97,9 @@ export function createIngestApp(deps: IngestDeps) {
       },
     };
 
-    return c.json(ok(requestId, { recipe: finalRecipe, diagnostics }));
+    // imageNamespaceId lets the review UI upload step images into the same
+    // storage-key namespace later (POST /api/image/step).
+    return c.json(ok(requestId, { recipe: finalRecipe, diagnostics, imageNamespaceId: recipeId }));
   });
 
   app.use(
@@ -164,8 +169,8 @@ export function createIngestApp(deps: IngestDeps) {
       },
     };
 
-    // 6. Return the assembled response.
-    return c.json(ok(requestId, { recipe: finalRecipe, diagnostics }));
+    // 6. Return the assembled response. imageNamespaceId as in the URL route.
+    return c.json(ok(requestId, { recipe: finalRecipe, diagnostics, imageNamespaceId: recipeId }));
   });
 
   return app;

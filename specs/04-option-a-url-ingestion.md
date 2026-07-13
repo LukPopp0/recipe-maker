@@ -34,9 +34,13 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
    - a page with ingredient-bearing JSON-LD never triggers the fallback;
      ingredient-less JSON-LD does.
 6. Invoke Gemini extraction and normalization as the primary path:
-   - provide URL, JSON-LD (when present, marked authoritative), and cleaned
-     page content/context.
-   - request canonical schema output directly.
+   - provide URL, JSON-LD (when present, marked authoritative), cleaned
+     page content/context, and the candidate image list (url + alt text,
+     lazy-load sources included, icons/SVGs/data-URIs filtered, cap 30).
+   - request canonical schema output directly, including optional per-step
+     "image" picks from the candidate list (specs/14).
+   - after extraction, JSON-LD HowToStep images overlay the steps by index
+     when the instruction count matches (specs/14).
 7. Optional fallback path if Gemini primary extraction fails:
    - pass reduced/cleaned page content chunks (still including JSON-LD when
      present) back to Gemini in a retry prompt.
@@ -50,7 +54,7 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
    - step_description length clamp to 600 chars.
    - implausible-time flag: warning (no clamp) when time > 240 minutes.
    - default main_image fallback when missing/invalid.
-   - image hosting.
+   - image hosting (main_image and steps[].image, per specs/06 + specs/14).
 9. Return canonical recipe with diagnostics: extractor (gemini-primary or
    gemini-retry), fetchMode (static or browser), usedJsonLd.
 
@@ -71,6 +75,8 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 - Instruct model to route fixed pantry-list items into pantry_items and exclude them from ingredients.
 - Instruct model to avoid hallucinating missing fields; use null/empty with warning.
 - When JSON-LD is present, instruct model to prefer it over visible page text.
+- Instruct model to assign a per-step "image" only when a candidate or JSON-LD image
+  clearly shows that step (not the hero shot), omitting when unsure (specs/14).
 
 ## Failure Conditions
 - Not a recipe page.

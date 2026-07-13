@@ -15,6 +15,7 @@ describe('shouldConfirmReplace', () => {
     const state: WorkspaceRecipeState = {
       recipe: stubRecipe,
       diagnostics: null,
+      imageNamespaceId: 'ns-test',
       savedId: null,
       dirty: true,
     };
@@ -26,6 +27,7 @@ describe('shouldConfirmReplace', () => {
     const state: WorkspaceRecipeState = {
       recipe: stubRecipe,
       diagnostics: null,
+      imageNamespaceId: 'ns-test',
       savedId: null,
       dirty: false,
     };
@@ -37,6 +39,7 @@ describe('shouldConfirmReplace', () => {
     const state: WorkspaceRecipeState = {
       recipe: stubRecipe,
       diagnostics: null,
+      imageNamespaceId: 'ns-test',
       savedId: 'recipe-123',
       dirty: true,
     };

@@ -65,7 +65,7 @@ describe('App', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
 
     render(<App />);
@@ -88,7 +88,7 @@ describe('App', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
 
     render(<App />);
@@ -146,7 +146,7 @@ describe('Wizard flow', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     render(<App />);
 
@@ -166,7 +166,7 @@ describe('Wizard flow', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     render(<App />);
 
@@ -188,7 +188,7 @@ describe('Wizard flow', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     render(<App />);
 
@@ -235,7 +235,7 @@ describe('Create card preview', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     render(<App />);
 
@@ -256,7 +256,7 @@ describe('Create card preview', () => {
     mockedIngestUrl.mockReset();
     mockedIngestUrl.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     render(<App />);
 

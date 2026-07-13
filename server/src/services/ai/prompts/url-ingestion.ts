@@ -1,4 +1,5 @@
 import { PANTRY_ALLOWLIST, TAG_VOCABULARY } from 'shared';
+import type { CandidateImage } from '../../url-ingestion/html-cleaner.js';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline (Task 6)
@@ -10,7 +11,7 @@ const CANONICAL_RECIPE_SHAPE = `{
   "ingredients": [{ "name": string, "amount_text": string, "amount_value"?: number, "unit"?: string }],
   "pantry_items": string[] (fixed pantry-list items only, see below),
   "main_image": string (a URL from the candidate images, or "" if none apply),
-  "steps": [{ "step_header": string, "step_description": string (max 600 chars) }] (1-6 steps),
+  "steps": [{ "step_header": string, "step_description": string (max 600 chars), "image"?: string (optional URL of an image that shows THIS step, from the candidate images or structured metadata) }] (1-6 steps),
   "metadata": {
     "source_type": "url",
     "source_url": string,
@@ -71,6 +72,9 @@ Rules:
   "metadata.warnings".
 - Select tags primarily from this controlled vocabulary: ${TAG_VOCABULARY_TEXT}. Custom
   tags are allowed if none of these fit, but prefer the vocabulary above.
+- Assign a step's "image" only when a candidate or structured-metadata image clearly
+  shows that specific step (an in-progress/step photo, not the finished-dish hero
+  shot). Omit the field when unsure. Output the bare URL only.
 - Set "metadata.source_type" to "url", "metadata.language" to "en".`;
 
 // Renders the optional JSON-LD section shared by both prompts. When a page
@@ -90,10 +94,19 @@ ${JSON.stringify(recipeJsonLd)}
 `;
 }
 
+// Renders candidate images one per line, with alt text (when present) as the
+// step-mapping hint, e.g. `https://... (alt: "browning the beef")`.
+function renderCandidateImages(candidateImages: CandidateImage[]): string {
+  if (candidateImages.length === 0) return '(none)';
+  return candidateImages
+    .map((img) => (img.alt ? `${img.url} (alt: "${img.alt}")` : img.url))
+    .join('\n');
+}
+
 export interface BuildUrlIngestionPromptParams {
   url: string
   cleanedText: string
-  candidateImageUrls: string[]
+  candidateImages: CandidateImage[]
   titleHint: string | null
   recipeJsonLd?: Record<string, unknown> | null
 }
@@ -102,7 +115,7 @@ export interface BuildUrlIngestionPromptParams {
 export function buildUrlIngestionPrompt({
   url,
   cleanedText,
-  candidateImageUrls,
+  candidateImages,
   titleHint,
   recipeJsonLd,
 }: BuildUrlIngestionPromptParams): string {
@@ -111,8 +124,9 @@ export function buildUrlIngestionPrompt({
 
 Source URL: ${url}
 Title hint (from the page's <title>/og:title, may be inaccurate or absent): ${titleHint ?? '(none)'}
-Candidate image URLs (choose "main_image" from this list if a suitable one exists):
-${candidateImageUrls.length > 0 ? candidateImageUrls.join('\n') : '(none)'}
+Candidate image URLs (choose "main_image" and per-step "image" values from this list
+when suitable ones exist):
+${renderCandidateImages(candidateImages)}
 ${renderJsonLdSection(recipeJsonLd)}
 Page content:
 <page_content>
@@ -125,7 +139,7 @@ Return only the JSON object, no surrounding text or markdown fences.`;
 export interface BuildUrlIngestionRetryPromptParams {
   url: string
   reducedText: string
-  candidateImageUrls: string[]
+  candidateImages: CandidateImage[]
   recipeJsonLd?: Record<string, unknown> | null
 }
 
@@ -134,7 +148,7 @@ export interface BuildUrlIngestionRetryPromptParams {
 export function buildUrlIngestionRetryPrompt({
   url,
   reducedText,
-  candidateImageUrls,
+  candidateImages,
   recipeJsonLd,
 }: BuildUrlIngestionRetryPromptParams): string {
   return `${SHARED_INSTRUCTIONS}
@@ -146,8 +160,9 @@ steps, metadata) and their exact types. Do not omit any required field - use nul
 an empty array/string instead.
 
 Source URL: ${url}
-Candidate image URLs (choose "main_image" from this list if a suitable one exists):
-${candidateImageUrls.length > 0 ? candidateImageUrls.join('\n') : '(none)'}
+Candidate image URLs (choose "main_image" and per-step "image" values from this list
+when suitable ones exist):
+${renderCandidateImages(candidateImages)}
 ${renderJsonLdSection(recipeJsonLd)}
 Reduced page content:
 <page_content>

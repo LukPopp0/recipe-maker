@@ -37,6 +37,9 @@ Milestone 2 includes:
 - English input only for milestone 1.
 - If extraction quality is too low for Option A, return explicit, actionable error.
 - Step image generation is out of scope in milestone 1. Missing step images remain empty.
+  (Superseded by Phase 10 / specs/14: URL ingestion now extracts step images from the
+  source page, and the review panel supports manual step-image upload. Server-side AI
+  image generation stays out of scope - no API free tier.)
 - URL images should be downloaded and re-hosted in milestone 1.
 - Pantry logic uses a fixed pantry allowlist provided by the product owner. Pantry-list items must be routed to pantry_items and removed from ingredients.
 - Tags use fixed vocabulary plus optional custom tags for Option A (URL ingestion). For Option B (manual ingestion), Gemini does not assign tags at all - tags are fully user-set in the UI (wired in Phase 5).
@@ -584,6 +587,37 @@ section of `specs/10-recipe-card-renderer.md` and
 ### Acceptance Criteria
 - PDF output matches the on-screen card layout for a representative fixture set.
 - Not required for Milestone 2 completion; tracked as a follow-up.
+
+## Phase 10: Step Images for URL Ingestion (Done)
+
+### Spec References
+- specs/14-url-step-images.md (extraction, review-stage upload, copy-prompt button)
+- specs/04-option-a-url-ingestion.md (per-step image selection in the extraction prompt)
+- specs/06-image-rehosting-storage.md (step-image re-hosting rules)
+
+### Implementation Tasks (all done)
+1. Candidate image mining upgrade: `{url, alt}` pairs, lazy-load attributes,
+   icon/SVG/data-URI filtering, cap 30 (html-cleaner).
+2. Extraction prompt v4: optional per-step `image` field, alt-annotated
+   candidate list (url-ingestion prompts).
+3. Deterministic JSON-LD HowToStep.image overlay by index when instruction
+   count matches extracted step count (jsonld-step-images + pipeline).
+4. Step-image re-hosting in rehostRecipeImages (step-{index} keys, non-fatal
+   warnings, dead stepImages option removed).
+5. `imageNamespaceId` returned from both ingest routes; POST /api/image/step
+   upload endpoint (UUID-validated namespace, hostUploadedImage reuse).
+6. Review-panel upload UI (per-step thumbnail + upload-only file control) and
+   the "Copy image prompt" clipboard button for free generation in Gemini's
+   web UI.
+
+### Deliverables
+- URL-ingested recipes carry hosted steps[].image when the source page
+  provides step imagery; review-stage uploads cover the rest.
+
+### Acceptance Criteria
+- Golden fixture: JSON-LD HowToStep images end up re-hosted on steps[].image.
+- Upload endpoint validates namespace/index/MIME/size and overwrites per-step.
+- All step-image failure modes degrade to warnings + text-only steps.
 
 ## 6. Implementation Order (Strict)
 1. Phase 0 cleanup.

@@ -3,7 +3,7 @@
 // field change builds a fresh CanonicalRecipe and calls onChange - App.tsx
 // owns the single source of truth (recipeState), including dirty/savedId
 // bookkeeping (Task 4). No field here mutates the `recipe` prop.
-import type { ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { CanonicalRecipe, Ingredient, Step } from 'shared';
 import type { IngestDiagnostics } from '../../api/client.ts';
 import { IngredientEditor } from './IngredientEditor.tsx';
@@ -15,18 +15,61 @@ const TITLE_MAXLENGTH = 140;
 
 const noop = () => {};
 
+// One prompt covering every step, meant to be pasted into an image-capable
+// chat model (e.g. Gemini in the browser): the user generates the images for
+// free there, downloads them, and uploads them per step below. Each step sits
+// in its own <step-N> tag and the generation instruction comes last with an
+// explicit image count - without that structure the model tends to produce a
+// single image instead of one per step.
+function buildStepImagePrompt(recipe: CanonicalRecipe): string {
+  const stepBlocks = recipe.steps
+    .map(
+      (step, index) =>
+        `<step-${index + 1}>\n  ${index + 1}. ${step.step_description}\n</step-${index + 1}>`,
+    )
+    .join('\n');
+  const count = recipe.steps.length;
+  return `Here are the recipe steps for a dish called "${recipe.title}".
+
+<steps>
+${stepBlocks}
+</steps>
+
+For each step, generate one photorealistic cooking photo for this recipe, all in a consistent style. There should be ${count} separate images.`;
+}
+
 export function ReviewPanel({
   recipe,
   diagnostics,
   onChange,
   readOnly = false,
+  imageNamespaceId,
 }: {
   recipe: CanonicalRecipe
   diagnostics: IngestDiagnostics | null
   onChange?: (recipe: CanonicalRecipe) => void
   readOnly?: boolean
+  // Storage namespace for review-stage step-image uploads (StepEditor).
+  imageNamespaceId?: string
 }) {
   const emit = onChange ?? noop;
+  const [promptCopied, setPromptCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copiedTimer.current !== null) clearTimeout(copiedTimer.current);
+  }, []);
+
+  const handleCopyImagePrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(buildStepImagePrompt(recipe));
+    } catch {
+      return;
+    }
+    setPromptCopied(true);
+    if (copiedTimer.current !== null) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setPromptCopied(false), 2000);
+  };
 
   const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
     emit({ ...recipe, title: event.target.value });
@@ -88,8 +131,20 @@ export function ReviewPanel({
       </section>
 
       <section aria-labelledby="review-steps-heading">
-        <h3 id="review-steps-heading">Steps</h3>
-        <StepEditor steps={recipe.steps} onChange={handleStepsChange} readOnly={readOnly} />
+        <div className="review-panel-steps-header">
+          <h3 id="review-steps-heading">Steps</h3>
+          {!readOnly ? (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => void handleCopyImagePrompt()}>
+              {promptCopied ? 'Copied' : 'Copy step image generation prompt'}
+            </button>
+          ) : null}
+        </div>
+        <StepEditor
+          steps={recipe.steps}
+          onChange={handleStepsChange}
+          readOnly={readOnly}
+          imageNamespaceId={imageNamespaceId}
+        />
       </section>
 
       <section aria-labelledby="review-pantry-heading" data-testid="pantry-section">

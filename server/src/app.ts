@@ -5,6 +5,7 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { logger } from './middleware/logger.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
 import { requestId, type AppVariables } from './middleware/request-id.js';
+import { createImageApp } from './routes/image.js';
 import { createIngestApp } from './routes/ingest.js';
 import { createHealthApp } from './routes/health.js';
 import { createRecipeApp } from './routes/recipe.js';
@@ -48,10 +49,13 @@ export function createApp(deps: AppDeps): App {
     defaultMainImageUrl: deps.defaultMainImageUrl,
   });
 
+  const imageApp = createImageApp({ env: deps.env, storageAdapter: deps.storageAdapter });
+
   app.route('/', healthApp);
   app.route('/api', healthApp);
   app.route('/api', recipeApp);
   app.route('/api', ingestApp);
+  app.route('/api', imageApp);
 
   // Serves re-hosted recipe images (specs/06) from IMAGE_DATA_DIR. Rehosted
   // URLs are built as `${PUBLIC_BASE_URL}/images/${key}` (see

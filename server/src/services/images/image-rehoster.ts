@@ -1,5 +1,5 @@
 import type { CanonicalRecipe } from 'shared';
-import { fetchAndStoreRemoteImage } from './remote-image-fetcher.js';
+import { fetchAndStoreRemoteImage, type FetchAndStoreRemoteImageResult } from './remote-image-fetcher.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 
 // MIME types permitted for re-hosted images per specs/06.
@@ -17,10 +17,7 @@ export interface RehostRecipeImagesOptions {
   // equals the configured default image URL - it's already a hosted asset,
   // not a candidate extracted from the source page.
   defaultMainImageUrl?: string
-  // Reserved for Phase 3 (manual/Option B ingestion) reuse; Option A never
-  // produces step images (specs/04), so Phase 2 callers always pass [].
-  stepImages?: string[]
-  // Hard timeout (ms) for downloading main_image. Defaults to
+  // Hard timeout (ms) for downloading each image. Defaults to
   // DEFAULT_IMAGE_FETCH_TIMEOUT_MS if not provided.
   timeoutMs?: number
 }
@@ -34,18 +31,45 @@ function isRemoteHttpUrl(value: string): boolean {
   return /^https?:\/\//i.test(value);
 }
 
+// Turns a failed fetchAndStoreRemoteImage result into a user-facing warning,
+// shared by the main-image and step-image paths so wording stays consistent.
+// `label` reads like "Main image" or "Step 3 image".
+function describeRehostFailure(
+  label: string,
+  imageUrl: string,
+  result: Extract<FetchAndStoreRemoteImageResult, { ok: false }>,
+  maxBytes: number,
+): string {
+  switch (result.reason) {
+    case 'blocked':
+      return `${label} was not re-hosted: "${imageUrl}" was blocked or invalid.`;
+    case 'status':
+      return `${label} was not re-hosted: request to "${imageUrl}" failed with status ${result.status}.`;
+    case 'unsupported-type':
+      return `${label} was not re-hosted: unsupported content type "${result.contentType}" for "${imageUrl}".`;
+    case 'oversized':
+      return `${label} was not re-hosted: "${imageUrl}" exceeded the ${maxBytes}-byte limit.`;
+    case 'timeout':
+      return `${label} was not re-hosted: timed out while downloading "${imageUrl}".`;
+    case 'error':
+      return `${label} was not re-hosted: failed to download "${imageUrl}" (${result.message}).`;
+  }
+}
+
 // Downloads recipe.main_image (when it's a remote http(s) URL that isn't
-// already the configured default) and re-hosts it via storageAdapter, per
-// specs/06's re-hosting rules. Never throws: any failure (bad MIME, oversized,
-// network error, blocked/invalid URL, timeout) leaves main_image untouched and
-// appends a warning string, so finalSanitize's default-fallback can take over
-// downstream.
+// already the configured default) plus any remote steps[].image URLs and
+// re-hosts them via storageAdapter, per specs/06's re-hosting rules. Never
+// throws: a main-image failure leaves main_image untouched (finalSanitize's
+// default-fallback takes over downstream); a step-image failure drops that
+// step's image (the card falls back to its text-only variant). Every failure
+// appends a warning string.
 //
-// main_image is attacker-controllable: it's scraped from candidate image URLs
-// on the source recipe page and picked by Gemini, so it goes through the same
-// SSRF guardrails (validateUrlSyntax + resolveAndCheckHost, per
-// url-ingestion/url-security.ts) as the page fetch before ever being
-// requested, plus a hard timeout and streaming maxBytes enforcement.
+// All these URLs are attacker-controllable: they're scraped from candidate
+// image URLs / JSON-LD on the source recipe page and picked by Gemini, so
+// each goes through the same SSRF guardrails (validateUrlSyntax +
+// resolveAndCheckHost, per url-ingestion/url-security.ts) as the page fetch
+// before ever being requested, plus a hard timeout and streaming maxBytes
+// enforcement.
 export async function rehostRecipeImages(
   recipe: CanonicalRecipe,
   options: RehostRecipeImagesOptions,
@@ -53,46 +77,45 @@ export async function rehostRecipeImages(
   const { recipeId, storageAdapter, maxBytes, defaultMainImageUrl, timeoutMs } = options;
   const warnings: string[] = [];
 
-  const mainImage = recipe.main_image;
+  let mainImage = recipe.main_image;
   const isDefault = defaultMainImageUrl !== undefined && mainImage === defaultMainImageUrl;
 
-  if (!isRemoteHttpUrl(mainImage) || isDefault) {
-    return { recipe, warnings };
+  if (isRemoteHttpUrl(mainImage) && !isDefault) {
+    const result = await fetchAndStoreRemoteImage(mainImage, {
+      storageAdapter,
+      maxBytes,
+      keyPrefix: `recipes/${recipeId}/main-0`,
+      timeoutMs,
+    });
+    if (result.ok) {
+      mainImage = result.url;
+    } else {
+      warnings.push(describeRehostFailure('Main image', mainImage, result, maxBytes));
+    }
   }
 
-  const result = await fetchAndStoreRemoteImage(mainImage, {
-    storageAdapter,
-    maxBytes,
-    keyPrefix: `recipes/${recipeId}/main-0`,
-    timeoutMs,
-  });
+  // Sequential so warnings keep step order deterministic.
+  const steps: CanonicalRecipe['steps'] = [];
+  for (const [index, step] of recipe.steps.entries()) {
+    if (step.image === undefined || !isRemoteHttpUrl(step.image)) {
+      steps.push(step);
+      continue;
+    }
 
-  if (result.ok) {
-    return { recipe: { ...recipe, main_image: result.url }, warnings };
+    const result = await fetchAndStoreRemoteImage(step.image, {
+      storageAdapter,
+      maxBytes,
+      keyPrefix: `recipes/${recipeId}/step-${index}`,
+      timeoutMs,
+    });
+    if (result.ok) {
+      steps.push({ ...step, image: result.url });
+    } else {
+      warnings.push(describeRehostFailure(`Step ${index + 1} image`, step.image, result, maxBytes));
+      const { image: _dropped, ...rest } = step;
+      steps.push(rest);
+    }
   }
 
-  switch (result.reason) {
-    case 'blocked':
-      warnings.push(`Main image was not re-hosted: "${mainImage}" was blocked or invalid.`);
-      break;
-    case 'status':
-      warnings.push(`Main image was not re-hosted: request to "${mainImage}" failed with status ${result.status}.`);
-      break;
-    case 'unsupported-type':
-      warnings.push(
-        `Main image was not re-hosted: unsupported content type "${result.contentType}" for "${mainImage}".`,
-      );
-      break;
-    case 'oversized':
-      warnings.push(`Main image was not re-hosted: "${mainImage}" exceeded the ${maxBytes}-byte limit.`);
-      break;
-    case 'timeout':
-      warnings.push(`Main image was not re-hosted: timed out while downloading "${mainImage}".`);
-      break;
-    case 'error':
-      warnings.push(`Main image was not re-hosted: failed to download "${mainImage}" (${result.message}).`);
-      break;
-  }
-
-  return { recipe, warnings };
+  return { recipe: { ...recipe, main_image: mainImage, steps }, warnings };
 }

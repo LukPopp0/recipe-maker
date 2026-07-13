@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "requestId": "golden-test-request-id",
+  "requestId": "golden-step-images-request-id",
   "recipe": {
     "title": "Golden Test Chili",
     "tags": ["dinner"],
@@ -12,8 +12,16 @@
     "pantry_items": [],
     "main_image": "http://localhost:8787/images/recipes/__ID__/main-0.jpg",
     "steps": [
-      { "step_header": "Brown", "step_description": "Brown the ground beef in a large pot over medium heat." },
-      { "step_header": "Boil", "step_description": "Boil the lasagna sheets until al dente and stir them in." }
+      {
+        "step_header": "Brown",
+        "step_description": "Brown the ground beef in a large pot over medium heat.",
+        "image": "http://localhost:8787/images/recipes/__ID__/step-0.jpg"
+      },
+      {
+        "step_header": "Boil",
+        "step_description": "Boil the lasagna sheets until al dente and stir them in.",
+        "image": "http://localhost:8787/images/recipes/__ID__/step-1.jpg"
+      }
     ],
     "metadata": {
       "source_type": "url",
@@ -26,7 +34,7 @@
     "extractor": "gemini-primary",
     "model": "gemini-3.1-flash-lite",
     "fetchMode": "static",
-    "usedJsonLd": false
+    "usedJsonLd": true
   },
   "imageNamespaceId": "__ID__"
 }

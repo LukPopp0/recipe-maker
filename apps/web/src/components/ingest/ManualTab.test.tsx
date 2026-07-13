@@ -95,7 +95,7 @@ describe('ManualTab', () => {
     const onRecipe = vi.fn();
     mockedIngestManual.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
 
     render(<ManualTab onRecipe={onRecipe} onExtractStart={vi.fn()} />);
@@ -124,7 +124,7 @@ describe('ManualTab', () => {
       stepImageUrls: [],
     });
     await vi.waitFor(() => {
-      expect(onRecipe).toHaveBeenCalledWith(RECIPE, { extractor: 'manual', model: 'gemini', durationMs: 100 });
+      expect(onRecipe).toHaveBeenCalledWith(RECIPE, { extractor: 'manual', model: 'gemini', durationMs: 100 }, 'ns-test');
     });
   });
 
@@ -145,7 +145,7 @@ describe('ManualTab', () => {
 
     pending.resolve({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
     await vi.waitFor(() => {
       expect(screen.getByText(/complete/i)).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('ManualTab', () => {
 
     mockedIngestManual.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 50 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 50 }, imageNamespaceId: 'ns-test' },
     });
     await user.click(screen.getByRole('button', { name: /retry/i }));
 
@@ -202,7 +202,7 @@ describe('ManualTab', () => {
 
     pending.resolve({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
   });
 
@@ -221,7 +221,7 @@ describe('ManualTab', () => {
     const user = userEvent.setup();
     mockedIngestManual.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 10 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 10 }, imageNamespaceId: 'ns-test' },
     });
 
     render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
@@ -290,7 +290,7 @@ describe('ManualTab', () => {
     const user = userEvent.setup();
     mockedIngestManual.mockResolvedValueOnce({
       ok: true,
-      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 10 } },
+      value: { recipe: RECIPE, diagnostics: { extractor: 'manual', model: 'gemini', durationMs: 10 }, imageNamespaceId: 'ns-test' },
     });
 
     render(<ManualTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);

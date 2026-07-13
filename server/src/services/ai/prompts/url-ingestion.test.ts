@@ -5,7 +5,10 @@ import { buildUrlIngestionPrompt, buildUrlIngestionRetryPrompt } from './url-ing
 const baseParams = {
   url: 'https://example.com/recipe',
   cleanedText: 'Mix flour and eggs. Bake for 20 minutes.',
-  candidateImageUrls: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+  candidateImages: [
+    { url: 'https://example.com/img1.jpg', alt: 'whisking the batter' },
+    { url: 'https://example.com/img2.jpg' },
+  ],
   titleHint: 'Best Pancakes Ever',
 };
 
@@ -83,9 +86,18 @@ describe('buildUrlIngestionPrompt', () => {
   it('includes the source url, title hint, candidate images, and cleaned text', () => {
     expect(prompt).toContain(baseParams.url);
     expect(prompt).toContain(baseParams.titleHint);
-    expect(prompt).toContain(baseParams.candidateImageUrls[0]);
-    expect(prompt).toContain(baseParams.candidateImageUrls[1]);
+    expect(prompt).toContain(baseParams.candidateImages[0].url);
+    expect(prompt).toContain(baseParams.candidateImages[1].url);
     expect(prompt).toContain(baseParams.cleanedText);
+  });
+
+  it('renders candidate alt text as a step-mapping hint', () => {
+    expect(prompt).toContain('https://example.com/img1.jpg (alt: "whisking the batter")');
+  });
+
+  it('describes the optional per-step image field', () => {
+    expect(prompt).toMatch(/"image"\?: string/);
+    expect(prompt).toMatch(/omit the field when unsure/i);
   });
 
   it('sets source_type url and language en instructions', () => {
@@ -94,7 +106,7 @@ describe('buildUrlIngestionPrompt', () => {
   });
 
   it('handles a null title hint and empty candidate images', () => {
-    const result = buildUrlIngestionPrompt({ ...baseParams, titleHint: null, candidateImageUrls: [] });
+    const result = buildUrlIngestionPrompt({ ...baseParams, titleHint: null, candidateImages: [] });
     expect(result).toContain('(none)');
   });
 });
@@ -103,7 +115,7 @@ describe('buildUrlIngestionRetryPrompt', () => {
   const retryParams = {
     url: baseParams.url,
     reducedText: 'Flour, eggs. Bake 20 min.',
-    candidateImageUrls: baseParams.candidateImageUrls,
+    candidateImages: baseParams.candidateImages,
   };
   const prompt = buildUrlIngestionRetryPrompt(retryParams);
 

@@ -32,5 +32,6 @@
   "diagnostics": {
     "extractor": "gemini-primary",
     "model": "gemini-3.1-flash-lite"
-  }
+  },
+  "imageNamespaceId": "__ID__"
 }

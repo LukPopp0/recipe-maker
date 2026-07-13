@@ -33,11 +33,13 @@ function readJsonFixture<T>(...segments: string[]): T {
 
 const RECIPE_PLAIN_HTML = readFixture('html', 'recipe-plain.html');
 const RECIPE_JSON_LD_HTML = readFixture('html', 'recipe-json-ld.html');
+const RECIPE_JSON_LD_STEP_IMAGES_HTML = readFixture('html', 'recipe-json-ld-step-images.html');
 const NON_RECIPE_HTML = readFixture('html', 'non-recipe.html');
 
 const URL_CANDIDATE = readJsonFixture<unknown>('gemini', 'url-candidate.json');
 const INGREDIENT_MATCH = readJsonFixture<unknown>('gemini', 'ingredient-match.json');
 const EXPECTED_URL_RECIPE = readJsonFixture<unknown>('expected', 'url-recipe.json');
+const EXPECTED_URL_RECIPE_STEP_IMAGES = readJsonFixture<unknown>('expected', 'url-recipe-step-images.json');
 
 const MANUAL_CANDIDATE = readJsonFixture<unknown>('gemini', 'manual-candidate.json');
 const MANUAL_INGREDIENT_MATCH = readJsonFixture<unknown>('gemini', 'manual-ingredient-match.json');
@@ -49,38 +51,39 @@ const REQUEST_URL = 'https://example.com/golden-chili';
 type IngestUrlSuccess = ApiSuccessEnvelope<{
   recipe: CanonicalRecipe
   diagnostics: { extractor: string; model: string; durationMs: number; fetchMode: string; usedJsonLd: boolean }
+  imageNamespaceId: string
 }>
 
 // Strips nondeterministic fields from a successful response body so it can be
 // deep-equal-compared against a captured golden fixture:
-// - main_image's UUID-namespaced storage path -> a stable placeholder.
+// - the UUID-namespaced storage path in main_image and steps[].image -> a
+//   stable placeholder, and imageNamespaceId (the same UUID) -> "__ID__".
 // - diagnostics.durationMs (wall-clock, never deterministic).
 function normalizeResponseBody(body: IngestUrlSuccess): unknown {
+  const stripId = (url: string) => url.replace(/\/images\/recipes\/[0-9a-f-]{36}\//, '/images/recipes/__ID__/');
   return {
     ...body,
     recipe: {
       ...body.recipe,
-      main_image: body.recipe.main_image.replace(
-        /\/images\/recipes\/[0-9a-f-]{36}\//,
-        '/images/recipes/__ID__/',
-      ),
+      main_image: stripId(body.recipe.main_image),
+      steps: body.recipe.steps.map((step) => (step.image ? { ...step, image: stripId(step.image) } : step)),
     },
     diagnostics: {
       ...body.diagnostics,
       durationMs: undefined,
     },
+    imageNamespaceId: '__ID__',
   };
 }
 
 type IngestManualSuccess = ApiSuccessEnvelope<{
   recipe: CanonicalRecipe
   diagnostics: { extractor: string; model: string; durationMs: number }
+  imageNamespaceId: string
 }>
 
-// Generalized version of normalizeResponseBody for the manual pipeline: also
-// strips the UUID-namespaced storage path out of each step's hosted image
-// (main_image only carries a UUID segment for the URL pipeline; manual
-// ingestion additionally hosts per-step images the same way).
+// Manual-pipeline variant of normalizeResponseBody (different diagnostics
+// shape, same stripping rules).
 function normalizeManualResponseBody(body: IngestManualSuccess): unknown {
   const stripId = (url: string) => url.replace(/\/images\/recipes\/[0-9a-f-]{36}\//, '/images/recipes/__ID__/');
   return {
@@ -94,6 +97,7 @@ function normalizeManualResponseBody(body: IngestManualSuccess): unknown {
       ...body.diagnostics,
       durationMs: undefined,
     },
+    imageNamespaceId: '__ID__',
   };
 }
 
@@ -204,6 +208,29 @@ describe('POST /api/ingest/url golden fixtures', () => {
       prompt: string
     };
     expect(firstCallArgs.prompt).toContain('ZXQ7MARKER');
+  });
+
+  it('JSON-LD HowToStep images overlay onto the extracted steps and get re-hosted (golden)', async () => {
+    mockFetch(RECIPE_JSON_LD_STEP_IMAGES_HTML);
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(URL_CANDIDATE),
+      () => Promise.resolve(INGREDIENT_MATCH),
+    ));
+
+    const res = await app.request('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-request-id': 'golden-step-images-request-id' },
+      body: JSON.stringify({ url: REQUEST_URL }),
+    });
+    const body = (await res.json()) as IngestUrlSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(CanonicalRecipeSchema.safeParse(body.recipe).success).toBe(true);
+    expect(body.imageNamespaceId).toMatch(/^[0-9a-f-]{36}$/);
+
+    const normalized = normalizeResponseBody(body);
+    expect(normalized).toEqual(EXPECTED_URL_RECIPE_STEP_IMAGES);
   });
 
   it('returns 422 URL_FETCH_BLOCKED and never calls Gemini when the page fetch is blocked (403)', async () => {

@@ -34,7 +34,7 @@ export function ManualTab({
   onRecipe,
   onExtractStart,
 }: {
-  onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null) => void
+  onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string) => void
   onExtractStart: () => void
 }) {
   const [ingredientsText, setIngredientsText] = useState('');
@@ -137,7 +137,7 @@ export function ManualTab({
     });
     if (result.ok) {
       setStatus({ phase: 'complete' });
-      onRecipe(result.value.recipe, result.value.diagnostics);
+      onRecipe(result.value.recipe, result.value.diagnostics, result.value.imageNamespaceId);
     } else {
       setStatus({ phase: 'error', error: result.error });
     }

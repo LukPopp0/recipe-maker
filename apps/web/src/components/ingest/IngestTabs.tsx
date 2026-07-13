@@ -18,7 +18,7 @@ export function IngestTabs({
   onRecipe,
   onExtractStart,
 }: {
-  onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null) => void
+  onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string) => void
   onExtractStart: () => void
 }) {
   const [activeTab, setActiveTab] = useState<IngestTab>('url');

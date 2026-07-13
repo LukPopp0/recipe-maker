@@ -6,6 +6,7 @@ import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import { buildUrlIngestionPrompt, buildUrlIngestionRetryPrompt } from '../ai/prompts/url-ingestion.js';
 import { defaultBrowserHtmlFetcher, type BrowserHtmlFetcher } from '../url-ingestion/browser-fetcher.js';
 import { cleanHtmlForExtraction, type CleanedHtml } from '../url-ingestion/html-cleaner.js';
+import { extractJsonLdStepImages } from '../url-ingestion/jsonld-step-images.js';
 import { fetchWithGuardrails, validateUrlSyntax } from '../url-ingestion/url-security.js';
 
 // Minimal slice of GeminiClient this pipeline depends on, so tests can inject
@@ -93,6 +94,33 @@ function jsonLdHasIngredients(node: Record<string, unknown> | null): boolean {
   if (!node) return false;
   const ingredients = node['recipeIngredient'];
   return Array.isArray(ingredients) && ingredients.some((entry) => typeof entry === 'string' && entry.trim().length > 0);
+}
+
+// Overlays JSON-LD HowToStep images onto an extracted candidate's steps by
+// index - but only when the JSON-LD instruction count matches the extracted
+// step count exactly, so a model that merged >6 source steps keeps its own
+// image mapping (it saw the full JSON-LD, including HowToStep.image, in the
+// prompt). JSON-LD wins over the model's pick when both exist; a null JSON-LD
+// entry never clears a model-assigned image. Returns the number of steps that
+// received a JSON-LD image (for logging).
+function overlayJsonLdStepImages(
+  candidate: unknown,
+  jsonLdImages: (string | null)[],
+  instructionCount: number,
+): number {
+  if (typeof candidate !== 'object' || candidate === null) return 0;
+  const steps = (candidate as Record<string, unknown>).steps;
+  if (!Array.isArray(steps) || instructionCount !== steps.length) return 0;
+  if (!jsonLdImages.some((image) => image !== null)) return 0;
+
+  let overlaid = 0;
+  steps.forEach((step, index) => {
+    const image = jsonLdImages[index];
+    if (!image || typeof step !== 'object' || step === null || Array.isArray(step)) return;
+    (step as Record<string, unknown>).image = image;
+    overlaid += 1;
+  });
+  return overlaid;
 }
 
 // Runs a Gemini extraction call, swallowing any thrown error into `null` so
@@ -217,11 +245,15 @@ export async function runUrlIngestionPipeline({
 
   const extractStart = Date.now();
 
+  // Per-instruction images declared by the site's own JSON-LD, overlaid onto
+  // whichever extraction attempt succeeds.
+  const jsonLdStepImages = extractJsonLdStepImages(cleaned.recipeJsonLd, effectiveUrl);
+
   // Primary Gemini call + structural pre-check.
   const primaryPrompt = buildUrlIngestionPrompt({
     url: effectiveUrl,
     cleanedText: cleaned.cleanedText,
-    candidateImageUrls: cleaned.candidateImageUrls,
+    candidateImages: cleaned.candidateImages,
     titleHint: cleaned.titleHint,
     recipeJsonLd: cleaned.recipeJsonLd,
   });
@@ -235,6 +267,11 @@ export async function runUrlIngestionPipeline({
   );
 
   if (passesStructuralPreCheck(primaryResult)) {
+    const stepImagesFromJsonLd = overlayJsonLdStepImages(
+      primaryResult,
+      jsonLdStepImages.images,
+      jsonLdStepImages.instructionCount,
+    );
     logStage({
       requestId,
       stage: 'extract',
@@ -242,6 +279,7 @@ export async function runUrlIngestionPipeline({
       outcome: 'ok',
       extractor: 'gemini-primary',
       model: geminiConfig.primaryModel,
+      stepImagesFromJsonLd,
     });
     return {
       recipeCandidate: primaryResult,
@@ -262,7 +300,7 @@ export async function runUrlIngestionPipeline({
   const retryPrompt = buildUrlIngestionRetryPrompt({
     url: effectiveUrl,
     reducedText: reducedCleaned.cleanedText,
-    candidateImageUrls: reducedCleaned.candidateImageUrls,
+    candidateImages: reducedCleaned.candidateImages,
     recipeJsonLd: reducedCleaned.recipeJsonLd,
   });
 
@@ -275,6 +313,11 @@ export async function runUrlIngestionPipeline({
   );
 
   if (passesStructuralPreCheck(retryResult)) {
+    const stepImagesFromJsonLd = overlayJsonLdStepImages(
+      retryResult,
+      jsonLdStepImages.images,
+      jsonLdStepImages.instructionCount,
+    );
     logStage({
       requestId,
       stage: 'extract',
@@ -282,6 +325,7 @@ export async function runUrlIngestionPipeline({
       outcome: 'ok',
       extractor: 'gemini-retry',
       model: geminiConfig.retryModel,
+      stepImagesFromJsonLd,
     });
     return {
       recipeCandidate: retryResult,

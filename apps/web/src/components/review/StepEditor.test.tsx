@@ -1,14 +1,27 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Step } from 'shared';
 import { StepEditor } from './StepEditor.tsx';
+import { uploadStepImage } from '../../api/client.ts';
+
+vi.mock('../../api/client.ts', () => ({
+  uploadStepImage: vi.fn(),
+}));
+
+const mockedUploadStepImage = vi.mocked(uploadStepImage);
 
 const STEPS: Step[] = [
   { step_header: 'Prep', step_description: 'Chop the onions.' },
   { step_header: 'Cook', step_description: 'Fry until golden.', image: 'step-2.png' },
 ];
+
+const NAMESPACE = '123e4567-e89b-42d3-a456-426614174000';
+
+beforeEach(() => {
+  mockedUploadStepImage.mockReset();
+});
 
 // Stateful harness mirroring how ReviewPanel actually threads onChange back
 // into props - StepEditor is a controlled component.
@@ -35,14 +48,71 @@ describe('StepEditor', () => {
     expect(screen.getByDisplayValue('Fry until golden.')).toBeInTheDocument();
   });
 
-  it('shows a read-only image indicator only for steps with an image, and no editable image control', () => {
+  it('shows a thumbnail only for steps with an image, and no upload control without a namespace', () => {
     render(<StepEditor steps={STEPS} onChange={vi.fn()} />);
 
-    expect(screen.queryAllByRole('img')).toHaveLength(0);
-    expect(screen.queryAllByLabelText(/image/i)).toHaveLength(0);
-    const indicators = screen.getAllByTestId('step-image-indicator');
-    expect(indicators).toHaveLength(1);
-    expect(indicators[0]).toHaveTextContent(/step-2\.png/);
+    const thumbs = screen.getAllByTestId('step-image-thumb');
+    expect(thumbs).toHaveLength(1);
+    expect(thumbs[0]).toHaveAttribute('src', 'step-2.png');
+    expect(screen.queryAllByLabelText(/upload step image|replace step image/i)).toHaveLength(0);
+  });
+
+  it('renders an upload-only file control per step when a namespace is provided', () => {
+    render(<StepEditor steps={STEPS} onChange={vi.fn()} imageNamespaceId={NAMESPACE} />);
+
+    expect(screen.getByLabelText(/upload step image/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/replace step image/i)).toBeInTheDocument();
+  });
+
+  it('uploads a selected image and writes the hosted URL onto the step', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    mockedUploadStepImage.mockResolvedValue({ ok: true, value: { url: '/images/recipes/x/step-0.png' } });
+    render(<StepEditor steps={STEPS} onChange={onChange} imageNamespaceId={NAMESPACE} />);
+
+    const file = new File(['x'], 'pan.png', { type: 'image/png' });
+    await user.upload(screen.getByLabelText(/upload step image/i), file);
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith([
+        { ...STEPS[0], image: '/images/recipes/x/step-0.png' },
+        STEPS[1],
+      ]);
+    });
+    expect(mockedUploadStepImage).toHaveBeenCalledWith(NAMESPACE, 0, file);
+  });
+
+  it('shows the server error and leaves the step untouched when the upload fails', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    mockedUploadStepImage.mockResolvedValue({
+      ok: false,
+      error: { code: 'INVALID_INPUT', message: 'upload rejected' },
+    });
+    render(<StepEditor steps={STEPS} onChange={onChange} imageNamespaceId={NAMESPACE} />);
+
+    await user.upload(
+      screen.getByLabelText(/upload step image/i),
+      new File(['x'], 'pan.png', { type: 'image/png' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('upload rejected');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unsupported file type client-side without calling the API', async () => {
+    // applyAccept off: the accept attr would silently filter the file before
+    // our validation path ever runs.
+    const user = userEvent.setup({ applyAccept: false });
+    render(<StepEditor steps={STEPS} onChange={vi.fn()} imageNamespaceId={NAMESPACE} />);
+
+    await user.upload(
+      screen.getByLabelText(/upload step image/i),
+      new File(['x'], 'notes.gif', { type: 'image/gif' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not a supported image type/i);
+    expect(mockedUploadStepImage).not.toHaveBeenCalled();
   });
 
   it('editing step_header/step_description calls onChange with a patched, non-mutated array', async () => {

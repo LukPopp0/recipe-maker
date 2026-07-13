@@ -37,7 +37,9 @@ function isHttpUrl(value: string): boolean {
   return url.protocol === 'http:' || url.protocol === 'https:';
 }
 
-function validateImageFile(file: File, errors: string[]): void {
+// Exported for single-file uploads (review-panel step images); also used by
+// validateManualUpload below.
+export function validateImageFile(file: File, errors: string[]): void {
   if (file.size > MAX_IMAGE_BYTES) {
     errors.push(`${file.name} is too large (max ${MAX_IMAGE_BYTES / 1_000_000} MB per image).`);
   }
