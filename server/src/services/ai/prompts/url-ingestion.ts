@@ -46,6 +46,13 @@ Rules:
   step. Only carry over cutting/knife work (dice, slice, chop, mince, cube, julienne,
   halve, cut into ...); do not move other preparation (rinsing, peeling, draining), and
   do not duplicate cutting the steps already describe.
+- Source ingredient lists are often divided into named sections ("For the marinade",
+  "Honey Chipotle Sauce"). The output schema has a single flat ingredient list, so
+  section membership is lost. When a step refers to a section by name ("blend together
+  all honey chipotle sauce ingredients"), rewrite that step to name the actual
+  ingredients from that section (e.g. "Blend the chipotle peppers, honey, garlic and
+  lime juice until smooth to make the honey chipotle sauce"), so the cook can tell
+  which ingredients the step means. Keep the rest of the step's wording intact.
 - For "time", give the active hands-on time in minutes (prep plus cooking). For a range
   like "30 minutes to 1 hour" use the upper bound (60). EXCLUDE long passive/unattended
   waits such as overnight freezing, marinating, soaking, resting, chilling, rising, or
@@ -73,7 +80,10 @@ function renderJsonLdSection(recipeJsonLd: Record<string, unknown> | null | unde
   if (!recipeJsonLd) return '';
   return `
 Structured recipe metadata (schema.org JSON-LD embedded by the site - treat this as
-the authoritative source; prefer it over the page content below when they disagree):
+the authoritative source; prefer it over the page content below when they disagree.
+Exception: JSON-LD often flattens or omits ingredient section headings and sometimes
+omits ingredients entirely; use the page content for ingredient grouping and for
+anything missing here):
 <structured_metadata>
 ${JSON.stringify(recipeJsonLd)}
 </structured_metadata>

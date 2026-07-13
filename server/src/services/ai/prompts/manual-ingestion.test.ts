@@ -38,6 +38,11 @@ describe('buildManualIngestionPrompt', () => {
     expect(prompt).toMatch(/do not duplicate cutting/i);
   });
 
+  it('instructs to expand ingredient-section references in steps', () => {
+    expect(prompt).toMatch(/named\s+sections/i);
+    expect(prompt).toMatch(/rewrite that step to name the actual\s+ingredients/i);
+  });
+
   it('instructs to use the upper bound of a time range', () => {
     expect(prompt).toMatch(/use the upper bound/i);
   });

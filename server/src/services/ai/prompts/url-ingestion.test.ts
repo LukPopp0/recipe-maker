@@ -40,6 +40,20 @@ describe('buildUrlIngestionPrompt', () => {
     expect(prompt).toMatch(/do not duplicate cutting/i);
   });
 
+  it('instructs to expand ingredient-section references in steps', () => {
+    expect(prompt).toMatch(/named\s+sections/i);
+    expect(prompt).toMatch(/rewrite that step to name the actual\s+ingredients/i);
+  });
+
+  it('tells the model JSON-LD may flatten or omit ingredient sections', () => {
+    const withJsonLd = buildUrlIngestionPrompt({
+      ...baseParams,
+      recipeJsonLd: { '@type': 'Recipe', name: 'Pancakes' },
+    });
+    expect(withJsonLd).toMatch(/flattens or omits ingredient section headings/i);
+    expect(withJsonLd).toMatch(/use the page content for ingredient grouping/i);
+  });
+
   it('instructs on the 600-char step_description limit', () => {
     expect(prompt).toMatch(/600 characters/);
   });
@@ -111,6 +125,11 @@ describe('buildUrlIngestionRetryPrompt', () => {
   it('instructs to carry ingredient-list cutting prep into the steps', () => {
     expect(prompt).toMatch(/missing cutting instructions/i);
     expect(prompt).toMatch(/would still have at most 6 steps/i);
+  });
+
+  it('instructs to expand ingredient-section references in steps', () => {
+    expect(prompt).toMatch(/named\s+sections/i);
+    expect(prompt).toMatch(/rewrite that step to name the actual\s+ingredients/i);
   });
 
   it('explicitly states the first attempt failed schema validation', () => {
