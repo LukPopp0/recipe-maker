@@ -598,11 +598,11 @@
   align-items: center;
   gap: var(--space-1);
   border: 1px solid var(--tag-fg, var(--color-accent));
-  background: var(--tag-bg, var(--color-tint));
+  background: var(--tag-fg, var(--color-accent));
   border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
-  color: var(--tag-fg, var(--color-accent));
+  color: #fff;
 }
 
 .tag-editor-chip button {
@@ -630,8 +630,8 @@
 
 .tag-editor-vocab-chip[aria-pressed='true'] {
   border-color: var(--tag-fg, var(--color-accent));
-  background: var(--tag-bg, var(--color-tint));
-  color: var(--tag-fg, var(--color-accent));
+  background: var(--tag-fg, var(--color-accent));
+  color: #fff;
 }
 
 .tag-editor-vocab-chip:disabled {
@@ -639,28 +639,8 @@
   color: var(--color-text-muted);
 }
 
-/* Dark theme: derive chip colors from the light pair (deepened background,
-   pale tint as text). Card pills are untouched - card paper stays white.
-   Duplicated media/attribute blocks per the index.css convention. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .tag-editor-chip,
-  :root:not([data-theme='light']) .tag-editor-vocab-chip[aria-pressed='true'],
-  :root:not([data-theme='light']) .library-filter-tag[aria-pressed='true'],
-  :root:not([data-theme='light']) .recipe-list-tag {
-    background: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 28%, var(--color-surface));
-    border-color: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 55%, var(--color-surface));
-    color: var(--tag-bg, var(--color-tint));
-  }
-}
-
-:root[data-theme='dark'] .tag-editor-chip,
-:root[data-theme='dark'] .tag-editor-vocab-chip[aria-pressed='true'],
-:root[data-theme='dark'] .library-filter-tag[aria-pressed='true'],
-:root[data-theme='dark'] .recipe-list-tag {
-  background: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 28%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--tag-fg, var(--color-accent)) 55%, var(--color-surface));
-  color: var(--tag-bg, var(--color-tint));
-}
+/* Solid pills use the same fill in both themes, so no dark-theme override
+   blocks are needed here. */
 
 .tag-editor-custom {
   display: flex;
@@ -866,8 +846,8 @@
 
 .library-filter-tag[aria-pressed='true'] {
   border-color: var(--tag-fg, var(--color-accent));
-  background: var(--tag-bg, var(--color-tint));
-  color: var(--tag-fg, var(--color-accent));
+  background: var(--tag-fg, var(--color-accent));
+  color: #fff;
 }
 
 .library-filter-segment {
@@ -946,8 +926,8 @@
 }
 
 .recipe-list-tag {
-  background: var(--tag-bg, var(--color-tint));
-  color: var(--tag-fg, var(--color-text));
+  background: var(--tag-fg, var(--color-accent));
+  color: #fff;
   border-radius: var(--radius-full);
   padding: 0 var(--space-2);
   font-size: var(--font-size-sm);

@@ -1,8 +1,8 @@
 /* Per-tag pill colors. Each preset tag gets a fixed hue keyed to its meaning;
-   custom tags cycle the 3-color fallback (former card palette hues). Values
-   are the light pair (tint background + dark text) used verbatim on the
-   printable card (always white paper). App chips derive dark-theme colors
-   from these via color-mix in workspace.css. */
+   custom tags cycle the 3-color fallback (former card palette hues). Pills
+   render solid: --tag-fg is the fill with white text, same in both themes
+   and on the printable card. --tag-bg (the light tint) is kept for potential
+   soft/hover uses. */
 .tag-color-spicy { --tag-bg: #f9d7d2; --tag-fg: #c0392b; }
 .tag-color-comfort-meal { --tag-bg: #f6dfd4; --tag-fg: #a6482c; }
 .tag-color-family-friendly { --tag-bg: #fce5c9; --tag-fg: #b35f14; }
