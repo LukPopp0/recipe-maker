@@ -19,7 +19,16 @@ type WorkspaceView = 'create' | 'library';
 // need to find these headings by role while asserting they are not visible -
 // opacity is excluded from an element's a11y-tree check but still fails
 // jest-dom's toBeVisible().
-const HIDDEN_PANEL_STYLE = { position: 'absolute', opacity: 0, pointerEvents: 'none' } as const;
+// height 0 + overflow hidden keep the invisible panels from extending the
+// page's scrollable height (an out-of-flow absolute box still paints into
+// the scroll area), so the card preview page is only as tall as the card.
+const HIDDEN_PANEL_STYLE = {
+  position: 'absolute',
+  opacity: 0,
+  pointerEvents: 'none',
+  height: 0,
+  overflow: 'hidden',
+} as const;
 
 function statusLabel(state: WorkspaceRecipeState): string {
   if (!state) return 'Idle';

@@ -60,6 +60,12 @@ export function CardView({ recipe, onBack }: { recipe: CanonicalRecipe; onBack: 
 
   useLandscapePageStyle(landscape);
 
+  // The card usually replaces a long review page the user had scrolled down;
+  // jump to the top so the card is in view (scrollY guard keeps jsdom quiet).
+  useEffect(() => {
+    if (window.scrollY > 0) window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className={landscape ? 'card-view card-view--landscape' : 'card-view'}>
       <div className="card-view-toolbar">

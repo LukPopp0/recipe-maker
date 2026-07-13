@@ -28,6 +28,16 @@ describe('CardView', () => {
     expect(screen.getByText('Page 2')).toBeInTheDocument();
   });
 
+  it('scrolls the window to the top on mount when the page is scrolled down', () => {
+    Object.defineProperty(window, 'scrollY', { value: 800, configurable: true, writable: true });
+    const scrollSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    render(<CardView recipe={RECIPE} onBack={vi.fn()} />);
+
+    expect(scrollSpy).toHaveBeenCalledWith(0, 0);
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
+  });
+
   it('fires onBack from the Back button', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();

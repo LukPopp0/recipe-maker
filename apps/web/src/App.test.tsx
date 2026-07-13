@@ -250,4 +250,25 @@ describe('Create card preview', () => {
     await user.click(screen.getByRole('button', { name: /^back$/i }));
     expect(screen.getByRole('heading', { name: /input/i })).toBeVisible();
   });
+
+  it('collapses the hidden Create panels to zero height while the card is shown', async () => {
+    const user = userEvent.setup();
+    mockedIngestUrl.mockReset();
+    mockedIngestUrl.mockResolvedValueOnce({
+      ok: true,
+      value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 } },
+    });
+    render(<App />);
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'https://example.org/r');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+    await screen.findByLabelText(/title/i);
+
+    await user.click(screen.getByRole('button', { name: /preview card/i }));
+
+    // Hidden panels must not extend the page's scrollable height - the card
+    // view should be the only thing occupying vertical space.
+    const reviewPanel = screen.getByRole('heading', { name: /^review$/i }).closest('section');
+    expect(reviewPanel).toHaveStyle({ height: '0px', overflow: 'hidden' });
+  });
 });
