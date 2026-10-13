@@ -36,7 +36,7 @@
 - Consumes: nothing.
 - Produces: `fonts.css` (imported by `card.css` in Task 6); `apps/web/src/assets/pina-logo.png` (imported by `CardPage1.tsx` in Task 4 as `import pinaLogo from '../../assets/pina-logo.png'`).
 
-- [ ] **Step 1: Move the image assets**
+- [x] **Step 1: Move the image assets**
 
 `shared/assets` stays the canonical home for ingredient images only; the card logo and favicon are web-app assets. Both files are currently untracked (`??` in git status), so plain `mv`:
 
@@ -46,7 +46,7 @@ mv shared/assets/pina-logo.png apps/web/src/assets/pina-logo.png
 mv shared/assets/favicon.png apps/web/public/favicon.png
 ```
 
-- [ ] **Step 2: Point index.html at the new favicon**
+- [x] **Step 2: Point index.html at the new favicon**
 
 In `apps/web/index.html` replace the icon link (the referenced `/favicon.svg` never existed):
 
@@ -56,7 +56,7 @@ In `apps/web/index.html` replace the icon link (the referenced `/favicon.svg` ne
 
 Leave the `<title>` as is.
 
-- [ ] **Step 3: Download the woff2 fonts and license**
+- [x] **Step 3: Download the woff2 fonts and license**
 
 Run from the repo root (node script fetches the Google Fonts css2 stylesheet with a browser UA so it serves woff2, then downloads the latin-subset files):
 
@@ -99,7 +99,7 @@ cd -
 
 Expected output: three `wrote *.woff2` lines. Verify: `file apps/web/src/assets/fonts/*.woff2` reports "Web Open Font Format (Version 2)" for all three.
 
-- [ ] **Step 4: Create fonts.css**
+- [x] **Step 4: Create fonts.css**
 
 Create `apps/web/src/assets/fonts/fonts.css`:
 
@@ -131,7 +131,7 @@ Create `apps/web/src/assets/fonts/fonts.css`:
 }
 ```
 
-- [ ] **Step 5: Verify the build still passes**
+- [x] **Step 5: Verify the build still passes**
 
 Run: `pnpm --filter web run build`
 Expected: clean build (nothing imports the new files yet; this catches index.html mistakes).
@@ -139,7 +139,7 @@ Expected: clean build (nothing imports the new files yet; this catches index.htm
 Run: `pnpm --filter web run test`
 Expected: PASS (no behavior change).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/index.html apps/web/public/favicon.png apps/web/src/assets
@@ -165,7 +165,7 @@ export function emphasizeIngredients(description: string, ingredientNames: strin
 
 Concatenating all segment texts always reproduces `description` exactly.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `step-emphasis.test.ts`:
 
@@ -218,12 +218,12 @@ describe('emphasizeIngredients', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/lib/step-emphasis.test.ts`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `step-emphasis.ts`:
 
@@ -263,12 +263,12 @@ export function emphasizeIngredients(description: string, ingredientNames: strin
 
 Note: names ending in a non-word character (like the `chili (fresh` test) make the trailing `\b` unsatisfiable, so they simply never match - that is the accepted behavior, not an error.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/lib/step-emphasis.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/lib/step-emphasis.ts apps/web/src/lib/step-emphasis.test.ts
@@ -302,7 +302,7 @@ export const TAG_PALETTE_SIZE = 3;
 export function tagPaletteIndex(tag: string): number // 0 | 1 | 2, deterministic
 ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `card-scale.test.ts`:
 
@@ -358,12 +358,12 @@ describe('tagPaletteIndex', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/lib/card-scale.test.ts src/lib/tag-palette.test.ts`
 Expected: FAIL - modules not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `card-scale.ts`:
 
@@ -408,12 +408,12 @@ export function tagPaletteIndex(tag: string): number {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/lib/card-scale.test.ts src/lib/tag-palette.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/lib/card-scale.ts apps/web/src/lib/card-scale.test.ts apps/web/src/lib/tag-palette.ts apps/web/src/lib/tag-palette.test.ts
@@ -433,7 +433,7 @@ git commit -m "feat(web): add card scale and tag palette helpers"
 - Consumes: `tagPaletteIndex` (Task 3), `ingredientImageUrl`/`INGREDIENT_NOT_FOUND_IMAGE` from `apps/web/src/lib/ingredient-image.ts` (existing), `pina-logo.png` (Task 1).
 - Produces (used by Task 6): `CardPage1({ recipe }: { recipe: CanonicalRecipe })` rendering a `<section class="card-page card-page-1">`. `card.css` (page 1 rules; Tasks 5-6 append to the same file).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `CardPage1.test.tsx`:
 
@@ -512,12 +512,12 @@ describe('CardPage1', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/card/CardPage1.test.tsx`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement CardPage1**
+- [x] **Step 3: Implement CardPage1**
 
 Create `CardPage1.tsx`:
 
@@ -621,7 +621,7 @@ export function CardPage1({ recipe }: { recipe: CanonicalRecipe }) {
 }
 ```
 
-- [ ] **Step 4: Create card.css with base page and page 1 rules**
+- [x] **Step 4: Create card.css with base page and page 1 rules**
 
 Create `card.css` (Tasks 5 and 6 append page 2, preview wrapper, and print sections to this file):
 
@@ -775,12 +775,12 @@ Create `card.css` (Tasks 5 and 6 append page 2, preview wrapper, and print secti
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/card/CardPage1.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/components/card
@@ -800,7 +800,7 @@ git commit -m "feat(web): add card page 1 (header, title, tags, main image, ingr
 - Consumes: `emphasizeIngredients` (Task 2).
 - Produces (used by Task 6): `CardPage2({ recipe }: { recipe: CanonicalRecipe })` rendering `<section class="card-page card-page-2">`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `CardPage2.test.tsx`:
 
@@ -882,12 +882,12 @@ describe('CardPage2', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/card/CardPage2.test.tsx`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement CardPage2**
+- [x] **Step 3: Implement CardPage2**
 
 Create `CardPage2.tsx`:
 
@@ -959,7 +959,7 @@ export function CardPage2({ recipe }: { recipe: CanonicalRecipe }) {
 }
 ```
 
-- [ ] **Step 4: Append page 2 styles to card.css**
+- [x] **Step 4: Append page 2 styles to card.css**
 
 Append to `card.css`:
 
@@ -1052,12 +1052,12 @@ Append to `card.css`:
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/card/CardPage2.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/components/card
@@ -1082,7 +1082,7 @@ git commit -m "feat(web): add card page 2 (pantry banner, step grid, auto-boldin
 CardView({ recipe, onBack }: { recipe: CanonicalRecipe; onBack: () => void })
 ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `CardView.test.tsx`:
 
@@ -1137,12 +1137,12 @@ describe('CardView', () => {
 
 Note: jsdom has no `ResizeObserver` and no layout, so `useCardScale` must tolerate both (guard below). The tests intentionally do not assert a scale value.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/card/CardView.test.tsx`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement useCardScale**
+- [x] **Step 3: Implement useCardScale**
 
 Create `useCardScale.ts`:
 
@@ -1172,7 +1172,7 @@ export function useCardScale(ref: RefObject<HTMLElement | null>): CardScaleLayou
 }
 ```
 
-- [ ] **Step 4: Implement CardView**
+- [x] **Step 4: Implement CardView**
 
 Create `CardView.tsx`:
 
@@ -1232,7 +1232,7 @@ export function CardView({ recipe, onBack }: { recipe: CanonicalRecipe; onBack: 
 }
 ```
 
-- [ ] **Step 5: Append preview wrapper and print rules to card.css**
+- [x] **Step 5: Append preview wrapper and print rules to card.css**
 
 Append to `card.css`:
 
@@ -1324,12 +1324,12 @@ Append to `card.css`:
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/card/CardView.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/src/components/card
@@ -1353,7 +1353,7 @@ git commit -m "feat(web): add CardView with scale-to-fit preview and letter prin
 - Consumes: `CardView` (Task 6).
 - Produces: `JsonPanel` gains optional `onPreviewCard?: () => void` (button renders only when provided; validation-gated like Download). `RecipeDetail` gains an internal card mode. `App` gains `cardPreview` state for the Create workspace.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `RecipeDetail.test.tsx` (reuse the file's existing `RECIPE` fixture and `mockedGetRecipe`):
 
@@ -1430,12 +1430,12 @@ describe('Create card preview', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/library/RecipeDetail.test.tsx src/components/json/JsonPanel.test.tsx src/App.test.tsx`
 Expected: FAIL - buttons not found.
 
-- [ ] **Step 3: Implement JsonPanel onPreviewCard**
+- [x] **Step 3: Implement JsonPanel onPreviewCard**
 
 In `JsonPanel.tsx`, add the prop:
 
@@ -1482,7 +1482,7 @@ Add the button in `.json-panel-actions`, after Download JSON:
 ) : null}
 ```
 
-- [ ] **Step 4: Implement RecipeDetail View as Card**
+- [x] **Step 4: Implement RecipeDetail View as Card**
 
 In `RecipeDetail.tsx`: add `import { CardView } from '../card/CardView.tsx';` and card-mode state:
 
@@ -1506,7 +1506,7 @@ Add the toolbar button inside the existing `status.phase === 'loaded'` fragment,
 </button>
 ```
 
-- [ ] **Step 5: Implement App Create preview**
+- [x] **Step 5: Implement App Create preview**
 
 In `App.tsx`: add `import { CardView } from './components/card/CardView.tsx';` and state:
 
@@ -1557,12 +1557,12 @@ Add the panel style to `apps/web/src/workspace.css` (full-width like the library
 }
 ```
 
-- [ ] **Step 6: Run the affected suites**
+- [x] **Step 6: Run the affected suites**
 
 Run: `pnpm --filter web run test -- src/components/library src/components/json src/App.test.tsx`
 Expected: PASS, including all pre-existing tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/src/components/library/RecipeDetail.tsx apps/web/src/components/library/RecipeDetail.test.tsx apps/web/src/components/json/JsonPanel.tsx apps/web/src/components/json/JsonPanel.test.tsx apps/web/src/App.tsx apps/web/src/App.test.tsx apps/web/src/workspace.css
@@ -1582,7 +1582,7 @@ git commit -m "feat(web): wire card view into Library detail and Create preview"
 
 **Interfaces:** None new.
 
-- [ ] **Step 1: Write the failing test for the thumbnail fallback (Phase 6 follow-up)**
+- [x] **Step 1: Write the failing test for the thumbnail fallback (Phase 6 follow-up)**
 
 Append to `RecipeList.test.tsx` (reuse the file's `SUMMARIES` fixture):
 
@@ -1597,12 +1597,12 @@ it('hides a thumbnail that fails to load instead of showing a broken image', () 
 
 (Add `fireEvent` to the existing `@testing-library/react` import.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter web run test -- src/components/library/RecipeList.test.tsx`
 Expected: FAIL - image still visible.
 
-- [ ] **Step 3: Implement the fallback**
+- [x] **Step 3: Implement the fallback**
 
 In `RecipeList.tsx`, add an `onError` to the thumbnail `<img>`:
 
@@ -1620,7 +1620,7 @@ In `RecipeList.tsx`, add an `onError` to the thumbnail `<img>`:
 Run: `pnpm --filter web run test -- src/components/library/RecipeList.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 4: Manual print verification (required, specs/10 acceptance)**
+- [x] **Step 4: Manual print verification (required, specs/10 acceptance)**
 
 Start both dev servers (`server/.env` is not auto-loaded by pnpm dev - see project notes; do not use example.com for smoke tests):
 
@@ -1639,7 +1639,7 @@ In the browser:
 
 Fix any layout clipping found before proceeding; tune the in/pt constants in card.css only.
 
-- [ ] **Step 5: Update docs**
+- [x] **Step 5: Update docs**
 
 `README.md`: add Phase 7 to the completed list; describe the card view (two-page letter-size card, print/save-PDF, Library View as Card + Create Preview Card).
 
@@ -1647,7 +1647,7 @@ Fix any layout clipping found before proceeding; tune the in/pt constants in car
 
 `plans/recipe-maker-implementation-plan.md` Phase 7: append `[Done.]` to each implementation task, matching the Phase 6 convention.
 
-- [ ] **Step 6: Full verification**
+- [x] **Step 6: Full verification**
 
 Run: `pnpm --filter web run test && pnpm --filter server run test`
 Expected: PASS across both packages.
@@ -1655,7 +1655,7 @@ Expected: PASS across both packages.
 Run: `pnpm --filter web run build`
 Expected: clean build; woff2 and png assets emitted to dist.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/src/components/library README.md CLAUDE.md plans/recipe-maker-implementation-plan.md

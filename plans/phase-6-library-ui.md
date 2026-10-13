@@ -34,7 +34,7 @@
   - `getRecipe(id: string): Promise<ClientResult<{ recipe: CanonicalRecipe }>>`
   - `deleteRecipe(id: string): Promise<ClientResult<Record<string, never>>>`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `apps/web/src/api/client.test.ts` (adapt the fetch mocking to the helpers already in that file if they exist; the assertions must stay):
 
@@ -84,12 +84,12 @@ describe('library endpoints', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/api/client.test.ts`
 Expected: FAIL - `listRecipes` is not exported.
 
-- [ ] **Step 3: Implement the three functions**
+- [x] **Step 3: Implement the three functions**
 
 In `apps/web/src/api/client.ts`, extend the shared import and append after `saveRecipe`:
 
@@ -109,12 +109,12 @@ export async function deleteRecipe(id: string): Promise<ClientResult<Record<stri
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/api/client.test.ts`
 Expected: PASS (all, including pre-existing tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/api/client.ts apps/web/src/api/client.test.ts
@@ -136,7 +136,7 @@ git commit -m "feat(web): add library API client functions (list/get/delete)"
 - Produces (used by Task 5): `ReviewPanel` accepts optional `readOnly?: boolean` (default false) and `onChange` becomes optional. When readOnly: no inputs or buttons render anywhere in the tree; values render as static text. Pantry list, warnings, and diagnostics behavior unchanged.
 - Editors each gain `readOnly?: boolean` and their `onChange` stays required (ReviewPanel passes a no-op when it has no onChange).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `ReviewPanel.test.tsx` (reuse the file's existing recipe fixture; shown inline here so this task is self-contained):
 
@@ -174,12 +174,12 @@ describe('readOnly mode', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/review/ReviewPanel.test.tsx`
 Expected: FAIL - `readOnly` prop not accepted / textboxes still rendered.
 
-- [ ] **Step 3: Implement readOnly in the editors**
+- [x] **Step 3: Implement readOnly in the editors**
 
 `TagEditor.tsx` - add prop and early static return before any hooks-dependent UI (hooks still run; only the rendering branches):
 
@@ -285,7 +285,7 @@ export function StepEditor({
   // ... existing editable JSX unchanged ...
 ```
 
-- [ ] **Step 4: Implement readOnly in ReviewPanel**
+- [x] **Step 4: Implement readOnly in ReviewPanel**
 
 `ReviewPanel.tsx` - `onChange` becomes optional; a shared no-op keeps the editor prop contract required:
 
@@ -329,12 +329,12 @@ Title and time render static when readOnly (replace the two labels):
 
 Pass `readOnly={readOnly}` to `TagEditor`, `IngredientEditor`, `StepEditor`. Pantry section, `WarningsPanel`, and diagnostics line stay as-is.
 
-- [ ] **Step 5: Run the full review test suite**
+- [x] **Step 5: Run the full review test suite**
 
 Run: `pnpm --filter web run test -- src/components/review`
 Expected: PASS - new readOnly tests plus all pre-existing editor tests (editable behavior unchanged).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/components/review
@@ -352,7 +352,7 @@ git commit -m "feat(web): add readOnly mode to ReviewPanel and editors"
 **Interfaces:**
 - Produces (used by Task 5): `JsonPanel` accepts `readOnly?: boolean` (default false); `savedId`, `dirty`, `onSaved` become optional with safe defaults. When readOnly: Save Recipe button and unsaved-changes note never render; Copy JSON and Download JSON still work.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `JsonPanel.test.tsx` (reuse the file's existing recipe fixture):
 
@@ -368,12 +368,12 @@ describe('readOnly mode', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/json/JsonPanel.test.tsx`
 Expected: FAIL - required props missing / Save button rendered.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Prop changes in `JsonPanel.tsx`:
 
@@ -397,12 +397,12 @@ In `handleSave`, replace `onSaved(result.value.id)` with `onSaved?.(result.value
 Guard the note: `const showUnsavedNote = !readOnly && dirty && savedId === null;`
 Wrap the Save button: `{readOnly ? null : (<button ...>Save Recipe</button>)}`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/json/JsonPanel.test.tsx`
 Expected: PASS, including pre-existing save-flow tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/json
@@ -431,7 +431,7 @@ RecipeList({ recipes, onView, onDelete }: {
 
 Download is a plain anchor to `/api/recipe/download/:id`; no callback.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `RecipeList.test.tsx`:
 
@@ -480,12 +480,12 @@ describe('RecipeList', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/library/RecipeList.test.tsx`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `RecipeList.tsx`:
 
@@ -546,12 +546,12 @@ export function RecipeList({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/library/RecipeList.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/library
@@ -581,7 +581,7 @@ RecipeDetail({ id, onBack, onOpenInCreate, onDelete }: {
 
 Fetches its own recipe by id. Delete/Open in Create are delegated up; LibraryPanel owns confirm + API + list state.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `RecipeDetail.test.tsx`:
 
@@ -662,12 +662,12 @@ describe('RecipeDetail', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/library/RecipeDetail.test.tsx`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `RecipeDetail.tsx`:
 
@@ -753,12 +753,12 @@ export function RecipeDetail({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/library/RecipeDetail.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/library
@@ -783,7 +783,7 @@ LibraryPanel({ onOpenInCreate }: { onOpenInCreate: (recipe: CanonicalRecipe) => 
 
 Owns: summaries, load status, selectedId, delete failure state. Fetches `GET /api/recipes` on mount (component remounts on each Library visit, giving a fresh fetch). Sorts createdAt descending. Delete: `window.confirm` -> `deleteRecipe` -> remove from list, clear selection if it was selected.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `LibraryPanel.test.tsx`:
 
@@ -906,12 +906,12 @@ describe('LibraryPanel', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/components/library/LibraryPanel.test.tsx`
 Expected: FAIL - module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `LibraryPanel.tsx`:
 
@@ -1016,12 +1016,12 @@ export function LibraryPanel({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- src/components/library/LibraryPanel.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/library
@@ -1041,7 +1041,7 @@ git commit -m "feat(web): add LibraryPanel with list/detail/delete flow"
 - Consumes: `LibraryPanel` (Task 6), existing `adoptRecipe`/`shouldConfirmReplace` logic.
 - Produces: Library nav button enabled; `adoptRecipe` returns `boolean` (adopted or cancelled); Open in Create switches to the Create view only when adoption succeeded. The three Create sections stay mounted but `hidden` while in the Library view so in-progress tab/form state survives browsing.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `App.test.tsx` (mock `../api/client.ts` exports consistently with the file's existing mocks; add `listRecipes`, `getRecipe`, `deleteRecipe` to the mock factory if App's import graph now pulls them in):
 
@@ -1073,12 +1073,12 @@ describe('Library view', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- src/App.test.tsx`
 Expected: FAIL - Library button disabled.
 
-- [ ] **Step 3: Implement App changes**
+- [x] **Step 3: Implement App changes**
 
 In `App.tsx`:
 
@@ -1157,7 +1157,7 @@ const inCreate = view === 'create';
 
 Import: `import { LibraryPanel } from './components/library/LibraryPanel.tsx';`
 
-- [ ] **Step 4: Add library styles**
+- [x] **Step 4: Add library styles**
 
 Append to `workspace.css`, matching the existing token variables used elsewhere in the file (inspect the top of the file for the exact custom property names and reuse them):
 
@@ -1244,12 +1244,12 @@ Append to `workspace.css`, matching the existing token variables used elsewhere 
 
 If `workspace.css` does not define some of the custom properties above, the fallbacks after the comma apply; prefer swapping in the file's real token names where they exist.
 
-- [ ] **Step 5: Run the full web test suite**
+- [x] **Step 5: Run the full web test suite**
 
 Run: `pnpm --filter web run test`
 Expected: PASS - all suites, including pre-existing App tests (the nav test asserting a disabled Library button will need its assertion flipped if one exists; update it to assert the button is enabled).
 
-- [ ] **Step 6: Manual smoke check**
+- [x] **Step 6: Manual smoke check**
 
 Start backend and frontend (`pnpm --filter server run dev` needs `server/.env` loaded - see project notes; `pnpm --filter web run dev`). Verify in the browser:
 - Save a recipe from Create, switch to Library: card appears with thumbnail/tags.
@@ -1259,7 +1259,7 @@ Start backend and frontend (`pnpm --filter server run dev` needs `server/.env` l
 - Delete: confirm dialog, card disappears; recipe file gone from `server/data/recipes/`.
 - Restart the server; library still lists saved recipes.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/src/App.tsx apps/web/src/App.test.tsx apps/web/src/workspace.css
@@ -1277,19 +1277,19 @@ git commit -m "feat(web): wire Library view into workspace nav with Open in Crea
 
 **Interfaces:** None - documentation only.
 
-- [ ] **Step 1: Update README**
+- [x] **Step 1: Update README**
 
 In the status section (around lines 9-11 and 31-39): add Phase 6 to the completed list; replace the "Library UI (Phase 6) is ..." sentence with a short description of the Library (list/view read-only/download/delete plus Open in Create copy). Keep wording consistent with the surrounding text.
 
-- [ ] **Step 2: Update CLAUDE.md**
+- [x] **Step 2: Update CLAUDE.md**
 
 In the `## Status` section: fold Phase 6 into the done list and change "Next: Phase 6 Library UI (backend routes already exist)." to "Next: Phase 7 Milestone 2 card rendering."
 
-- [ ] **Step 3: Update the master plan**
+- [x] **Step 3: Update the master plan**
 
 In `plans/recipe-maker-implementation-plan.md` Phase 6: append `[Done.]` to implementation task 3, mirroring how tasks 1-2 are marked.
 
-- [ ] **Step 4: Full verification**
+- [x] **Step 4: Full verification**
 
 Run: `pnpm --filter web run test && pnpm --filter server run test`
 Expected: PASS across both packages.
@@ -1297,7 +1297,7 @@ Expected: PASS across both packages.
 Run: `pnpm --filter web run build`
 Expected: clean TypeScript build, no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md CLAUDE.md plans/recipe-maker-implementation-plan.md

@@ -74,14 +74,14 @@ tests mock the `playwright` module - no Chromium launches anywhere in tests.
 **Interfaces:** `ErrorCode` union gains `'RATE_LIMITED'`; `new AppError('RATE_LIMITED', ...)`
 gets `.status === 429`. Task 2 relies on this.
 
-- [ ] **Step 1:** Append to `errors.test.ts`: `AppError('RATE_LIMITED', 'msg')` has
+- [x] **Step 1:** Append to `errors.test.ts`: `AppError('RATE_LIMITED', 'msg')` has
   status 429; `serializeError` passes code through; `ERROR_DEFAULT_MESSAGE.RATE_LIMITED`
   non-empty (suggestion: `'Too many ingestion requests. Wait a moment and try again.'`).
-- [ ] **Step 2:** Run `pnpm --filter server run test src/lib/errors.test.ts` - FAIL.
-- [ ] **Step 3:** Implement (code + both map entries; `Record<ErrorCode, ...>` makes
+- [x] **Step 2:** Run `pnpm --filter server run test src/lib/errors.test.ts` - FAIL.
+- [x] **Step 3:** Implement (code + both map entries; `Record<ErrorCode, ...>` makes
   omissions compile errors).
-- [ ] **Step 4:** Full server suite + root `pnpm typecheck` green.
-- [ ] **Step 5:** Commit: `feat: add RATE_LIMITED error code (429)`
+- [x] **Step 4:** Full server suite + root `pnpm typecheck` green.
+- [x] **Step 5:** Commit: `feat: add RATE_LIMITED error code (429)`
 
 ### Task 2: In-memory fixed-window rate limiter on /api/ingest/*
 
@@ -104,7 +104,7 @@ gets `.status === 429`. Task 2 relies on this.
   `app.use('/api/ingest/*', createRateLimiter({ max: deps.env.RATE_LIMIT_MAX, windowMs: deps.env.RATE_LIMIT_WINDOW_MS }))`
   after logger, before route mounts. Fresh limiter per `createApp` keeps tests isolated.
 
-- [ ] **Step 1:** Failing tests:
+- [x] **Step 1:** Failing tests:
   - Unit (bare `new Hono()` + middleware + dummy route + `onError` from
     `error-handler.js`): allows `max` requests, 429s next, envelope code `RATE_LIMITED`;
     window rollover via injected `now`; distinct `x-forwarded-for` tracked independently.
@@ -112,11 +112,11 @@ gets `.status === 429`. Task 2 relies on this.
     `makeIngestDeps()` from `server/src/test-support/ingest-deps.ts`; POST
     `/api/ingest/url` invalid body 3x -> 400, 400, 429; `/api/recipes` never limited.
   - Env default/override assertions in `env.test.ts`.
-- [ ] **Step 2:** Run both test files - FAIL.
-- [ ] **Step 3:** Implement middleware, env fields, app.ts mount, `.env.example`.
-- [ ] **Step 4:** Full server suite green (ingest.test.ts makes few requests per app
+- [x] **Step 2:** Run both test files - FAIL.
+- [x] **Step 3:** Implement middleware, env fields, app.ts mount, `.env.example`.
+- [x] **Step 4:** Full server suite green (ingest.test.ts makes few requests per app
   instance, default max 10 - no conflict).
-- [ ] **Step 5:** Commit: `feat: fixed-window in-memory rate limiter for ingest endpoints`
+- [x] **Step 5:** Commit: `feat: fixed-window in-memory rate limiter for ingest endpoints`
 
 ### Task 3: logStage helper
 
@@ -137,11 +137,11 @@ export function logStage(fields: StageLogFields): void
 Single `console.log(JSON.stringify({...}))`, same style as `middleware/logger.ts:15-23`.
 Round `durationMs`.
 
-- [ ] **Step 1:** Failing test: spy `console.log` (pattern from
+- [x] **Step 1:** Failing test: spy `console.log` (pattern from
   `middleware/logger.test.ts:22`), parse logged string, assert fields + extra detail
   fields (e.g. `fetchMode`) spread into the line.
-- [ ] **Step 2:** Run - FAIL. **Step 3:** Implement. **Step 4:** Green.
-- [ ] **Step 5:** Commit: `feat: logStage structured stage logging helper`
+- [x] **Step 2:** Run - FAIL. **Step 3:** Implement. **Step 4:** Green.
+- [x] **Step 5:** Commit: `feat: logStage structured stage logging helper`
 
 ### Task 4: Stage logging in the URL ingestion pipeline
 
@@ -160,14 +160,14 @@ Round `durationMs`.
   and before the final `URL_EXTRACTION_FAILED` throw (~line 246) with
   `outcome: 'error'`. Duration from just before the primary Gemini call.
 
-- [ ] **Step 1:** Append failing tests: spy `console.log`, run pipeline with the file's
+- [x] **Step 1:** Append failing tests: spy `console.log`, run pipeline with the file's
   existing fake fetch/gemini setup, filter lines where `JSON.parse(line).stage` exists;
   assert happy path emits `fetch` (ok, `fetchMode: 'static'`) and `extract` (ok) with
   the passed requestId; both-attempts-fail emits `extract` error with
   `URL_EXTRACTION_FAILED`.
-- [ ] **Step 2:** Run - FAIL. **Step 3:** Implement (import from `../../lib/log.js`).
-- [ ] **Step 4:** Full server suite green.
-- [ ] **Step 5:** Commit: `feat: per-stage structured logs for URL ingestion pipeline`
+- [x] **Step 2:** Run - FAIL. **Step 3:** Implement (import from `../../lib/log.js`).
+- [x] **Step 4:** Full server suite green.
+- [x] **Step 5:** Commit: `feat: per-stage structured logs for URL ingestion pipeline`
 
 ### Task 5: Stage logging in manual pipeline and ingest route
 
@@ -182,12 +182,12 @@ Round `durationMs`.
 - Modify: `server/src/routes/ingest.test.ts` (append one test per route asserting
   stage lines carry the response's requestId)
 
-- [ ] **Step 1:** Failing tests (same spy pattern; route tests reuse `mockFetch` /
+- [x] **Step 1:** Failing tests (same spy pattern; route tests reuse `mockFetch` /
   `fakeGeminiSequence` helpers already in the file). Assert stages `post-process` +
   `image-rehost` (URL) / `host-images`, `normalize`, `post-process` (manual).
-- [ ] **Step 2:** Run both files - FAIL. **Step 3:** Implement.
-- [ ] **Step 4:** Full server suite green.
-- [ ] **Step 5:** Commit: `feat: per-stage structured logs for manual pipeline and ingest routes`
+- [x] **Step 2:** Run both files - FAIL. **Step 3:** Implement.
+- [x] **Step 4:** Full server suite green.
+- [x] **Step 5:** Commit: `feat: per-stage structured logs for manual pipeline and ingest routes`
 
 ### Task 6: browser-fetcher unit tests (mocked playwright)
 
@@ -223,9 +223,9 @@ superpowers:systematic-debugging before touching `browser-fetcher.ts`.
 7. Singleton: two calls -> one `chromium.launch`; after `closeBrowser()` a third call
    launches again.
 
-- [ ] **Step 1:** Write tests. **Step 2:** Run - expect PASS (code exists).
-- [ ] **Step 3:** Full server suite.
-- [ ] **Step 4:** Commit: `test: browser fetcher unit tests with mocked playwright`
+- [x] **Step 1:** Write tests. **Step 2:** Run - expect PASS (code exists).
+- [x] **Step 3:** Full server suite.
+- [x] **Step 4:** Commit: `test: browser fetcher unit tests with mocked playwright`
 
 ### Task 7: Golden fixtures - URL ingestion flow
 
@@ -262,11 +262,11 @@ superpowers:systematic-debugging before touching `browser-fetcher.ts`.
 5. Timeout: fetch rejects `Object.assign(new Error('aborted'), { name: 'AbortError' })`
    -> 504 `URL_FETCH_TIMEOUT`.
 
-- [ ] **Step 1:** Fixtures + test file with expected placeholder.
-- [ ] **Step 2:** Run - happy path FAILS showing actual output.
-- [ ] **Step 3:** Review + capture expected fixture; re-run PASS.
-- [ ] **Step 4:** Full server suite.
-- [ ] **Step 5:** Commit: `test: golden-fixture integration tests for URL ingestion`
+- [x] **Step 1:** Fixtures + test file with expected placeholder.
+- [x] **Step 2:** Run - happy path FAILS showing actual output.
+- [x] **Step 3:** Review + capture expected fixture; re-run PASS.
+- [x] **Step 4:** Full server suite.
+- [x] **Step 5:** Commit: `test: golden-fixture integration tests for URL ingestion`
 
 ### Task 8: Golden fixtures - manual ingestion flow
 
@@ -282,9 +282,9 @@ the golden file (keep `ingest.test.ts` untouched). "Without images" = mainImage 
 deliberately says `'url'`, like `VALID_MANUAL_CANDIDATE` at ingest.test.ts:264-278).
 Same golden capture procedure.
 
-- [ ] **Step 1:** Fixtures + failing tests. **Step 2:** Capture/review expected, green.
-- [ ] **Step 3:** Full server suite.
-- [ ] **Step 4:** Commit: `test: golden-fixture integration tests for manual ingestion`
+- [x] **Step 1:** Fixtures + failing tests. **Step 2:** Capture/review expected, green.
+- [x] **Step 3:** Full server suite.
+- [x] **Step 4:** Commit: `test: golden-fixture integration tests for manual ingestion`
 
 ### Task 9: Frontend outbound x-request-id + requestId on transport failures
 
@@ -301,14 +301,14 @@ nothing, so no accidental Content-Type. Change `networkFailure()` /
 (`ErrorBanner` already renders it). Error-envelope path keeps preferring
 `errorEnvelope.requestId` (same value anyway - `request-id.ts:16` honors inbound header).
 
-- [ ] **Step 1:** Failing tests (existing `vi.stubGlobal('fetch', ...)` pattern):
+- [x] **Step 1:** Failing tests (existing `vi.stubGlobal('fetch', ...)` pattern):
   (a) `ingestUrl` sends `x-request-id` alongside Content-Type; (b) `ingestManual`
   sends it and does NOT set Content-Type; (c) fetch rejection -> `error.requestId`
   equals the sent header.
-- [ ] **Step 2:** Run `pnpm --filter web run test src/api/client.test.ts` - FAIL.
-- [ ] **Step 3:** Implement. **Step 4:** Full web suite +
+- [x] **Step 2:** Run `pnpm --filter web run test src/api/client.test.ts` - FAIL.
+- [x] **Step 3:** Implement. **Step 4:** Full web suite +
   `pnpm --filter web run typecheck`.
-- [ ] **Step 5:** Commit: `feat: send x-request-id from the frontend and keep requestId on transport failures`
+- [x] **Step 5:** Commit: `feat: send x-request-id from the frontend and keep requestId on transport failures`
 
 ### Task 10: RTL tests for FieldErrors, StageStatus, IngestTabs
 
@@ -329,9 +329,9 @@ Tests-for-existing-code. Follow sibling test conventions (`WarningsPanel.test.ts
   distinctive control from ManualTab/LoadJsonTab - check rendered labels first).
   Tabs call API only on submit, plain render safe.
 
-- [ ] **Step 1:** Write tests. **Step 2:** Run - expect PASS; debug systematically if not.
-- [ ] **Step 3:** Full web suite.
-- [ ] **Step 4:** Commit: `test: FieldErrors, StageStatus, and IngestTabs component tests`
+- [x] **Step 1:** Write tests. **Step 2:** Run - expect PASS; debug systematically if not.
+- [x] **Step 3:** Full web suite.
+- [x] **Step 4:** Commit: `test: FieldErrors, StageStatus, and IngestTabs component tests`
 
 ### Task 11: Remove unused GEMINI_MAX_RETRIES env var
 
@@ -349,10 +349,10 @@ A numeric count maps to neither shape. Grep-verified only usages: `config.ts:13,
 - Modify: `server/.env.example` (delete the var; note next to `GEMINI_RETRY_MODEL`
   that the pipeline performs exactly one retry, not configurable)
 
-- [ ] **Step 1:** Update `config.test.ts`. **Step 2:** Implement removals.
-- [ ] **Step 3:** `pnpm --filter server run test && pnpm --filter server run typecheck`
+- [x] **Step 1:** Update `config.test.ts`. **Step 2:** Implement removals.
+- [x] **Step 3:** `pnpm --filter server run test && pnpm --filter server run typecheck`
   (typecheck is the real guard for forgotten consumers).
-- [ ] **Step 4:** Commit: `refactor: remove unused GEMINI_MAX_RETRIES (retry is fixed single-attempt by design)`
+- [x] **Step 4:** Commit: `refactor: remove unused GEMINI_MAX_RETRIES (retry is fixed single-attempt by design)`
 
 ### Task 12: CI workflow
 
@@ -371,10 +371,10 @@ A numeric count maps to neither shape. Grep-verified only usages: `config.ts:13,
   `BROWSER_FALLBACK_ENABLED: 'false'`, injects a fake fetcher, or mocks `playwright`;
   importing the package never downloads/launches Chromium.
 
-- [ ] **Step 1:** Write workflow + packageManager field.
-- [ ] **Step 2:** Run locally: `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test` - green.
-- [ ] **Step 3:** Commit: `ci: GitHub Actions workflow (install, typecheck, test)`.
-- [ ] **Step 4:** After push, verify run passes via `gh run list --workflow=ci.yml`.
+- [x] **Step 1:** Write workflow + packageManager field.
+- [x] **Step 2:** Run locally: `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test` - green.
+- [x] **Step 3:** Commit: `ci: GitHub Actions workflow (install, typecheck, test)`.
+- [x] **Step 4:** After push, verify run passes via `gh run list --workflow=ci.yml`.
 
 ### Task 13: Documentation updates
 
@@ -392,9 +392,9 @@ A numeric count maps to neither shape. Grep-verified only usages: `config.ts:13,
   count not configurable; guardrails: note implemented rate-limit env vars; release
   gates: performance thresholds deferred)
 
-- [ ] **Step 1:** Make edits (+ README.md only if it documents changed env vars).
-- [ ] **Step 2:** Re-read all three for consistency; root `pnpm test` once more.
-- [ ] **Step 3:** Commit: `docs: Phase 8 quality/testing/hardening complete with scope decisions`
+- [x] **Step 1:** Make edits (+ README.md only if it documents changed env vars).
+- [x] **Step 2:** Re-read all three for consistency; root `pnpm test` once more.
+- [x] **Step 3:** Commit: `docs: Phase 8 quality/testing/hardening complete with scope decisions`
 
 ---
 

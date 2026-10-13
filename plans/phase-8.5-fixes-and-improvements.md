@@ -4,7 +4,7 @@ Findings from end-to-end testing after Phase 8. Check items off as they are fixe
 Order below is the agreed fix order: quick wins first, then behavior fixes.
 Item 11 (UI overhaul) is a separate work item needing its own design phase.
 
-## 1. [ ] Add "water" to pantry allowlist (quick win)
+## 1. [x] Add "water" to pantry allowlist (quick win)
 
 - `shared/src/constants/pantry-allowlist.ts:8-16`: add `'water'` to `PANTRY_ALLOWLIST`.
   `isPantryItem` (line 23-37) already does case-insensitive exact match, no change needed.
@@ -13,7 +13,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   and `isPantryItem('Water')` true; "coconut water" stays false (exact match already
   guarantees this - assert it).
 
-## 2. [ ] Print drops backgrounds on card (tags, pantry banner, step headers) (quick win)
+## 2. [x] Print drops backgrounds on card (tags, pantry banner, step headers) (quick win)
 
 - `apps/web/src/components/card/card.css`: in the `@media print` block (lines 323-386)
   add to `.card-page`:
@@ -23,7 +23,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
 - Verify: print preview (Chrome + Safari) in landscape and portrait; backgrounds of
   tags, pantry banner, step number circles, step title bars visible in Save-as-PDF.
 
-## 3. [ ] Card title descenders (g/p/y) clipped on page 1 (quick win)
+## 3. [x] Card title descenders (g/p/y) clipped on page 1 (quick win)
 
 - `.card-title` at `card.css:47-58`: `line-height: 22pt` < `font-size: 23pt` plus
   `overflow: hidden` + `-webkit-line-clamp: 2` clips descenders on last rendered line.
@@ -34,7 +34,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
 - Verify: render card with titles containing descenders ("Spaghetti Bolognese",
   "Crispy Gnocchi") at 1 and 2 lines, both orientations, screen + print preview.
 
-## 4. [ ] Card wordmark "MY RECIPES" smaller than pineapple logo (quick win)
+## 4. [x] Card wordmark "MY RECIPES" smaller than pineapple logo (quick win)
 
 - Card page-1 header only (no such header on Library page). `.card-logo` is 0.55in
   square (card.css:26-30); `.card-wordmark` is 14pt/0.95 line-height (card.css:32-39),
@@ -45,7 +45,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   (`CardPage1.tsx:50-55`).
 - Verify: visual check both orientations + print preview; header row must not wrap.
 
-## 5. [ ] Clear review data when new extraction starts
+## 5. [x] Clear review data when new extraction starts
 
 - State: `recipeState` in `apps/web/src/App.tsx:31`; currently replaced only on
   completion via `adoptRecipe` (App.tsx:37-50). Old recipe/diagnostics stay visible
@@ -64,7 +64,7 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
 - Tests (RTL): start URL extraction with a recipe loaded -> review panel empties before
   response resolves; failed validation does not clear.
 
-## 6. [ ] Dedupe near-duplicate ingredients ("sliced green onions" + "green onions")
+## 6. [x] Dedupe near-duplicate ingredients ("sliced green onions" + "green onions")
 
 - Today: no dedup on ingredients; `dedupeCaseInsensitive` (sanitize.ts:12) covers only
   tags/pantry_items. Schema has no uniqueness constraint (canonical-recipe.ts:43).
@@ -115,6 +115,10 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
 - Tests (RTL card tests): URL recipe shows source line; manual recipe does not.
 
 ## 9. [ ] Ingredient image matching: whole batch degrades to INGREDIENT_NOT_FOUND
+
+> Status: partial. Done: fix 2 (attempt-outcome logging, 659570c) and amount
+> recovery (matcher no longer overwrites amounts, 270ba50). Open: fix 1
+> (length-mismatch salvage) - `attemptMatch` still discards on any length mismatch.
 
 - Today (`ingredient-image-matcher.ts`): `attemptMatch` (46-62) returns null on
   timeout/bad JSON/schema mismatch/ANY length mismatch (line 56); after primary +

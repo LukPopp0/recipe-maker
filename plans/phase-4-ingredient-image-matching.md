@@ -40,11 +40,11 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
 **Interfaces:**
 - Produces: `INGREDIENT_IMAGE_MANIFEST: readonly string[]` exported from `shared` (sorted catalog filenames including `INGREDIENT_NOT_FOUND.png`).
 
-- [ ] Extend `shared/scripts/generate-ingredient-manifest.mjs` to write a TypeScript sibling next to the JSON it already writes: `shared/src/generated/ingredient-manifest.ts` containing a generated-file header comment and `export const INGREDIENT_IMAGE_MANIFEST: readonly string[] = [ ...same sorted entries... ];`. Keep the JSON output unchanged (the frontend may consume it later). The TS form avoids JSON-import config (`resolveJsonModule` / import attributes) in every consuming package.
-- [ ] Run `pnpm --filter shared run generate:manifest`. Confirm both generated files now contain 215 entries including `INGREDIENT_NOT_FOUND.png`.
-- [ ] Add to `shared/src/index.ts`, following the existing constants export pattern: `export { INGREDIENT_IMAGE_MANIFEST } from './generated/ingredient-manifest.js';`
-- [ ] Verify: `pnpm --filter shared run test && pnpm --filter shared run typecheck`.
-- [ ] Commit: `feat(shared): export ingredient image manifest (incl. INGREDIENT_NOT_FOUND.png) for runtime use`.
+- [x] Extend `shared/scripts/generate-ingredient-manifest.mjs` to write a TypeScript sibling next to the JSON it already writes: `shared/src/generated/ingredient-manifest.ts` containing a generated-file header comment and `export const INGREDIENT_IMAGE_MANIFEST: readonly string[] = [ ...same sorted entries... ];`. Keep the JSON output unchanged (the frontend may consume it later). The TS form avoids JSON-import config (`resolveJsonModule` / import attributes) in every consuming package.
+- [x] Run `pnpm --filter shared run generate:manifest`. Confirm both generated files now contain 215 entries including `INGREDIENT_NOT_FOUND.png`.
+- [x] Add to `shared/src/index.ts`, following the existing constants export pattern: `export { INGREDIENT_IMAGE_MANIFEST } from './generated/ingredient-manifest.js';`
+- [x] Verify: `pnpm --filter shared run test && pnpm --filter shared run typecheck`.
+- [x] Commit: `feat(shared): export ingredient image manifest (incl. INGREDIENT_NOT_FOUND.png) for runtime use`.
 
 ## Task 2: Ingredient Catalog Module + Startup Check
 
@@ -58,11 +58,11 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
   - `export function loadIngredientCatalog(): IngredientCatalog` (backed by a `Set` for `has`)
   - `export function checkIngredientCatalogReady(): boolean` — false + structured console.error when `INGREDIENT_NOT_FOUND_IMAGE` is missing from the manifest.
 
-- [ ] Write `.test.ts` first: `loadIngredientCatalog()` returns 215 filenames; `has('broccoli.png')` true; `has('made-up.png')` false; catalog contains `INGREDIENT_NOT_FOUND_IMAGE`; `checkIngredientCatalogReady()` returns true against the real manifest.
-- [ ] Implement `catalog.ts` as above (pure module, reads only the imported manifest constant — no fs access).
-- [ ] In `server/src/index.ts`, next to the existing `checkStorageReady` fail-fast block, call `checkIngredientCatalogReady()` and `process.exit(1)` on false (same structured-JSON error-log style as `checkStorageReady`).
-- [ ] Verify: `pnpm --filter server run test -- catalog`.
-- [ ] Commit: `feat(server): add ingredient catalog module with INGREDIENT_NOT_FOUND startup check`.
+- [x] Write `.test.ts` first: `loadIngredientCatalog()` returns 215 filenames; `has('broccoli.png')` true; `has('made-up.png')` false; catalog contains `INGREDIENT_NOT_FOUND_IMAGE`; `checkIngredientCatalogReady()` returns true against the real manifest.
+- [x] Implement `catalog.ts` as above (pure module, reads only the imported manifest constant — no fs access).
+- [x] In `server/src/index.ts`, next to the existing `checkStorageReady` fail-fast block, call `checkIngredientCatalogReady()` and `process.exit(1)` on false (same structured-JSON error-log style as `checkStorageReady`).
+- [x] Verify: `pnpm --filter server run test -- catalog`.
+- [x] Commit: `feat(server): add ingredient catalog module with INGREDIENT_NOT_FOUND startup check`.
 
 ## Task 3: Ingredient-Matching Prompt
 
@@ -73,14 +73,14 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
   - `export interface BuildIngredientMatchingPromptParams { ingredients: RawIngredient[]; catalogFilenames: readonly string[] }`
   - `export function buildIngredientMatchingPrompt(params): string`
 
-- [ ] Write `ingredient-matching.ts` following the structure of `url-ingestion.ts` (compact output-shape block, rules list, fenced input, "Return only the JSON object" closer). Prompt content:
+- [x] Write `ingredient-matching.ts` following the structure of `url-ingestion.ts` (compact output-shape block, rules list, fenced input, "Return only the JSON object" closer). Prompt content:
   - Output shape: `[{ "name": string (title case), "amount_text": string, "unit"?: string (short form), "image": string (a filename from the catalog below, or "INGREDIENT_NOT_FOUND.png") }]` — a JSON array, same length and order as the input list.
   - Normalization rules from spec 08: title-case names; strip preparation-only details ("red onions, finely chopped" -> "Red Onions"); keep product-form identity ("can of crushed tomatoes" -> "Crushed Tomatoes"); short units (pounds -> lbs, tablespoons -> tbsp, teaspoons -> tsp, ounces -> oz, grams -> g, milliliters -> ml); preserve input order exactly.
   - Matching rules from spec 08: choose the closest semantic filename from the catalog; never invent filenames; prefer specific over generic when confident; when uncertain or no close match, use `INGREDIENT_NOT_FOUND.png`.
   - Inputs: the ingredient list as JSON (`name`, `amount_text`, `unit` only) and the catalog filenames newline-joined inside a `<catalog>` block.
-- [ ] Write `.test.ts`: prompt contains every catalog filename passed in; contains each input ingredient name; contains the `INGREDIENT_NOT_FOUND.png` fallback instruction, the "never invent filenames" rule, the same-length/same-order requirement, and at least one unit-shortening rule (`tablespoons -> tbsp`).
-- [ ] Verify: `pnpm --filter server run test -- prompts/ingredient-matching`.
-- [ ] Commit: `feat(server): add Gemini prompt for ingredient image matching (specs/08)`.
+- [x] Write `.test.ts`: prompt contains every catalog filename passed in; contains each input ingredient name; contains the `INGREDIENT_NOT_FOUND.png` fallback instruction, the "never invent filenames" rule, the same-length/same-order requirement, and at least one unit-shortening rule (`tablespoons -> tbsp`).
+- [x] Verify: `pnpm --filter server run test -- prompts/ingredient-matching`.
+- [x] Commit: `feat(server): add Gemini prompt for ingredient image matching (specs/08)`.
 
 ## Task 4: Ingredient Image Matcher Service
 
@@ -93,7 +93,7 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
   - `export interface IngredientImageMatcher { matchIngredientImages(ingredients: RawIngredient[]): Promise<IngredientImageMatchResult> }`
   - `export function createIngredientImageMatcher(params: { geminiClient: Pick<GeminiClient, 'generateCanonicalRecipe'>; geminiConfig: GeminiConfig; catalog: IngredientCatalog }): IngredientImageMatcher`
 
-- [ ] Write `.test.ts` first, with a fake `generateCanonicalRecipe` handler (`vi.fn()`, same injection pattern as `url-ingestion-pipeline.test.ts`):
+- [x] Write `.test.ts` first, with a fake `generateCanonicalRecipe` handler (`vi.fn()`, same injection pattern as `url-ingestion-pipeline.test.ts`):
   - Empty input array: resolves `{ ingredients: [], warnings: [] }` without calling Gemini.
   - Happy path: 3 ingredients in, fake returns 3 valid entries with catalog filenames; result carries those filenames, names/units updated from the response, `amount_value` preserved by index from the input, no warnings.
   - Non-catalog filename in response: coerced to `INGREDIENT_NOT_FOUND.png`, one warning naming the ingredient, other entries untouched.
@@ -101,13 +101,13 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
   - Count mismatch (2 entries for 3 inputs): first call rejected, second call (retry model) used; assert the second call's `model` param is `geminiConfig.retryModel`.
   - Both attempts fail (throw / invalid shape): resolves (never rejects) with all input ingredients set to `INGREDIENT_NOT_FOUND.png` and a single degradation warning; input names/amounts unchanged.
   - Empty name in a response entry fails Zod validation and counts as a failed attempt.
-- [ ] Implement `ingredient-image-matcher.ts`:
+- [x] Implement `ingredient-image-matcher.ts`:
   - Local Zod schema: `z.array(z.object({ name: z.string().trim().min(1), amount_text: z.string().trim().min(1), unit: z.string().optional(), image: z.string().min(1) }))` plus a `.length === input.length` check.
   - Attempt runner: build prompt (Task 3), `geminiClient.generateCanonicalRecipe({ model, prompt, timeoutMs: geminiConfig.timeoutMs })`, Zod-parse; any `AppError` or parse/length failure marks the attempt failed (caught, not rethrown).
   - Attempt 1 with `geminiConfig.primaryModel`; on failure attempt 2 with `geminiConfig.retryModel`; on second failure return the degraded result (decision 4).
   - On success, per entry: if `!catalog.has(image)` and `image !== INGREDIENT_NOT_FOUND_IMAGE`, coerce + warn (decision 7); if the final image is `INGREDIENT_NOT_FOUND_IMAGE`, add the no-match warning (decision 3); merge `{ ...input[i], name, amount_text, unit, image }` so `amount_value` survives.
-- [ ] Verify: `pnpm --filter server run test -- ingredient-image-matcher`.
-- [ ] Commit: `feat(server): add Gemini-driven ingredient image matcher with retry and degrade path`.
+- [x] Verify: `pnpm --filter server run test -- ingredient-image-matcher`.
+- [x] Commit: `feat(server): add Gemini-driven ingredient image matcher with retry and degrade path`.
 
 ## Task 5: Wire the Matcher into `applyPostProcessing`
 
@@ -117,11 +117,11 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
 - Consumes: `IngredientImageMatcher` (Task 4).
 - Produces: `applyPostProcessing(candidate, options): Promise<CanonicalRecipe>` — now async; `ApplyPostProcessingOptions` gains `ingredientImageMatcher?: IngredientImageMatcher`.
 
-- [ ] Update `index.test.ts` first: existing cases just gain `await` (no behavior change without a matcher — assert output deep-equals the pre-Phase-4 expectations). New cases with a fake matcher: matched filenames land on `ingredients[i].image`; matcher warnings appear in `metadata.warnings` alongside `finalSanitize` truncation warnings; matcher receives only the post-pantry-classification ingredients (pantry staples in the input never reach the matcher).
-- [ ] Make `applyPostProcessing` async. After `classifyPantryItems`/`normalizeTags`/`compactSteps`, when `options.ingredientImageMatcher` is set and the classified ingredients are non-empty: `const matchResult = await options.ingredientImageMatcher.matchIngredientImages(ingredients);` — use `matchResult.ingredients` in the assembled recipe and append `matchResult.warnings` to `candidate.metadata.warnings` before `finalSanitize` (which already merges metadata warnings). No matcher or empty ingredients: identical flow to today.
-- [ ] Update the module doc comment (pipeline ordering now lists "5. ingredient image matching (optional, before sanitize)").
-- [ ] Verify: `pnpm --filter server run test -- post-processing`.
-- [ ] Commit: `feat(server): run ingredient image matching inside post-processing before final sanitize`.
+- [x] Update `index.test.ts` first: existing cases just gain `await` (no behavior change without a matcher — assert output deep-equals the pre-Phase-4 expectations). New cases with a fake matcher: matched filenames land on `ingredients[i].image`; matcher warnings appear in `metadata.warnings` alongside `finalSanitize` truncation warnings; matcher receives only the post-pantry-classification ingredients (pantry staples in the input never reach the matcher).
+- [x] Make `applyPostProcessing` async. After `classifyPantryItems`/`normalizeTags`/`compactSteps`, when `options.ingredientImageMatcher` is set and the classified ingredients are non-empty: `const matchResult = await options.ingredientImageMatcher.matchIngredientImages(ingredients);` — use `matchResult.ingredients` in the assembled recipe and append `matchResult.warnings` to `candidate.metadata.warnings` before `finalSanitize` (which already merges metadata warnings). No matcher or empty ingredients: identical flow to today.
+- [x] Update the module doc comment (pipeline ordering now lists "5. ingredient image matching (optional, before sanitize)").
+- [x] Verify: `pnpm --filter server run test -- post-processing`.
+- [x] Commit: `feat(server): run ingredient image matching inside post-processing before final sanitize`.
 
 ## Task 6: Route Wiring, PROMPT_VERSION Bump, Integration Tests
 
@@ -130,26 +130,26 @@ Phases 0-3 shipped both ingestion endpoints. `applyPostProcessing(candidate, { d
 **Interfaces:**
 - Consumes: `createIngredientImageMatcher` + `loadIngredientCatalog` (Tasks 2/4), async `applyPostProcessing` (Task 5).
 
-- [ ] In `createIngestApp` (`server/src/routes/ingest.ts`), construct once at app creation: `const ingredientImageMatcher = createIngredientImageMatcher({ geminiClient, geminiConfig, catalog: loadIngredientCatalog() });` then pass `ingredientImageMatcher` in both routes' `applyPostProcessing` options and `await` the (now async) call. No other route logic changes.
-- [ ] Bump `server/src/services/ai/prompt-version.ts` to `export const PROMPT_VERSION = 'v2';` (decision 8).
-- [ ] Update `ingest.test.ts`: the fake `GeminiClient` now answers two calls per request — first the ingestion candidate, second the matcher array (drive via `vi.fn().mockResolvedValueOnce(candidate).mockResolvedValueOnce(matchArray)`). Assert for both `/ingest/url` and `/ingest/manual`: `ingredients[i].image` equals the catalog filename from the fake match response; a fake matcher response with an invented filename yields `INGREDIENT_NOT_FOUND.png` plus a warning in `metadata.warnings`; a matcher call that rejects on both attempts still returns 200 with all images `INGREDIENT_NOT_FOUND.png` and the degradation warning; all prior assertions (schema validity, source_type, hosted image URLs, error cases) still pass unchanged.
-- [ ] Verify: `pnpm --filter server run test && pnpm --filter server run lint`.
-- [ ] Commit: `feat(server): assign ingredient images in both ingestion routes (PROMPT_VERSION v2)`.
+- [x] In `createIngestApp` (`server/src/routes/ingest.ts`), construct once at app creation: `const ingredientImageMatcher = createIngredientImageMatcher({ geminiClient, geminiConfig, catalog: loadIngredientCatalog() });` then pass `ingredientImageMatcher` in both routes' `applyPostProcessing` options and `await` the (now async) call. No other route logic changes.
+- [x] Bump `server/src/services/ai/prompt-version.ts` to `export const PROMPT_VERSION = 'v2';` (decision 8).
+- [x] Update `ingest.test.ts`: the fake `GeminiClient` now answers two calls per request — first the ingestion candidate, second the matcher array (drive via `vi.fn().mockResolvedValueOnce(candidate).mockResolvedValueOnce(matchArray)`). Assert for both `/ingest/url` and `/ingest/manual`: `ingredients[i].image` equals the catalog filename from the fake match response; a fake matcher response with an invented filename yields `INGREDIENT_NOT_FOUND.png` plus a warning in `metadata.warnings`; a matcher call that rejects on both attempts still returns 200 with all images `INGREDIENT_NOT_FOUND.png` and the degradation warning; all prior assertions (schema validity, source_type, hosted image URLs, error cases) still pass unchanged.
+- [x] Verify: `pnpm --filter server run test && pnpm --filter server run lint`.
+- [x] Commit: `feat(server): assign ingredient images in both ingestion routes (PROMPT_VERSION v2)`.
 
 ## Task 7: Workspace-Wide Verification Pass
 
-- [ ] Fresh install + full suite: `pnpm install && pnpm -r run test && pnpm -r run lint && pnpm -r run typecheck`.
-- [ ] Manual smoke test (real `GEMINI_API_KEY` in `server/.env`): boot `pnpm --filter server run dev`; POST a known recipe URL to `/api/ingest/url` and a manual payload to `/api/ingest/manual` (same curl shapes as the Phase 3 plan's Task 8). Confirm: every `ingredients[i].image` is a real catalog filename or `INGREDIENT_NOT_FOUND.png`; unmatched items produce warnings; response `diagnostics` unchanged in shape; run the same URL twice and confirm identical `ingredients[].image` assignments (determinism).
-- [ ] Regression: max 6 steps, `main_image` present, `metadata.warnings` always an array.
-- [ ] Commit fixups only if issues surfaced: `chore: fix workspace-wide issues from Phase 4 verification pass`.
+- [x] Fresh install + full suite: `pnpm install && pnpm -r run test && pnpm -r run lint && pnpm -r run typecheck`.
+- [x] Manual smoke test (real `GEMINI_API_KEY` in `server/.env`): boot `pnpm --filter server run dev`; POST a known recipe URL to `/api/ingest/url` and a manual payload to `/api/ingest/manual` (same curl shapes as the Phase 3 plan's Task 8). Confirm: every `ingredients[i].image` is a real catalog filename or `INGREDIENT_NOT_FOUND.png`; unmatched items produce warnings; response `diagnostics` unchanged in shape; run the same URL twice and confirm identical `ingredients[].image` assignments (determinism).
+- [x] Regression: max 6 steps, `main_image` present, `metadata.warnings` always an array.
+- [x] Commit fixups only if issues surfaced: `chore: fix workspace-wide issues from Phase 4 verification pass`.
 
 ---
 
 ## Acceptance Criteria (from master plan, Phase 4)
 
-- [ ] Ingredient image assignment deterministic for same input — temperature-0 generation config + fixed prompt (Task 3) + smoke-test double-run (Task 7).
-- [ ] Unknown ingredients reliably map to `INGREDIENT_NOT_FOUND.png` without failing the request — coercion + degrade path (Task 4), integration coverage (Task 6).
-- [ ] All outputs still satisfy schema and step cap — `finalSanitize` re-validation still runs last (Task 5), regression checks (Tasks 6/7).
+- [x] Ingredient image assignment deterministic for same input — temperature-0 generation config + fixed prompt (Task 3) + smoke-test double-run (Task 7).
+- [x] Unknown ingredients reliably map to `INGREDIENT_NOT_FOUND.png` without failing the request — coercion + degrade path (Task 4), integration coverage (Task 6).
+- [x] All outputs still satisfy schema and step cap — `finalSanitize` re-validation still runs last (Task 5), regression checks (Tasks 6/7).
 
 ## Critical Files
 

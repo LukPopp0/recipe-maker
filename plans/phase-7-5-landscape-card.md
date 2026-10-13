@@ -46,7 +46,7 @@ Existing code contracts this plan builds on (already on main):
   - `computeCardScale(containerWidth: number, pageWidth?: number): CardScaleLayout` (pageWidth defaults to portrait width, so existing callers/tests keep working)
   - `useCardScale(ref, pageWidth?: number): CardScaleLayout`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `apps/web/src/lib/card-scale.test.ts` (keep existing tests untouched):
 
@@ -76,12 +76,12 @@ describe('orientation dimensions', () => {
 
 Adjust the import line at the top of the test file to include the new names (single import statement, no duplicate imports).
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- run src/lib/card-scale.test.ts`
 Expected: FAIL - `CARD_PORTRAIT` / `CARD_LANDSCAPE` not exported.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Replace `apps/web/src/lib/card-scale.ts` with:
 
@@ -149,12 +149,12 @@ export function useCardScale(
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- run src/lib/card-scale.test.ts src/components/card`
 Expected: PASS (new tests plus all existing card tests - the default arg keeps old behavior identical).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/lib/card-scale.ts apps/web/src/lib/card-scale.test.ts apps/web/src/components/card/useCardScale.ts
@@ -180,7 +180,7 @@ git commit -m "feat: parameterize card preview scaling by page orientation"
 
 No TDD for binary assets; verification is build + font-face wiring.
 
-- [ ] **Step 1: Download fonts (pinned URLs, all verified reachable at plan time)**
+- [x] **Step 1: Download fonts (pinned URLs, all verified reachable at plan time)**
 
 ```bash
 cd apps/web/src/assets/fonts
@@ -193,7 +193,7 @@ curl -sL -o OFL-d-din.txt "https://raw.githubusercontent.com/amcchord/datto-d-di
 
 Sanity check each file: `file *.woff2` must report "Web Open Font Format (Version 2)" for all three; both license files must start with SIL Open Font License text. If any download is wrong, STOP and report BLOCKED - do not substitute other sources.
 
-- [ ] **Step 2: Register the font faces**
+- [x] **Step 2: Register the font faces**
 
 Append to `apps/web/src/assets/fonts/fonts.css`:
 
@@ -223,7 +223,7 @@ Append to `apps/web/src/assets/fonts/fonts.css`:
 }
 ```
 
-- [ ] **Step 3: Switch card.css stacks to the self-hosted fonts**
+- [x] **Step 3: Switch card.css stacks to the self-hosted fonts**
 
 In `apps/web/src/components/card/card.css`, make exactly these replacements (old stacks stay as fallbacks):
 
@@ -243,12 +243,12 @@ In `apps/web/src/components/card/card.css`, make exactly these replacements (old
 
 And replace `font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;` with `font-family: 'Inter', Helvetica, 'Helvetica Neue', Arial, sans-serif;` in the two remaining rules that use it (`.card-pantry` and `.card-step-description`).
 
-- [ ] **Step 4: Verify build and tests**
+- [x] **Step 4: Verify build and tests**
 
 Run: `pnpm --filter web run build && pnpm --filter web run test -- run`
 Expected: build succeeds (woff2 assets emitted), all tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/assets/fonts apps/web/src/components/card/card.css
@@ -273,7 +273,7 @@ git commit -m "feat: self-host Inter and D-DIN fonts for card typography"
   - Root `.card-view` gains `card-view--landscape` class when landscape (Task 4 CSS hooks onto both classes).
   - Toggle button accessible name: `Portrait layout` when landscape is shown, `Landscape layout` when portrait is shown (the button names the layout it switches TO).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `apps/web/src/components/card/CardView.test.tsx` (reuse the file's existing recipe fixture and render helper; adjust names to match):
 
@@ -319,12 +319,12 @@ If the test file does not already import `userEvent`, add `import userEvent from
 
 Note: existing CardView tests that assume portrait defaults (if any assert page frame sizes) must be updated to landscape expectations - inspect the file and adjust; default is now landscape.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter web run test -- run src/components/card/CardView.test.tsx`
 Expected: FAIL - no `card-page--landscape` class, no toggle button.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Replace `apps/web/src/components/card/CardView.tsx` with:
 
@@ -443,12 +443,12 @@ Apply the same pattern to `CardPage2.tsx` (`card-page card-page-2 card-page--lan
 
 Import note: `CardView.tsx` imports the pages and the pages import `CardOrientation` from `CardView.tsx`. This is a type-only import cycle - TypeScript allows it and Vite erases it, but keep the import as `import type` so no runtime cycle exists.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web run test -- run src/components/card`
 Expected: PASS, including untouched CardPage1/CardPage2 tests (orientation defaults to portrait there).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/card
@@ -467,7 +467,7 @@ git commit -m "feat: orientation toggle with landscape default and print page-si
 - Consumes: `card-page--landscape` and `card-view--landscape` classes from Task 3; existing `data-density` attribute (`compact` >12, `tight` >18) from CardPage1.
 - Produces: complete landscape visual layout. No new JS API.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `apps/web/src/components/card/CardPage1.test.tsx` (reuse the file's fixture helpers):
 
@@ -488,12 +488,12 @@ If the test file has no `makeIngredient` helper, build the 14-ingredient array i
 
 Note: jsdom does not compute grid layout, so the 3-column rule itself is CSS-only and verified manually (controller does Playwright verification after merge); the test locks the `data-density` contract the CSS keys on.
 
-- [ ] **Step 2: Run test to verify the first one fails**
+- [x] **Step 2: Run test to verify the first one fails**
 
 Run: `pnpm --filter web run test -- run src/components/card/CardPage1.test.tsx`
 Expected: the landscape-class test FAILS only if Task 3 was not applied; if Task 3 is in place both may pass - that is fine, they lock the contract for the CSS below. Proceed either way.
 
-- [ ] **Step 3: Add landscape CSS**
+- [x] **Step 3: Add landscape CSS**
 
 Append to `apps/web/src/components/card/card.css`, directly before the `/* Screen preview wrapper */` comment:
 
@@ -566,12 +566,12 @@ with:
   }
 ```
 
-- [ ] **Step 4: Run tests and build**
+- [x] **Step 4: Run tests and build**
 
 Run: `pnpm --filter web run test -- run src/components/card && pnpm --filter web run build`
 Expected: PASS + clean build.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/src/components/card
@@ -589,23 +589,23 @@ git commit -m "feat: landscape card layout CSS with 3-column ingredient rail"
 
 **Interfaces:** none (documentation).
 
-- [ ] **Step 1: Update README.md**
+- [x] **Step 1: Update README.md**
 
 In the card rendering description, state: the card renders in landscape (11in x 8.5in, the original template orientation) by default, with a toolbar toggle to the portrait (8.5in x 11in) layout; printing follows the on-screen orientation automatically. Keep the existing description of pages/content accurate - only orientation wording changes plus the toggle mention. Mention the self-hosted fonts now include Inter and D-DIN (both SIL OFL).
 
-- [ ] **Step 2: Update CLAUDE.md status**
+- [x] **Step 2: Update CLAUDE.md status**
 
 In the `## Status` section, extend the Phase 7 sentence with: "Phase 7.5 added the landscape (default) card orientation with a portrait toggle and self-hosted Inter/D-DIN fonts (specs/10 Landscape Variant)." Keep "Next: Phase 8 quality/testing/hardening."
 
-- [ ] **Step 3: Update the main implementation plan**
+- [x] **Step 3: Update the main implementation plan**
 
 In `plans/recipe-maker-implementation-plan.md`, add a short "Phase 7.5 (Done): landscape card variant" note next to the Phase 7 entry, referencing `specs/10-recipe-card-renderer.md` Landscape Variant section and `plans/phase-7-5-landscape-card.md`.
 
-- [ ] **Step 4: Verify docs are consistent**
+- [x] **Step 4: Verify docs are consistent**
 
 Re-read the three changed sections; confirm no doc still claims portrait-only cards or system-font DIN/Helvetica stacks. Run `pnpm --filter web run test -- run` once more to confirm nothing else drifted.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md CLAUDE.md plans/recipe-maker-implementation-plan.md

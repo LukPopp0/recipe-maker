@@ -32,7 +32,7 @@
 
 **Note:** `src/assets/hero.png` is left in place but unreferenced - provenance unclear, safe to revisit later rather than delete now.
 
-- [ ] **Step 1: Replace `src/App.tsx`**
+- [x] **Step 1: Replace `src/App.tsx`**
 
 ```tsx
 function App() {
@@ -47,22 +47,22 @@ function App() {
 export default App
 ```
 
-- [ ] **Step 2: Delete `src/App.css` and its import**
+- [x] **Step 2: Delete `src/App.css` and its import**
 
 Delete the file. Confirm no other file imports `./App.css` (only `src/App.tsx` did, and it's already rewritten above without that import).
 
-- [ ] **Step 3: Delete unused template assets**
+- [x] **Step 3: Delete unused template assets**
 
 ```bash
 rm src/assets/react.svg src/assets/vite.svg public/icons.svg
 ```
 
-- [ ] **Step 4: Verify the app boots**
+- [x] **Step 4: Verify the app boots**
 
 Run: `pnpm dev`
 Expected: Dev server starts without errors; browser shows "Recipe Maker" heading and the placeholder paragraph, no React/Vite logos or docs/social links.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/App.tsx src/App.css src/assets/react.svg src/assets/vite.svg public/icons.svg
@@ -77,7 +77,7 @@ git commit -m "chore: remove Vite starter UI, add minimal app shell"
 **Interfaces:**
 - Produces: CSS custom properties (`--space-*`, `--font-*`, `--radius-*`, `--shadow-*`, `--z-*`, `--color-*`) on `:root`, consumed by all future component styles.
 
-- [ ] **Step 1: Write the new `src/index.css`**
+- [x] **Step 1: Write the new `src/index.css`**
 
 ```css
 /* Reset */
@@ -190,12 +190,12 @@ button, input, textarea, select {
 }
 ```
 
-- [ ] **Step 2: Verify styles apply and app still boots**
+- [x] **Step 2: Verify styles apply and app still boots**
 
 Run: `pnpm dev`
 Expected: No console/build errors; page background/text use the new tokens (open devtools, confirm `--color-accent` etc. are set on `:root`).
 
-- [ ] **Step 3: Lint and commit**
+- [x] **Step 3: Lint and commit**
 
 ```bash
 pnpm lint
@@ -218,13 +218,13 @@ git commit -m "chore: add design tokens, reset, and baseline styles"
 **Interfaces:**
 - Produces: `buildIngredientManifest(dirPath: string): Promise<string[]>` - sorted list of image filenames, consumed by `scripts/generate-ingredient-manifest.mjs` now, and by frontend/backend catalog code in later phases via the generated `shared/src/generated/ingredient-manifest.json`.
 
-- [ ] **Step 1: Install Vitest**
+- [x] **Step 1: Install Vitest**
 
 ```bash
 pnpm add -D vitest
 ```
 
-- [ ] **Step 2: Add `vitest.config.ts`**
+- [x] **Step 2: Add `vitest.config.ts`**
 
 ```ts
 import { defineConfig } from 'vitest/config'
@@ -238,7 +238,7 @@ export default defineConfig({
 
 Note: `environment: 'node'` suits this task. Phase 5/8 component tests will need `environment: 'jsdom'` (add `jsdom` as a dependency and override per-file or add a second config then - not needed yet).
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 ```js
 // scripts/lib/build-ingredient-manifest.test.mjs
@@ -270,12 +270,12 @@ describe('buildIngredientManifest', () => {
 })
 ```
 
-- [ ] **Step 4: Run test to verify it fails**
+- [x] **Step 4: Run test to verify it fails**
 
 Run: `pnpm vitest run scripts/lib/build-ingredient-manifest.test.mjs`
 Expected: FAIL - cannot find module `./build-ingredient-manifest.mjs`.
 
-- [ ] **Step 5: Write minimal implementation**
+- [x] **Step 5: Write minimal implementation**
 
 ```js
 // scripts/lib/build-ingredient-manifest.mjs
@@ -294,12 +294,12 @@ export async function buildIngredientManifest(dirPath) {
 }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `pnpm vitest run scripts/lib/build-ingredient-manifest.test.mjs`
 Expected: PASS
 
-- [ ] **Step 7: Write the CLI wrapper**
+- [x] **Step 7: Write the CLI wrapper**
 
 ```js
 // scripts/generate-ingredient-manifest.mjs
@@ -318,7 +318,7 @@ await writeFile(OUTPUT_FILE, JSON.stringify(manifest, null, 2) + '\n')
 console.log(`Wrote ${manifest.length} ingredient assets to ${OUTPUT_FILE}`)
 ```
 
-- [ ] **Step 8: Wire up package.json scripts**
+- [x] **Step 8: Wire up package.json scripts**
 
 Add to `package.json` `"scripts"`:
 
@@ -329,7 +329,7 @@ Add to `package.json` `"scripts"`:
 "test": "vitest run"
 ```
 
-- [ ] **Step 9: Add generated output to `.gitignore`**
+- [x] **Step 9: Add generated output to `.gitignore`**
 
 Add this line to `.gitignore`:
 
@@ -337,12 +337,12 @@ Add this line to `.gitignore`:
 shared/src/generated
 ```
 
-- [ ] **Step 10: Run the generator against the real asset directory**
+- [x] **Step 10: Run the generator against the real asset directory**
 
 Run: `pnpm generate:manifest`
 Expected: Console logs "Wrote 215 ingredient assets to .../ingredient-manifest.json"; `shared/src/generated/ingredient-manifest.json` exists, is a sorted JSON array, and does not contain `.DS_Store`.
 
-- [ ] **Step 11: Run full test suite and lint, then commit**
+- [x] **Step 11: Run full test suite and lint, then commit**
 
 ```bash
 pnpm test
@@ -356,7 +356,7 @@ git commit -m "feat: generate ingredient asset manifest from shared/assets/ingre
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Write the new README**
+- [x] **Step 1: Write the new README**
 
 ```markdown
 # Recipe Maker
@@ -407,7 +407,7 @@ script - no manual step needed.
 - Single-user, no authentication (local-first).
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add README.md
