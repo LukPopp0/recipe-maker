@@ -68,8 +68,9 @@ at extraction (spec 04), not here - the matcher no longer receives or returns un
 
 ## Failure Behavior
 - Matching never fails an ingestion request that already produced a valid recipe.
-- One retry with the configured retry model on a failed matching call (error, unparseable output, or count/order mismatch).
-- If the retry also fails, every ingredient gets INGREDIENT_NOT_FOUND.png and a single warning is added.
+- Count mismatch is salvaged, not discarded: response entries are aligned to input ingredients in order by normalized name (exact, then whole-word containment), and runs of unaligned inputs are paired by position only when the gap holds exactly as many entries. Unaligned inputs keep their extracted name/amount, get INGREDIENT_NOT_FOUND.png and a per-ingredient warning.
+- One retry with the configured retry model when the primary call fails (error, unparseable output) or leaves any input unaligned; the attempt with fewer unaligned inputs wins (primary on a tie).
+- If both attempts fail outright, every ingredient gets INGREDIENT_NOT_FOUND.png and a single warning is added.
 
 ## Acceptance Criteria
 - Gemini response conforms to schema and filename constraints.

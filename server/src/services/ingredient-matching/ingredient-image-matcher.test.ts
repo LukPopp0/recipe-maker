@@ -247,6 +247,115 @@ describe('createIngredientImageMatcher', () => {
     expect(result.ingredients.every((ing) => ing.image === INGREDIENT_NOT_FOUND_IMAGE)).toBe(true);
   });
 
+  describe('length-mismatch salvage (phase 8.5 item 9)', () => {
+    it('keeps matched entries when both attempts come back one entry short, degrading only the missing one', async () => {
+      const shortResponse = [
+        { name: 'Onions', image: 'onion.png' },
+        { name: 'Ground Beef', image: 'beef.png' },
+      ];
+      const generateCanonicalRecipe = vi
+        .fn()
+        .mockResolvedValueOnce(shortResponse)
+        .mockResolvedValueOnce(shortResponse);
+      const matcher = createIngredientImageMatcher({
+        geminiClient: { generateCanonicalRecipe },
+        geminiConfig: makeGeminiConfig(),
+        catalog: CATALOG,
+      });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(generateCanonicalRecipe).toHaveBeenCalledTimes(2);
+      expect(result.ingredients).toEqual([
+        { name: 'Onions', amount_text: '2', amount_value: 2, image: 'onion.png' },
+        { name: 'tomato sauce', amount_text: '400g', amount_value: 400, unit: 'g', image: INGREDIENT_NOT_FOUND_IMAGE },
+        { name: 'Ground Beef', amount_text: '1 lb', amount_value: 1, unit: 'lb', image: 'beef.png' },
+      ]);
+      expect(result.warnings).toEqual([
+        `Ingredient 'tomato sauce' was missing from the image-matching response; using ${INGREDIENT_NOT_FOUND_IMAGE}.`,
+      ]);
+    });
+
+    it('accepts a response with an extra entry without retrying when every input aligns by name', async () => {
+      const geminiClient = fakeGeminiClient(async () => [
+        { name: 'Onions', image: 'onion.png' },
+        { name: 'Tomato Sauce', image: 'tomato.png' },
+        { name: 'Tomato Sauce', image: 'tomato.png' },
+        { name: 'Ground Beef', image: 'beef.png' },
+      ]);
+      const matcher = createIngredientImageMatcher({ geminiClient, geminiConfig: makeGeminiConfig(), catalog: CATALOG });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(geminiClient.generateCanonicalRecipe).toHaveBeenCalledTimes(1);
+      expect(result.warnings).toEqual([]);
+      expect(result.ingredients.map((i) => i.image)).toEqual(['onion.png', 'tomato.png', 'beef.png']);
+    });
+
+    it('aligns a name stripped of preparation details by whole-word containment', async () => {
+      const input: RawIngredient[] = [
+        { name: 'red onions, finely chopped', amount_text: '2' },
+        { name: 'ground beef', amount_text: '1 lb' },
+      ];
+      const geminiClient = fakeGeminiClient(async () => [
+        { name: 'Red Onions', image: 'onion.png' },
+        { name: 'Ground Beef', image: 'beef.png' },
+        { name: 'Black Pepper', image: INGREDIENT_NOT_FOUND_IMAGE },
+      ]);
+      const matcher = createIngredientImageMatcher({ geminiClient, geminiConfig: makeGeminiConfig(), catalog: CATALOG });
+
+      const result = await matcher.matchIngredientImages(input);
+
+      expect(geminiClient.generateCanonicalRecipe).toHaveBeenCalledTimes(1);
+      expect(result.ingredients).toEqual([
+        { name: 'Red Onions', amount_text: '2', image: 'onion.png' },
+        { name: 'Ground Beef', amount_text: '1 lb', image: 'beef.png' },
+      ]);
+    });
+
+    it('pairs a renamed entry by position when it is the only candidate between two aligned neighbours', async () => {
+      const geminiClient = fakeGeminiClient(async () => [
+        { name: 'Onions', image: 'onion.png' },
+        { name: 'Passata', image: 'tomato.png' },
+        { name: 'Ground Beef', image: 'beef.png' },
+        { name: 'Garnish', image: INGREDIENT_NOT_FOUND_IMAGE },
+      ]);
+      const matcher = createIngredientImageMatcher({ geminiClient, geminiConfig: makeGeminiConfig(), catalog: CATALOG });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(geminiClient.generateCanonicalRecipe).toHaveBeenCalledTimes(1);
+      expect(result.ingredients.map((i) => [i.name, i.image])).toEqual([
+        ['Onions', 'onion.png'],
+        ['Passata', 'tomato.png'],
+        ['Ground Beef', 'beef.png'],
+      ]);
+    });
+
+    it('uses a partial primary result when the retry attempt fails outright', async () => {
+      const generateCanonicalRecipe = vi
+        .fn()
+        .mockResolvedValueOnce([
+          { name: 'Onions', image: 'onion.png' },
+          { name: 'Tomato Sauce', image: 'tomato.png' },
+        ])
+        .mockRejectedValueOnce(new AppError('AI_NORMALIZATION_FAILED', 'boom'));
+      const matcher = createIngredientImageMatcher({
+        geminiClient: { generateCanonicalRecipe },
+        geminiConfig: makeGeminiConfig(),
+        catalog: CATALOG,
+      });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(generateCanonicalRecipe).toHaveBeenCalledTimes(2);
+      expect(result.ingredients.map((i) => i.image)).toEqual(['onion.png', 'tomato.png', INGREDIENT_NOT_FOUND_IMAGE]);
+      expect(result.warnings).toEqual([
+        `Ingredient 'ground beef' was missing from the image-matching response; using ${INGREDIENT_NOT_FOUND_IMAGE}.`,
+      ]);
+    });
+  });
+
   describe('attempt diagnostics (phase 8.5 item 9)', () => {
     // Parse the JSON diagnostic lines the matcher logs to console.log,
     // ignoring any non-JSON output.
@@ -307,10 +416,11 @@ describe('createIngredientImageMatcher', () => {
       expect(logs[0]).toEqual({
         stage: 'image-match',
         model: config.primaryModel,
-        outcome: 'error',
+        outcome: 'partial',
         reason: 'length-mismatch',
         expectedLength: 3,
         actualLength: 2,
+        unmatched: 1,
       });
       expect(logs[1]).toMatchObject({ model: config.retryModel, outcome: 'ok', count: 3 });
       spy.mockRestore();

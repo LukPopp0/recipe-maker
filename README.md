@@ -85,7 +85,7 @@ This is a pnpm workspace with three sibling packages:
 - [x] Phase 7: Milestone 2 card rendering - printable two-page recipe card via browser print/Save-as-PDF
 - [x] Phase 7.5: landscape card variant (default) with portrait toggle, self-hosted fonts
 - [x] Phase 8: quality, testing, and hardening - golden-fixture integration tests, rate limiting, per-stage structured logs, CI workflow
-- [x] Phase 8.5: post-testing fixes (items 1-8, 10-11; item 9 length-mismatch salvage still open) and Fresh Market UI overhaul
+- [x] Phase 8.5: post-testing fixes (items 1-12) and Fresh Market UI overhaul
 - [x] Phase 10: step images for URL ingestion, review-panel step image upload, copy image prompt
 - [ ] Phase 9: server-side PDF generation (deferred - browser print dialog is sufficient for now)
 

@@ -114,11 +114,13 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   meant for print reference), truncated with ellipsis via CSS if too long.
 - Tests (RTL card tests): URL recipe shows source line; manual recipe does not.
 
-## 9. [ ] Ingredient image matching: whole batch degrades to INGREDIENT_NOT_FOUND
+## 9. [x] Ingredient image matching: whole batch degrades to INGREDIENT_NOT_FOUND
 
-> Status: partial. Done: fix 2 (attempt-outcome logging, 659570c) and amount
-> recovery (matcher no longer overwrites amounts, 270ba50). Open: fix 1
-> (length-mismatch salvage) - `attemptMatch` still discards on any length mismatch.
+> Status: done. Fix 2 (attempt-outcome logging, 659570c), amount recovery
+> (matcher no longer overwrites amounts, 270ba50), fix 1 (length-mismatch salvage:
+> ordered name alignment with exact then whole-word containment match, positional
+> gap fill when counts are equal; fully aligned primary skips the retry, partial
+> results retry and the attempt with fewer unaligned inputs wins).
 
 - Today (`ingredient-image-matcher.ts`): `attemptMatch` (46-62) returns null on
   timeout/bad JSON/schema mismatch/ANY length mismatch (line 56); after primary +

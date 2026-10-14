@@ -35,7 +35,7 @@ uploads a step image from the review panel (upload-only, per-step thumbnail),
 and a "Copy image prompt" button copies a generation prompt for Gemini's web
 UI (server-side AI image generation rejected - no API free tier).
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
-for now; revisit later. Open: Phase 8.5 item 9 length-mismatch salvage. Read
+for now; revisit later. Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 
