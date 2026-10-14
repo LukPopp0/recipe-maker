@@ -41,7 +41,14 @@ describe('buildIngredientMatchingPrompt', () => {
     expect(prompt).not.toContain('amount_text');
   });
 
-  it('ends with the standard closing instruction', () => {
-    expect(prompt.trim().endsWith('Return only the JSON object, no surrounding text or markdown fences.')).toBe(true);
+  it('ends with a closing instruction that asks for the JSON array', () => {
+    expect(prompt.trim().endsWith('Return only the JSON array, no surrounding text or markdown fences.')).toBe(true);
+    expect(prompt).not.toContain('JSON object');
+  });
+
+  it('numbers each input ingredient and asks for the number to be copied back', () => {
+    expect(prompt).toContain('{"i":0,"name":"Red onions, finely chopped"}');
+    expect(prompt).toContain('{"i":1,"name":"Crushed tomatoes"}');
+    expect(prompt).toMatch(/"i": number \(copied unchanged from the input ingredient\)/);
   });
 });

@@ -356,6 +356,57 @@ describe('createIngredientImageMatcher', () => {
     });
   });
 
+  describe('index echo alignment', () => {
+    it('aligns entries by their "i" even when the model reorders them', async () => {
+      const geminiClient = fakeGeminiClient(async () => [
+        { i: 2, name: 'Ground Beef', image: 'beef.png' },
+        { i: 0, name: 'Onions', image: 'onion.png' },
+        { i: 1, name: 'Tomato Sauce', image: 'tomato.png' },
+      ]);
+      const matcher = createIngredientImageMatcher({ geminiClient, geminiConfig: makeGeminiConfig(), catalog: CATALOG });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(result.ingredients.map((i) => [i.name, i.image, i.amount_text])).toEqual([
+        ['Onions', 'onion.png', '2'],
+        ['Tomato Sauce', 'tomato.png', '400g'],
+        ['Ground Beef', 'beef.png', '1 lb'],
+      ]);
+    });
+
+    it('uses "i" to place a short response exactly, even when names would not align', async () => {
+      const response = [
+        { i: 0, name: 'Shallots', image: 'onion.png' },
+        { i: 2, name: 'Mince', image: 'beef.png' },
+      ];
+      const generateCanonicalRecipe = vi.fn().mockResolvedValueOnce(response).mockResolvedValueOnce(response);
+      const matcher = createIngredientImageMatcher({
+        geminiClient: { generateCanonicalRecipe },
+        geminiConfig: makeGeminiConfig(),
+        catalog: CATALOG,
+      });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(result.ingredients.map((i) => i.image)).toEqual(['onion.png', INGREDIENT_NOT_FOUND_IMAGE, 'beef.png']);
+      expect(result.ingredients[1].name).toBe('tomato sauce');
+    });
+
+    it('ignores "i" and falls back to name alignment when the numbers are duplicated or out of range', async () => {
+      const geminiClient = fakeGeminiClient(async () => [
+        { i: 0, name: 'Onions', image: 'onion.png' },
+        { i: 0, name: 'Tomato Sauce', image: 'tomato.png' },
+        { i: 9, name: 'Ground Beef', image: 'beef.png' },
+        { i: 9, name: 'Garnish', image: INGREDIENT_NOT_FOUND_IMAGE },
+      ]);
+      const matcher = createIngredientImageMatcher({ geminiClient, geminiConfig: makeGeminiConfig(), catalog: CATALOG });
+
+      const result = await matcher.matchIngredientImages(INPUT);
+
+      expect(result.ingredients.map((i) => i.image)).toEqual(['onion.png', 'tomato.png', 'beef.png']);
+    });
+  });
+
   describe('attempt diagnostics (phase 8.5 item 9)', () => {
     // Parse the JSON diagnostic lines the matcher logs to console.log,
     // ignoring any non-JSON output.

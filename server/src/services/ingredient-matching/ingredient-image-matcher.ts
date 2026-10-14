@@ -6,11 +6,12 @@ import type { RawIngredient } from '../post-processing/index.js';
 import { AppError } from '../../lib/errors.js';
 import { INGREDIENT_NOT_FOUND_IMAGE, type IngredientCatalog } from './catalog.js';
 
-// Only name + image are consumed from the match response. amount_text/unit
-// are accepted but ignored - the matching model's job is image selection, and
+// Only i + name + image are consumed from the match response. "i" echoes the
+// input index (see alignByIndexField). amount_text/unit are accepted but ignored - the matching model's job is image selection, and
 // trusting it to re-transcribe amounts made it hallucinate ("not specified")
 // and drop units. Amounts/units are preserved from the extraction input below.
 const matchEntrySchema = z.object({
+  i: z.number().int().optional(),
   name: z.string().trim().min(1),
   amount_text: z.string().optional(),
   unit: z.string().optional(),
@@ -88,7 +89,21 @@ function namesOverlap(a: string, b: string): boolean {
   return ` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `);
 }
 
-// Aligns a response whose length differs from the input (phase 8.5 item 9).
+// Aligns entries by the "i" index the prompt asks the model to echo. Returns
+// null (caller falls back) unless every entry carries an in-range "i" and no
+// "i" repeats - a partially numbered response is not trusted.
+function alignByIndexField(entries: MatchEntry[], inputLength: number): (number | undefined)[] | null {
+  const entryIndexFor: (number | undefined)[] = new Array(inputLength).fill(undefined);
+  for (const [k, entry] of entries.entries()) {
+    const i = entry.i;
+    if (i === undefined || i < 0 || i >= inputLength || entryIndexFor[i] !== undefined) return null;
+    entryIndexFor[i] = k;
+  }
+  return entryIndexFor;
+}
+
+// Aligns a response whose length differs from the input and carries no usable
+// "i" (phase 8.5 item 9).
 // 1. Walk inputs in order; for each, take the first unused entry at or after
 //    the previous match whose name equals it, else whose name overlaps it.
 // 2. Fill gaps by position: a run of unaligned inputs between two aligned
@@ -177,8 +192,13 @@ async function attemptMatch(
   }
 
   const parsed = parseResult.data;
+  const byIndexField = alignByIndexField(parsed, expectedLength);
+  if (byIndexField && parsed.length === expectedLength) {
+    logMatchAttempt({ model, outcome: 'ok', count: parsed.length });
+    return { aligned: byIndexField.map((k) => parsed[k as number]), unmatched: 0 };
+  }
   if (parsed.length !== expectedLength) {
-    const entryIndexFor = alignByName(ingredients, parsed);
+    const entryIndexFor = byIndexField ?? alignByName(ingredients, parsed);
     const aligned = entryIndexFor.map((k) => (k === undefined ? undefined : parsed[k]));
     const unmatched = aligned.filter((entry) => entry === undefined).length;
     logMatchAttempt({
