@@ -35,6 +35,25 @@ describe('GeminiClient.generateCanonicalRecipe', () => {
     );
   });
 
+  it('passes a response schema through as structured output when given', async () => {
+    const generateContent = vi.fn().mockResolvedValue({ text: '{"title":"Pasta"}' });
+    const client = new GeminiClient(config, makeSdkClient(generateContent));
+    const responseJsonSchema = { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] };
+
+    await client.generateCanonicalRecipe({ model: 'm', prompt: 'p', timeoutMs: 1000, responseJsonSchema });
+
+    expect(generateContent.mock.calls[0][0].config.responseJsonSchema).toBe(responseJsonSchema);
+  });
+
+  it('sends no response schema when none is given', async () => {
+    const generateContent = vi.fn().mockResolvedValue({ text: '{"title":"Pasta"}' });
+    const client = new GeminiClient(config, makeSdkClient(generateContent));
+
+    await client.generateCanonicalRecipe({ model: 'm', prompt: 'p', timeoutMs: 1000 });
+
+    expect(generateContent.mock.calls[0][0].config).not.toHaveProperty('responseJsonSchema');
+  });
+
   it('throws AI_NORMALIZATION_FAILED when the response text is not valid JSON', async () => {
     const generateContent = vi.fn().mockResolvedValue({ text: 'not json' });
     const client = new GeminiClient(config, makeSdkClient(generateContent));

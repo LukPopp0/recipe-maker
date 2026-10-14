@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { buildIngredientMatchOutputJsonSchema } from '../ai/output-schemas.js';
 import { buildIngredientMatchingPrompt } from '../ai/prompts/ingredient-matching.js';
 import type { GeminiClient } from '../ai/gemini-client.js';
 import type { GeminiConfig } from '../ai/config.js';
@@ -160,11 +161,12 @@ async function attemptMatch(
   timeoutMs: number,
   prompt: string,
   ingredients: RawIngredient[],
+  responseJsonSchema: Record<string, unknown>,
 ): Promise<AlignedMatch | null> {
   const expectedLength = ingredients.length;
   let raw: unknown;
   try {
-    raw = await geminiClient.generateCanonicalRecipe({ model, prompt, timeoutMs });
+    raw = await geminiClient.generateCanonicalRecipe({ model, prompt, timeoutMs, responseJsonSchema });
   } catch (err) {
     logMatchAttempt({
       model,
@@ -220,6 +222,8 @@ export function createIngredientImageMatcher(
   params: CreateIngredientImageMatcherParams,
 ): IngredientImageMatcher {
   const { geminiClient, geminiConfig, catalog } = params;
+  // Structured output limiting "image" to catalog filenames; built once.
+  const responseJsonSchema = buildIngredientMatchOutputJsonSchema(catalog.filenames);
 
   return {
     async matchIngredientImages(ingredients: RawIngredient[]): Promise<IngredientImageMatchResult> {
@@ -235,6 +239,7 @@ export function createIngredientImageMatcher(
         geminiConfig.timeoutMs,
         prompt,
         ingredients,
+        responseJsonSchema,
       );
 
       // A fully aligned primary is used as-is. Otherwise retry, and keep
@@ -247,6 +252,7 @@ export function createIngredientImageMatcher(
           geminiConfig.timeoutMs,
           prompt,
           ingredients,
+          responseJsonSchema,
         );
         if (retry && (!primary || retry.unmatched < primary.unmatched)) {
           matched = retry;

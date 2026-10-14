@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../lib/errors.js';
 import { loadServerEnv } from '../../env.js';
 import { loadGeminiConfig } from '../ai/config.js';
+import { URL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
 import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { GeminiCanonicalRecipeGenerator } from './url-ingestion-pipeline.js';
 import { describeExtractionFailure, runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
@@ -115,6 +116,9 @@ describe('runUrlIngestionPipeline', () => {
     expect(result.diagnostics.model).toBe('gemini-2.5-flash');
     expect(generateCanonicalRecipe).toHaveBeenCalledTimes(2);
     expect(generateCanonicalRecipe.mock.calls[1][0].model).toBe('gemini-2.5-flash');
+    // Both attempts request structured output.
+    expect(generateCanonicalRecipe.mock.calls[0][0].responseJsonSchema).toBe(URL_RECIPE_OUTPUT_JSON_SCHEMA);
+    expect(generateCanonicalRecipe.mock.calls[1][0].responseJsonSchema).toBe(URL_RECIPE_OUTPUT_JSON_SCHEMA);
     // The retry prompt names what was wrong with the primary response and
     // carries the page title hint.
     const retryPrompt = generateCanonicalRecipe.mock.calls[1][0].prompt as string;

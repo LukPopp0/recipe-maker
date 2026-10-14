@@ -67,6 +67,11 @@ describe('createIngredientImageMatcher', () => {
       { name: 'Ground Beef', amount_text: '1 lb', amount_value: 1, unit: 'lb', image: 'beef.png' },
     ]);
     expect(geminiClient.generateCanonicalRecipe).toHaveBeenCalledTimes(1);
+    // Structured output limits "image" to the catalog filenames.
+    const schema = geminiClient.generateCanonicalRecipe.mock.calls[0][0].responseJsonSchema as {
+      items: { properties: { image: { enum: string[] } } }
+    };
+    expect(schema.items.properties.image.enum).toEqual(CATALOG.filenames);
   });
 
   it('ignores amounts/units the model echoes, keeping the extraction values (e.g. "not specified")', async () => {

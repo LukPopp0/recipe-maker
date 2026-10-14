@@ -1,6 +1,7 @@
 import dns from 'node:dns';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadGeminiConfig } from '../ai/config.js';
+import { MANUAL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
 import type { GeminiClient } from '../ai/gemini-client.js';
 import type { ManualImageInput, ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
@@ -216,6 +217,7 @@ describe('runManualIngestionPipeline', () => {
     expect(result.diagnostics.extractor).toBe('gemini-primary');
     expect(result.diagnostics.model).toBe('gemini-3.1-flash-lite');
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
+    expect(generateCanonicalRecipe.mock.calls[0][0].responseJsonSchema).toBe(MANUAL_RECIPE_OUTPUT_JSON_SCHEMA);
   });
 
   it('warns and leaves main_image unset when the main image is oversized', async () => {

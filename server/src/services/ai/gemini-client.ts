@@ -13,6 +13,9 @@ export interface GenerateCanonicalRecipeParams {
   model: string
   prompt: string
   timeoutMs: number
+  // JSON Schema the response must follow (structured output, see
+  // output-schemas.ts). Omitted: the model is only asked for JSON.
+  responseJsonSchema?: Record<string, unknown>
 }
 
 // The @google/genai SDK's ApiError.message is often a raw JSON blob (the full
@@ -40,7 +43,7 @@ export class GeminiClient {
     this.sdkClient = sdkClient ?? new GoogleGenAI({ apiKey: config.geminiApiKey });
   }
 
-  async generateCanonicalRecipe({ model, prompt, timeoutMs }: GenerateCanonicalRecipeParams): Promise<unknown> {
+  async generateCanonicalRecipe({ model, prompt, timeoutMs, responseJsonSchema }: GenerateCanonicalRecipeParams): Promise<unknown> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
 
@@ -64,6 +67,7 @@ export class GeminiClient {
           contents: prompt,
           config: {
             responseMimeType: 'application/json',
+            ...(responseJsonSchema ? { responseJsonSchema } : {}),
             temperature: this.generationConfig.temperature,
             topP: this.generationConfig.topP,
             topK: this.generationConfig.topK,

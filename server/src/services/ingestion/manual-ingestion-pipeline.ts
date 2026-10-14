@@ -2,6 +2,7 @@ import { AppError } from '../../lib/errors.js';
 import { logStage } from '../../lib/log.js';
 import type { GeminiConfig } from '../ai/config.js';
 import type { GeminiClient } from '../ai/gemini-client.js';
+import { MANUAL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
 import { buildManualIngestionPrompt } from '../ai/prompts/manual-ingestion.js';
 import { fetchAndStoreRemoteImage } from '../images/remote-image-fetcher.js';
 import { hostUploadedImage } from '../images/upload-image-hoster.js';
@@ -192,6 +193,7 @@ export async function runManualIngestionPipeline({
     model: geminiConfig.primaryModel,
     prompt,
     timeoutMs: geminiConfig.timeoutMs,
+    responseJsonSchema: MANUAL_RECIPE_OUTPUT_JSON_SCHEMA,
   });
 
   // Step 4: structural pre-check - no retry for manual ingestion.

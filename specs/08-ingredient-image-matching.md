@@ -62,6 +62,9 @@ at extraction (spec 04), not here - the matcher no longer receives or returns un
 - Gemini prompt version must be fixed per release.
 - For the same input and same catalog, backend should request deterministic output settings where available.
 - Backend must reject non-catalog filenames.
+- The request carries a structured-output schema (`output-schemas.ts`) that limits
+  "image" to the catalog filenames and requires i/name/image, so the model cannot
+  invent a filename; the non-catalog check stays as a safety net.
 
 ## Post-Processing
 1. Keep the bare catalog filename in the canonical recipe (path/URL resolution is a frontend concern, see Output section).

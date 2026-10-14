@@ -4,6 +4,7 @@ import { logStage } from '../../lib/log.js';
 import type { GeminiConfig } from '../ai/config.js';
 import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import { buildUrlIngestionPrompt, buildUrlIngestionRetryPrompt } from '../ai/prompts/url-ingestion.js';
+import { URL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
 import { defaultBrowserHtmlFetcher, type BrowserHtmlFetcher } from '../url-ingestion/browser-fetcher.js';
 import { cleanHtmlForExtraction, type CleanedHtml } from '../url-ingestion/html-cleaner.js';
 import { extractJsonLdStepImages } from '../url-ingestion/jsonld-step-images.js';
@@ -279,6 +280,7 @@ export async function runUrlIngestionPipeline({
       model: geminiConfig.primaryModel,
       prompt: primaryPrompt,
       timeoutMs: geminiConfig.timeoutMs,
+      responseJsonSchema: URL_RECIPE_OUTPUT_JSON_SCHEMA,
     }),
   );
 
@@ -327,6 +329,7 @@ export async function runUrlIngestionPipeline({
       model: geminiConfig.retryModel,
       prompt: retryPrompt,
       timeoutMs: geminiConfig.timeoutMs,
+      responseJsonSchema: URL_RECIPE_OUTPUT_JSON_SCHEMA,
     }),
   );
 
