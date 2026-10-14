@@ -89,6 +89,11 @@ describe('buildManualIngestionPrompt', () => {
     expect(prompt).toMatch(/exclude it from "ingredients"/i);
   });
 
+  it('instructs to keep pantry item amounts in the step text', () => {
+    expect(prompt).toMatch(/pantry item amounts/i);
+    expect(prompt).toMatch(/Melt 2 tbsp butter/);
+  });
+
   it('instructs against hallucinating missing fields', () => {
     expect(prompt).toMatch(/never hallucinate/i);
     expect(prompt).toMatch(/metadata\.warnings/);

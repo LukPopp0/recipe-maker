@@ -73,6 +73,7 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 - Instruct model to summarize/merge steps only when count > 6.
 - Instruct model to shorten step description per step to below 600 characters if this number is exceeded.
 - Instruct model to route fixed pantry-list items into pantry_items and exclude them from ingredients.
+- Instruct model to keep pantry item amounts in the steps: when a step uses a pantry item with a specific amount in the source, step_description states it (e.g. "Melt 2 tbsp butter"), since pantry_items holds names only.
 - Instruct model to avoid hallucinating missing fields; use null/empty with warning.
 - When JSON-LD is present, instruct model to prefer it over visible page text.
 - Instruct model to assign a per-step "image" only when a candidate or JSON-LD image

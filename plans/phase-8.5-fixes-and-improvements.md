@@ -186,6 +186,17 @@ Item 11 (UI overhaul) is a separate work item needing its own design phase.
   (Input collapses, JSON drawer), floating ActionTray owning Save/Preview,
   shared .btn hierarchy, Library restyle. card.css untouched.
 
+## 12. [x] Pantry item amounts lost (butter, water, ...)
+
+- `pantry_items` is names only (`string[]`), so when an ingredient is routed there its
+  amount is dropped; steps said "add the butter" with no quantity anywhere on the card.
+- Fix: prompt rule (URL + manual, prompt v5) - when a step uses a pantry item with a
+  specific amount in the source, `step_description` must state it ("Melt 2 tbsp
+  butter"). No schema change (rejected `{ name, amount_text }[]` pantry items: shared
+  contract change, and steps would still lack the amount).
+- Soft guarantee (model compliance); existing saved recipes need re-ingest.
+- Tests: prompt-text assertions in both prompt test files.
+
 ## Verification (per item)
 
 - Unit/integration: `pnpm test` (Vitest; golden-fixture ingestion tests must stay green).

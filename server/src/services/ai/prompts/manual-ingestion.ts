@@ -69,6 +69,11 @@ Rules:
   losing key instructions.
 - Route any ingredient that matches this fixed pantry list into "pantry_items" (as
   plain strings) and exclude it from "ingredients": ${PANTRY_LIST_TEXT}.
+- Keep pantry item amounts in the steps: "pantry_items" holds names only, so the
+  amount of a pantry item is lost unless a step states it. When a step uses a pantry
+  item that has a specific amount in the source (e.g. "2 tbsp butter", "1 cup water"),
+  the step_description must include that amount (e.g. "Melt 2 tbsp butter", "Add 1 cup
+  water"). Pantry items without a specific amount ("salt to taste") need no amount.
 - Never hallucinate missing fields. If a field is not present in the source, use null
   or an empty value as appropriate and add a short note explaining what is missing to
   "metadata.warnings".

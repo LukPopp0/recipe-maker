@@ -1,1 +1,1 @@
-export const PROMPT_VERSION = 'v4';
+export const PROMPT_VERSION = 'v5';

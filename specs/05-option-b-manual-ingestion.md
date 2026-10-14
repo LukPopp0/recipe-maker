@@ -28,6 +28,7 @@ Convert manually entered recipe text and uploaded images into canonical JSON.
 - Enforce pantry routing from fixed pantry allowlist:
 	- pantry items must be in pantry_items only.
 	- pantry items must not remain in ingredients.
+	- pantry item amounts must be kept in the steps: a step using a pantry item with a specific amount states it (e.g. "Melt 2 tbsp butter"), since pantry_items holds names only.
 - Enforce step_description <= 600 characters.
 - Enforce required main_image; use configured default image URL when uploaded main image is missing/invalid.
 
