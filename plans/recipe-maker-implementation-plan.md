@@ -623,6 +623,32 @@ section of `specs/10-recipe-card-renderer.md` and
 - Upload endpoint validates namespace/index/MIME/size and overwrites per-step.
 - All step-image failure modes degrade to warnings + text-only steps.
 
+## Phase 11: Automatic Step Image Generation (Deferred, New Feature)
+
+> Status: deferred (2026-10-13). Requested as a new feature; needs its own
+> brainstorming/spec before any code.
+
+### Goal
+When a recipe has steps without images, generate them automatically in a
+separate model call instead of the manual "Copy image prompt" round-trip
+(copy, generate in Gemini's web UI, download, upload per step), which is
+cumbersome.
+
+### Open decisions (resolve in the spec)
+- Revisits the specs/14 non-goal: server-side generation was rejected because
+  image models have no API free tier (~$0.03-0.04/image, so up to ~$0.24 per
+  6-step recipe). Needs an explicit cost decision and provider choice.
+- Trigger: automatic after ingestion vs an explicit "Generate step images"
+  action in the review panel (Save is already explicit; generation costs money).
+- Partial results: generate only steps without an image; keep uploaded or
+  extracted images.
+
+### Prompt requirements (from the 2026-10-13 prompt review, #10)
+- Include ingredient names so images show the right food.
+- No text, labels or captions in the image.
+- Landscape 4:3 to fit the card's step slots.
+- Consistent kitchen, lighting and dishes across all steps of a recipe.
+
 ## 6. Implementation Order (Strict)
 1. Phase 0 cleanup.
 2. Phase 1 contracts (includes RecipeRepository).

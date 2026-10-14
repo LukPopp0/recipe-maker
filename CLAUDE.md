@@ -35,7 +35,8 @@ uploads a step image from the review panel (upload-only, per-step thumbnail),
 and a "Copy image prompt" button copies a generation prompt for Gemini's web
 UI (server-side AI image generation rejected - no API free tier).
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
-for now; revisit later. Read
+for now; revisit later. Phase 11 (automatic step image generation) is a
+deferred new feature: needs brainstorming/spec and a cost decision first. Read
 `plans/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 

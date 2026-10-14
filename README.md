@@ -88,5 +88,6 @@ This is a pnpm workspace with three sibling packages:
 - [x] Phase 8.5: post-testing fixes (items 1-12) and Fresh Market UI overhaul
 - [x] Phase 10: step images for URL ingestion, review-panel step image upload, copy image prompt
 - [ ] Phase 9: server-side PDF generation (deferred - browser print dialog is sufficient for now)
+- [ ] Phase 11: automatic step image generation (deferred new feature - needs spec and cost decision)
 
 See `plans/recipe-maker-implementation-plan.md` for the full phase breakdown and `specs/` for per-feature specs.
