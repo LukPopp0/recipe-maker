@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PANTRY_ALLOWLIST, isPantryItem } from './pantry-allowlist.js';
+import { PANTRY_ALLOWLIST, PANTRY_VARIANTS, isPantryItem, pantryCanonicalName } from './pantry-allowlist.js';
 
 describe('PANTRY_ALLOWLIST', () => {
   it('contains the expected entries', () => {
@@ -81,5 +81,69 @@ describe('isPantryItem', () => {
 
   it('returns false for empty string', () => {
     expect(isPantryItem('')).toBe(false);
+  });
+});
+
+describe('pantryCanonicalName', () => {
+  it('maps type variants to their pantry item (kosher salt is still salt)', () => {
+    expect(pantryCanonicalName('Kosher Salt')).toBe('salt');
+    expect(pantryCanonicalName('sea salt')).toBe('salt');
+    expect(pantryCanonicalName('freshly ground black pepper')).toBe('pepper');
+    expect(pantryCanonicalName('Unsalted Butter')).toBe('butter');
+    expect(pantryCanonicalName('all-purpose flour')).toBe('flour');
+    expect(pantryCanonicalName('granulated sugar')).toBe('sugar');
+    expect(pantryCanonicalName('whole milk')).toBe('milk');
+    expect(pantryCanonicalName('warm water')).toBe('water');
+    expect(pantryCanonicalName('Extra-Virgin Olive Oil')).toBe('olive oil');
+    expect(pantryCanonicalName('vegetable oil')).toBe('vegetable oil');
+  });
+
+  it('returns the item itself for exact entries, ignoring case and extra spaces', () => {
+    expect(pantryCanonicalName('  SALT ')).toBe('salt');
+    expect(pantryCanonicalName('water')).toBe('water');
+  });
+
+  it('keeps different products out of the pantry', () => {
+    for (const name of [
+      'brown sugar',
+      'powdered sugar',
+      'red pepper flakes',
+      'bell pepper',
+      'cayenne pepper',
+      'buttermilk',
+      'peanut butter',
+      'coconut milk',
+      'almond flour',
+      'sesame oil',
+      'garlic salt',
+      'oil',
+      '',
+    ]) {
+      expect(pantryCanonicalName(name)).toBeNull();
+    }
+  });
+
+  it('isPantryItem accepts the same variants', () => {
+    expect(isPantryItem('kosher salt')).toBe(true);
+    expect(isPantryItem('brown sugar')).toBe(false);
+  });
+});
+
+describe('PANTRY_VARIANTS', () => {
+  it('has one entry per pantry item, each listing the item itself first', () => {
+    expect(Object.keys(PANTRY_VARIANTS)).toEqual([
+      'salt',
+      'pepper',
+      'sugar',
+      'butter',
+      'olive oil',
+      'vegetable oil',
+      'milk',
+      'flour',
+      'water',
+    ]);
+    for (const [item, variants] of Object.entries(PANTRY_VARIANTS)) {
+      expect(variants[0]).toBe(item);
+    }
   });
 });

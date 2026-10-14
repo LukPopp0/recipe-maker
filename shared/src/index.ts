@@ -20,7 +20,7 @@ export type { RecipeSummary } from './contracts/recipe-repository.js';
 
 export { amountContainsUnit, formatIngredientAmount } from './lib/ingredient-amount.js';
 
-export { PANTRY_ALLOWLIST, isPantryItem } from './constants/pantry-allowlist.js';
+export { PANTRY_ALLOWLIST, PANTRY_VARIANTS, isPantryItem, pantryCanonicalName } from './constants/pantry-allowlist.js';
 export { TAG_VOCABULARY } from './constants/tag-vocabulary.js';
 
 export { INGREDIENT_IMAGE_MANIFEST } from './generated/ingredient-manifest.js';

@@ -23,6 +23,8 @@ water
 Matching notes:
 - Matching is case-insensitive against normalized ingredient names.
 - "oil (olive and vegetable)" covers both olive oil and vegetable oil as pantry items; other oils (e.g. sesame oil) are not on this list and remain in ingredients.
+- Type variants of the same staple count as that staple ("kosher salt" is salt, "unsalted butter" is butter, "all-purpose flour" is flour). Accepted names live in `PANTRY_VARIANTS` (explicit lists, not word stripping) and are resolved by `pantryCanonicalName`; different products stay in ingredients ("brown sugar", "powdered sugar", "red pepper flakes", "buttermilk", "garlic salt").
+- Pantry items dedupe by staple (first display form wins), and the model's own `pantry_items` are filtered through the same check: anything that is not a staple moves back to ingredients with an empty amount and a warning.
 - This list is product-owner-controlled and expected to grow; treat it as a plain array in shared constants, not a hardcoded switch statement, so it is easy to extend.
 
 ## Tag Vocabulary

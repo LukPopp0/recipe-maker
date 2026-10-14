@@ -51,4 +51,29 @@ describe('classifyPantryItems', () => {
     expect(result.ingredients).toEqual([eggs]);
     expect(result.pantry_items).toEqual(['Flour']);
   });
+
+  it('routes type variants and dedupes them with their pantry item (kosher salt is salt)', () => {
+    const result = classifyPantryItems([ing('Kosher salt'), ing('Unsalted butter'), ing('salt'), ing('Brown sugar')]);
+
+    expect(result.pantry_items).toEqual(['Kosher salt', 'Unsalted butter']);
+    expect(result.ingredients.map((i) => i.name)).toEqual(['Brown sugar']);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('keeps model-supplied pantry items that are staples, deduped against routed ingredients', () => {
+    const result = classifyPantryItems([ing('Sea salt'), ing('Eggs')], ['Salt', 'Black pepper']);
+
+    expect(result.pantry_items).toEqual(['Salt', 'Black pepper']);
+    expect(result.ingredients.map((i) => i.name)).toEqual(['Eggs']);
+  });
+
+  it('moves model-supplied pantry items that are not staples back to ingredients with a warning', () => {
+    const result = classifyPantryItems([ing('Eggs')], ['Salt', 'Brown sugar']);
+
+    expect(result.pantry_items).toEqual(['Salt']);
+    expect(result.ingredients).toEqual([ing('Eggs'), { name: 'Brown sugar', amount_text: '' }]);
+    expect(result.warnings).toEqual([
+      "'Brown sugar' is not a pantry staple; moved to ingredients without an amount.",
+    ]);
+  });
 });

@@ -50,12 +50,13 @@ export async function applyPostProcessing(
   candidate: RawRecipeCandidate,
   { defaultMainImageUrl, ingredientImageMatcher }: ApplyPostProcessingOptions,
 ): Promise<CanonicalRecipe> {
-  const { ingredients: classifiedIngredients, pantry_items: classifiedPantry } = classifyPantryItems(
-    candidate.ingredients ?? [],
-  );
+  const {
+    ingredients: classifiedIngredients,
+    pantry_items: pantryItems,
+    warnings: pantryWarnings,
+  } = classifyPantryItems(candidate.ingredients ?? [], candidate.pantry_items ?? []);
   const tags = normalizeTags(candidate.tags ?? []);
   const steps = compactSteps(candidate.steps ?? []);
-  const pantryItems = [...(candidate.pantry_items ?? []), ...classifiedPantry];
 
   // Dedupe before image matching so the matcher gets a clean, shorter list and
   // near-duplicates ("sliced green onions" + "green onions") don't each consume
@@ -64,7 +65,7 @@ export async function applyPostProcessing(
     dedupeIngredients(classifiedIngredients);
 
   let ingredients = dedupedIngredients;
-  let warnings = [...(candidate.metadata.warnings ?? []), ...dedupeWarnings];
+  let warnings = [...(candidate.metadata.warnings ?? []), ...pantryWarnings, ...dedupeWarnings];
 
   if (ingredientImageMatcher && ingredients.length > 0) {
     const matchResult = await ingredientImageMatcher.matchIngredientImages(ingredients);
