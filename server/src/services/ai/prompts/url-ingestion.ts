@@ -1,5 +1,6 @@
-import { PANTRY_ALLOWLIST, TAG_VOCABULARY } from 'shared';
+import { TAG_VOCABULARY } from 'shared';
 import type { CandidateImage } from '../../url-ingestion/html-cleaner.js';
+import { buildSharedRules } from './shared-rules.js';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline (Task 6)
@@ -20,7 +21,6 @@ const CANONICAL_RECIPE_SHAPE = `{
   }
 }`;
 
-const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(', ');
 const TAG_VOCABULARY_TEXT = TAG_VOCABULARY.join(', ');
 
 const SHARED_INSTRUCTIONS = `You are extracting a recipe into a strict JSON schema. Output ONLY a single JSON
@@ -31,50 +31,9 @@ ${CANONICAL_RECIPE_SHAPE}
 </output_schema>
 
 Rules:
-- Preserve the original ingredient order exactly as it appears in the source content.
-- Merge ingredients that name the same item and differ only by preparation words
-  (sliced, chopped, diced, minced, grated, fresh, ground, etc.) into a single entry, and
-  combine their amounts when they can be sensibly combined. Do NOT merge ingredients that
-  differ in identity (e.g. "red onion" vs "onion", "green onion" vs "onion").
-- For "unit", use the short form: pounds -> lbs, tablespoons -> tbsp, teaspoons -> tsp,
-  ounces -> oz, grams -> g, milliliters -> ml. Keep "amount_text" as the source amount.
-- Ingredient lists often carry cutting instructions ("1 onion, diced", "chicken breast,
-  cut into strips"). When the steps never tell the cook to do that cutting, add the
-  missing cutting instructions to the start of the recipe so no knife work is lost when
-  ingredient names are normalized: either prepend them to the first step's description
-  (e.g. "Dice the onion and cut the chicken into strips. " before its existing text) or,
-  if the recipe would still have at most 6 steps, add them as a new first preparation
-  step. Only carry over cutting/knife work (dice, slice, chop, mince, cube, julienne,
-  halve, cut into ...); do not move other preparation (rinsing, peeling, draining), and
-  do not duplicate cutting the steps already describe.
-- Source ingredient lists are often divided into named sections ("For the marinade",
-  "Honey Chipotle Sauce"). The output schema has a single flat ingredient list, so
-  section membership is lost. When a step refers to a section by name ("blend together
-  all honey chipotle sauce ingredients"), rewrite that step to name the actual
-  ingredients from that section (e.g. "Blend the chipotle peppers, honey, garlic and
-  lime juice until smooth to make the honey chipotle sauce"), so the cook can tell
-  which ingredients the step means. Keep the rest of the step's wording intact.
-- For "time", give the active hands-on time in minutes (prep plus cooking). For a range
-  like "30 minutes to 1 hour" use the upper bound (60). EXCLUDE long passive/unattended
-  waits such as overnight freezing, marinating, soaking, resting, chilling, rising, or
-  proofing - do not add these to the total even if the source lists them (e.g. a
-  structured prepTime of "PT12H" for freezing overnight). Typical recipes run from 1
-  minute to about 4 hours; never sum unrelated durations.
-- The "steps" array must have at most 6 entries. Only merge or summarize steps if the
-  source has more than 6 steps; otherwise leave the step count as extracted - do not
-  merge steps just because you can.
-- Each "step_description" must be under 600 characters. Shorten if needed without
-  losing key instructions.
-- Route any ingredient that matches this fixed pantry list into "pantry_items" (as
-  plain strings) and exclude it from "ingredients": ${PANTRY_LIST_TEXT}.
-- Keep pantry item amounts in the steps: "pantry_items" holds names only, so the
-  amount of a pantry item is lost unless a step states it. When a step uses a pantry
-  item that has a specific amount in the source (e.g. "2 tbsp butter", "1 cup water"),
-  the step_description must include that amount (e.g. "Melt 2 tbsp butter", "Add 1 cup
-  water"). Pantry items without a specific amount ("salt to taste") need no amount.
-- Never hallucinate missing fields. If a field is not present in the source, use null
-  or an empty value as appropriate and add a short note explaining what is missing to
-  "metadata.warnings".
+${buildSharedRules({
+  structuredTimeNote: ' even if the source lists them (e.g. a structured prepTime of "PT12H" for freezing overnight)',
+})}
 - Select tags primarily from this controlled vocabulary: ${TAG_VOCABULARY_TEXT}. Custom
   tags are allowed if none of these fit, but prefer the vocabulary above.
 - Assign a step's "image" only when a candidate or structured-metadata image clearly
@@ -145,26 +104,34 @@ export interface BuildUrlIngestionRetryPromptParams {
   url: string
   reducedText: string
   candidateImages: CandidateImage[]
+  titleHint?: string | null
   recipeJsonLd?: Record<string, unknown> | null
+  // Why the first attempt was rejected, in plain words (e.g. "the response had
+  // no steps"), so the model knows what to fix.
+  previousFailure: string
 }
 
-// Retry prompt used when the first attempt failed schema validation. Shorter,
-// more focused content and an explicit warning to be strict about required fields.
+// Retry prompt used when the first attempt failed (request error/timeout or a
+// response missing title/ingredients/steps). Shorter, more focused content,
+// the concrete failure reason, and a warning to be strict about required fields.
 export function buildUrlIngestionRetryPrompt({
   url,
   reducedText,
   candidateImages,
+  titleHint,
   recipeJsonLd,
+  previousFailure,
 }: BuildUrlIngestionRetryPromptParams): string {
   return `${SHARED_INSTRUCTIONS}
 - Set "metadata.source_url" to exactly: ${url}
 
-IMPORTANT: A previous attempt to extract this recipe FAILED schema validation. Be
+IMPORTANT: A previous attempt to extract this recipe failed: ${previousFailure}. Be
 strict about required fields (title, tags, time, ingredients, pantry_items, main_image,
 steps, metadata) and their exact types. Do not omit any required field - use null or
 an empty array/string instead.
 
 Source URL: ${url}
+Title hint (from the page's <title>/og:title, may be inaccurate or absent): ${titleHint ?? '(none)'}
 Candidate image URLs (choose "main_image" and per-step "image" values from this list
 when suitable ones exist):
 ${renderCandidateImages(candidateImages)}

@@ -74,14 +74,30 @@ const RETRY_TOKEN_BUDGET_DIVISOR = 2;
 // the primary attempt is worth accepting or should fall back to the retry
 // prompt.
 function passesStructuralPreCheck(candidate: unknown): boolean {
-  if (typeof candidate !== 'object' || candidate === null) return false;
+  return describeExtractionFailure(candidate) === null;
+}
+
+// Plain-words reason a raw extraction result fails the pre-check, or null if
+// it passes. Fed to the retry prompt so the model knows what to fix. A null
+// candidate means tryExtract swallowed an error (timeout, transport, or
+// unparseable JSON).
+export function describeExtractionFailure(candidate: unknown): string | null {
+  if (candidate === null || candidate === undefined) {
+    return 'the request errored or timed out, or the response was not valid JSON';
+  }
+  if (typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return 'the response was not a single JSON object';
+  }
   const record = candidate as Record<string, unknown>;
 
-  const hasTitle = typeof record.title === 'string' && record.title.trim().length > 0;
-  const hasIngredient = Array.isArray(record.ingredients) && record.ingredients.length > 0;
-  const hasStep = Array.isArray(record.steps) && record.steps.length > 0;
+  const missing: string[] = [];
+  if (!(typeof record.title === 'string' && record.title.trim().length > 0)) missing.push('a title');
+  if (!(Array.isArray(record.ingredients) && record.ingredients.length > 0)) missing.push('ingredients');
+  if (!(Array.isArray(record.steps) && record.steps.length > 0)) missing.push('steps');
 
-  return hasTitle && hasIngredient && hasStep;
+  if (missing.length === 0) return null;
+  const list = missing.length === 1 ? missing[0] : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`;
+  return `the response was missing ${list}`;
 }
 
 // A JSON-LD Recipe node only counts as "complete enough" to skip the browser
@@ -301,7 +317,9 @@ export async function runUrlIngestionPipeline({
     url: effectiveUrl,
     reducedText: reducedCleaned.cleanedText,
     candidateImages: reducedCleaned.candidateImages,
+    titleHint: cleaned.titleHint,
     recipeJsonLd: reducedCleaned.recipeJsonLd,
+    previousFailure: describeExtractionFailure(primaryResult) ?? 'unknown failure',
   });
 
   const retryResult = await tryExtract(() =>

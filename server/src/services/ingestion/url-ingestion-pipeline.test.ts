@@ -5,7 +5,7 @@ import { loadServerEnv } from '../../env.js';
 import { loadGeminiConfig } from '../ai/config.js';
 import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { GeminiCanonicalRecipeGenerator } from './url-ingestion-pipeline.js';
-import { runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
+import { describeExtractionFailure, runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
 
 const RECIPE_HTML = `
   <html>
@@ -115,6 +115,11 @@ describe('runUrlIngestionPipeline', () => {
     expect(result.diagnostics.model).toBe('gemini-2.5-flash');
     expect(generateCanonicalRecipe).toHaveBeenCalledTimes(2);
     expect(generateCanonicalRecipe.mock.calls[1][0].model).toBe('gemini-2.5-flash');
+    // The retry prompt names what was wrong with the primary response and
+    // carries the page title hint.
+    const retryPrompt = generateCanonicalRecipe.mock.calls[1][0].prompt as string;
+    expect(retryPrompt).toContain(`failed: ${describeExtractionFailure(GARBAGE_CANDIDATE)}.`);
+    expect(retryPrompt).toContain("Title hint (from the page's <title>/og:title, may be inaccurate or absent): Grandma's Lasagna");
   });
 
   it('falls back to retry when the primary call throws', async () => {
@@ -439,5 +444,29 @@ describe('runUrlIngestionPipeline', () => {
         errorCode: 'URL_EXTRACTION_FAILED',
       });
     });
+  });
+});
+
+describe('describeExtractionFailure', () => {
+  it('returns null for a candidate with a title, ingredients and steps', () => {
+    expect(describeExtractionFailure({ title: 'Soup', ingredients: [{}], steps: [{}] })).toBeNull();
+  });
+
+  it('names a swallowed request error', () => {
+    expect(describeExtractionFailure(null)).toBe(
+      'the request errored or timed out, or the response was not valid JSON',
+    );
+  });
+
+  it('rejects arrays and non-objects', () => {
+    expect(describeExtractionFailure([])).toBe('the response was not a single JSON object');
+    expect(describeExtractionFailure('soup')).toBe('the response was not a single JSON object');
+  });
+
+  it('lists every missing required part', () => {
+    expect(describeExtractionFailure({ title: 'Soup', ingredients: [{}], steps: [] })).toBe('the response was missing steps');
+    expect(describeExtractionFailure({ title: ' ', ingredients: [], steps: [] })).toBe(
+      'the response was missing a title, ingredients and steps',
+    );
   });
 });

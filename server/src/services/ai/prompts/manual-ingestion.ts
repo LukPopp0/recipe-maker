@@ -1,4 +1,4 @@
-import { PANTRY_ALLOWLIST } from 'shared';
+import { buildSharedRules } from './shared-rules.js';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline feeds the
@@ -21,7 +21,10 @@ const MANUAL_RECIPE_SHAPE = `{
   }
 }`;
 
-const PANTRY_LIST_TEXT = PANTRY_ALLOWLIST.join(', ');
+// Manual-only: the user's own steps are the source of truth for sequence.
+const PRESERVE_STEPS_RULE = `- Preserve the sequence and core meaning of the user's steps - do not reorder, invent, or
+  drop steps (adding missing cutting prep at the start, per the rule below, is the one
+  allowed exception).`;
 
 const SHARED_INSTRUCTIONS = `You are extracting a recipe into a strict JSON schema. Output ONLY a single JSON
 object matching this shape exactly (field names must match exactly):
@@ -31,52 +34,7 @@ ${MANUAL_RECIPE_SHAPE}
 </output_schema>
 
 Rules:
-- Preserve the original ingredient order exactly as it appears in the source content.
-- Merge ingredients that name the same item and differ only by preparation words
-  (sliced, chopped, diced, minced, grated, fresh, ground, etc.) into a single entry, and
-  combine their amounts when they can be sensibly combined. Do NOT merge ingredients that
-  differ in identity (e.g. "red onion" vs "onion", "green onion" vs "onion").
-- For "unit", use the short form: pounds -> lbs, tablespoons -> tbsp, teaspoons -> tsp,
-  ounces -> oz, grams -> g, milliliters -> ml. Keep "amount_text" as the source amount.
-- Preserve the sequence and core meaning of the user's steps - do not reorder, invent, or
-  drop steps (adding missing cutting prep at the start, per the rule below, is the one
-  allowed exception).
-- Ingredient lists often carry cutting instructions ("1 onion, diced", "chicken breast,
-  cut into strips"). When the steps never tell the cook to do that cutting, add the
-  missing cutting instructions to the start of the recipe so no knife work is lost when
-  ingredient names are normalized: either prepend them to the first step's description
-  (e.g. "Dice the onion and cut the chicken into strips. " before its existing text) or,
-  if the recipe would still have at most 6 steps, add them as a new first preparation
-  step. Only carry over cutting/knife work (dice, slice, chop, mince, cube, julienne,
-  halve, cut into ...); do not move other preparation (rinsing, peeling, draining), and
-  do not duplicate cutting the steps already describe.
-- Source ingredient lists are often divided into named sections ("For the marinade",
-  "Honey Chipotle Sauce"). The output schema has a single flat ingredient list, so
-  section membership is lost. When a step refers to a section by name ("blend together
-  all honey chipotle sauce ingredients"), rewrite that step to name the actual
-  ingredients from that section (e.g. "Blend the chipotle peppers, honey, garlic and
-  lime juice until smooth to make the honey chipotle sauce"), so the cook can tell
-  which ingredients the step means. Keep the rest of the step's wording intact.
-- For "time", give the active hands-on time in minutes (prep plus cooking). For a range
-  like "30 minutes to 1 hour" use the upper bound (60). EXCLUDE long passive/unattended
-  waits such as overnight freezing, marinating, soaking, resting, chilling, rising, or
-  proofing - do not add these to the total. Typical recipes run from 1 minute to about 4
-  hours; never sum unrelated durations.
-- The "steps" array must have at most 6 entries. Only merge or summarize steps if the
-  source has more than 6 steps; otherwise leave the step count as extracted - do not
-  merge steps just because you can.
-- Each "step_description" must be under 600 characters. Shorten if needed without
-  losing key instructions.
-- Route any ingredient that matches this fixed pantry list into "pantry_items" (as
-  plain strings) and exclude it from "ingredients": ${PANTRY_LIST_TEXT}.
-- Keep pantry item amounts in the steps: "pantry_items" holds names only, so the
-  amount of a pantry item is lost unless a step states it. When a step uses a pantry
-  item that has a specific amount in the source (e.g. "2 tbsp butter", "1 cup water"),
-  the step_description must include that amount (e.g. "Melt 2 tbsp butter", "Add 1 cup
-  water"). Pantry items without a specific amount ("salt to taste") need no amount.
-- Never hallucinate missing fields. If a field is not present in the source, use null
-  or an empty value as appropriate and add a short note explaining what is missing to
-  "metadata.warnings".
+${buildSharedRules({ extraStepRules: PRESERVE_STEPS_RULE })}
 - Set "metadata.source_type" to "manual", "metadata.language" to "en".
 - Do not select or reference a main image or step images - those are hosted and
   assigned deterministically by the backend, not by you.`;
