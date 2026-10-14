@@ -573,6 +573,10 @@ section of `specs/10-recipe-card-renderer.md` and
 
 ## Phase 9: PDF Generation Upgrade (Future, Post-Milestone 2)
 
+> Status: deferred (2026-10-13). The browser print dialog (Print / Save as PDF,
+> filename = recipe title) is sufficient for now. Kept in scope to revisit
+> later; not dropped.
+
 ### Spec References
 - specs/10-recipe-card-renderer.md
 
