@@ -26,7 +26,9 @@ Convert manually entered recipe text and uploaded images into canonical JSON.
 - Ask Gemini to extract and normalize directly into canonical schema.
 - Keep sequence and core meaning from user input.
 - Uses the same shared rule set as Option A (amount field definitions, pantry
-  variants, untrusted-input rule; specs/04 Prompt Requirements).
+  variants, untrusted-input rule, step_header form, closing reminder; specs/04
+  Prompt Requirements) and structured output with a manual-specific schema (no
+  tags, main_image or step images).
 - Enforce pantry routing from fixed pantry allowlist:
 	- pantry items must be in pantry_items only.
 	- pantry items must not remain in ingredients.

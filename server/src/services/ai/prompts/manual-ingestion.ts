@@ -1,4 +1,4 @@
-import { buildSharedRules } from './shared-rules.js';
+import { buildSharedRules, CLOSING_REMINDER } from './shared-rules.js';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline feeds the
@@ -67,6 +67,8 @@ Steps (raw user text):
 <steps>
 ${stepsText}
 </steps>
+
+${CLOSING_REMINDER}
 
 Return only the JSON object, no surrounding text or markdown fences.`;
 }

@@ -1,6 +1,6 @@
 import { TAG_VOCABULARY } from 'shared';
 import type { CandidateImage } from '../../url-ingestion/html-cleaner.js';
-import { buildSharedRules } from './shared-rules.js';
+import { buildSharedRules, CLOSING_REMINDER } from './shared-rules.js';
 
 // Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline (Task 6)
@@ -97,6 +97,8 @@ Page content:
 ${cleanedText}
 </page_content>
 
+${CLOSING_REMINDER}
+
 Return only the JSON object, no surrounding text or markdown fences.`;
 }
 
@@ -140,6 +142,8 @@ Reduced page content:
 <page_content>
 ${reducedText}
 </page_content>
+
+${CLOSING_REMINDER}
 
 Return only the JSON object, no surrounding text or markdown fences.`;
 }

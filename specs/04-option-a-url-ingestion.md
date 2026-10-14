@@ -86,6 +86,15 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 - Shared rules (ingredients, amounts, steps, time, pantry, no-hallucination,
   untrusted input) live in one module (`prompts/shared-rules.ts`) used by both the
   URL and manual prompts.
+- Instruct model that each step_header is at most 8 words and starts with a verb
+  (e.g. "Brown the beef"), without step numbers.
+- After the page content, repeat the most-broken rules in a short closing reminder
+  (6 steps / 600 chars, step_header form, pantry amounts in steps, amount fields).
+- Request structured output: every extraction call passes a JSON Schema built from
+  the shared Zod schemas (`ai/output-schemas.ts`, Gemini `responseJsonSchema`), so
+  required fields, types, 1-6 steps and max 5 tags are enforced while generating.
+  The schema is plain JSON Schema to stay provider-neutral; Zod validation in
+  post-processing still runs (it covers rules the schema cannot, e.g. 600 chars).
 - When JSON-LD is present, instruct model to prefer it over visible page text.
 - Instruct model to assign a per-step "image" only when a candidate or JSON-LD image
   clearly shows that step (not the hero shot), omitting when unsure (specs/14).
