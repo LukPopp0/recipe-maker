@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ApiErrorEnvelope } from 'shared';
 import type { CanonicalRecipe } from 'shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createApp } from '../app.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createApp, type AppDeps } from '../app.js';
 import { loadServerEnv } from '../env.js';
 import { LocalJsonFileRecipeRepository } from '../services/recipes/local-json-file-recipe-repository.js';
 import { makeIngestDeps } from '../test-support/ingest-deps.js';
@@ -35,10 +35,10 @@ describe('recipe routes', () => {
     await rm(dataDir, { recursive: true, force: true });
   });
 
-  function makeApp(raw: Record<string, string> = {}) {
+  function makeApp(raw: Record<string, string> = {}, overrides: Partial<AppDeps> = {}) {
     const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir, ...raw });
     const recipeRepository = new LocalJsonFileRecipeRepository(dataDir);
-    return createApp({ env, checkStorageReady: () => true, recipeRepository, ...makeIngestDeps() });
+    return createApp({ env, checkStorageReady: () => true, recipeRepository, ...makeIngestDeps(), ...overrides });
   }
 
   const HEADER_AUTH = { AUTH_MODE: 'header', ADMIN_USERS: 'admin' };
@@ -335,5 +335,26 @@ describe('recipe routes', () => {
     const downloadRes = await app.request(`/api/recipe/download/${id}`);
 
     expect(downloadRes.headers.get('content-disposition')).toBe('attachment; filename="recipe.json"');
+  });
+
+  it('DELETE removes its own local images but keeps ones another recipe shares', async () => {
+    const storageAdapter = { put: vi.fn(), get: vi.fn(), list: async () => [], delete: vi.fn(async () => {}) };
+    const app = makeApp({ PUBLIC_BASE_URL: 'http://localhost:8787' }, { storageAdapter });
+    const shared = 'http://localhost:8787/images/recipes/n1/main-0.jpg';
+    const first = await saveAs(
+      app,
+      'local',
+      makeRecipe({
+        main_image: shared,
+        steps: [{ step_header: 'Cook', step_description: 'Cook it.', image: '/images/recipes/n1/step-0.jpg' }],
+      }),
+    );
+    await saveAs(app, 'local', makeRecipe({ main_image: shared }));
+
+    const res = await app.request(`/api/recipe/${first}`, { method: 'DELETE' });
+
+    expect(res.status).toBe(200);
+    expect(storageAdapter.delete).toHaveBeenCalledTimes(1);
+    expect(storageAdapter.delete).toHaveBeenCalledWith('recipes/n1/step-0.jpg');
   });
 });

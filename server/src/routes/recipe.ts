@@ -5,12 +5,16 @@ import { AppError } from '../lib/errors.js';
 import { ok } from '../lib/response.js';
 import type { AppVariables } from '../middleware/request-id.js';
 import { parseJson } from '../middleware/validate.js';
+import { deleteUnsharedRecipeImages } from '../services/images/delete-recipe-images.js';
 import type { RecipeRepository } from '../services/recipes/recipe-repository.js';
+import type { StorageAdapter } from '../services/storage/storage-adapter.js';
 
 const ScopeSchema = z.enum(['mine', 'all']).default('all');
 
 export type RecipeDeps = {
   recipeRepository: RecipeRepository
+  storageAdapter: StorageAdapter
+  publicBaseUrl: string
 }
 
 // Slugifies a recipe title for use as a download filename: lowercase,
@@ -44,7 +48,7 @@ function parseRecipeId(id: string): string {
 // by the injected RecipeRepository.
 export function createRecipeApp(deps: RecipeDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
-  const { recipeRepository } = deps;
+  const { recipeRepository, storageAdapter, publicBaseUrl } = deps;
 
   // POST /recipe/validate: a "check" endpoint, not a mutating one - validity
   // is reported IN the 200 payload rather than as an HTTP error, so a caller
@@ -176,6 +180,13 @@ export function createRecipeApp(deps: RecipeDeps) {
     }
 
     await recipeRepository.delete(id);
+    await deleteUnsharedRecipeImages({
+      deleted: stored.recipe,
+      remaining: await recipeRepository.getAll(),
+      storageAdapter,
+      publicBaseUrl,
+      requestId,
+    });
 
     return c.json(ok(requestId, {}));
   });

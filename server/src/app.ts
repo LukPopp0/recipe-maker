@@ -43,7 +43,11 @@ export function createApp(deps: AppDeps): App {
   app.use('/api/ingest/*', createRateLimiter({ max: deps.env.RATE_LIMIT_MAX, windowMs: deps.env.RATE_LIMIT_WINDOW_MS }));
 
   const healthApp = createHealthApp({ checkStorageReady: deps.checkStorageReady });
-  const recipeApp = createRecipeApp({ recipeRepository: deps.recipeRepository });
+  const recipeApp = createRecipeApp({
+    recipeRepository: deps.recipeRepository,
+    storageAdapter: deps.storageAdapter,
+    publicBaseUrl: deps.env.PUBLIC_BASE_URL,
+  });
   const ingestApp = createIngestApp({
     env: deps.env,
     geminiClient: deps.geminiClient,
