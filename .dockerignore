@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+.git
+.github
+private
+docs
+server/data
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+graphify-out
+.agents
