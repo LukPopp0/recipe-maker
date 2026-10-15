@@ -18,6 +18,8 @@ export interface RecipeRepository {
   // Newest first; only `owner`'s recipes when given.
   list(filter?: { owner?: string }): Promise<RecipeSummary[]>
   delete(id: string): Promise<void>
+  // Releases held resources (e.g. the SQLite handle) on shutdown; the JSON store holds none.
+  close?(): void
 }
 
 // Single mapping from a stored recipe to its list summary, shared by every

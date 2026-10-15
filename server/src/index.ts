@@ -72,18 +72,31 @@ const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
       message: 'Server listening',
       port: info.port,
       nodeEnv: env.NODE_ENV,
+      authMode: env.AUTH_MODE,
       recipeStore: env.RECIPE_STORE,
       recipeStorageDir: recipeStorageDir(env),
     }),
   );
 });
 
-// On restart/kill signals: stop accepting connections, then close the
-// headless Chromium the browser fallback keeps alive across requests so no
-// orphaned browser processes linger.
+// On restart/kill signals: stop accepting connections, close the recipe store
+// (checkpoints the SQLite WAL), then close the headless Chromium the browser
+// fallback keeps alive across requests so no orphaned browser processes linger.
 const shutdown = () => {
   console.log('Shutting down server...');
   server.close(() => {
+    // A failing close must not leave Chromium running or block the exit.
+    try {
+      recipeRepository.close?.();
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          message: 'Failed to close recipe store',
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
     void closeBrowser().finally(() => process.exit(0));
   });
 };
