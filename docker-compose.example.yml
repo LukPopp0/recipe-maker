@@ -1,0 +1,24 @@
+# Example deployment: the app plus tinyauth, both bound to localhost and put
+# behind a reverse proxy (see docs/self-hosting.md for the nginx config).
+services:
+  recipes:
+    image: ghcr.io/OWNER/recipe-maker:latest
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8787:8787"
+    # Host dirs must exist and be writable by uid 1001: mkdir -p data/db data/images && sudo chown -R 1001:1001 data
+    volumes:
+      - ./data/db:/app/data/db
+      - ./data/images:/app/data/images
+
+  tinyauth:
+    # Pin a release tag from https://github.com/tinyauthapp/tinyauth/releases
+    image: ghcr.io/tinyauthapp/tinyauth:vX.Y.Z
+    restart: unless-stopped
+    environment:
+      TINYAUTH_APPURL: ${TINYAUTH_APPURL}
+      TINYAUTH_AUTH_USERS: ${TINYAUTH_AUTH_USERS}
+      TINYAUTH_AUTH_SECURECOOKIE: ${TINYAUTH_AUTH_SECURECOOKIE}
+    ports:
+      - "127.0.0.1:3000:3000"
