@@ -29,7 +29,9 @@ type ActionTrayStatus =
   | { phase: 'validation-error'; errors: FlattenedErrors }
   | { phase: 'saving' }
   | { phase: 'saved'; id: string }
-  | { phase: 'save-error'; error: ApiFailure };
+  // `mode` is the attempt that failed, so Retry repeats it: a failed "Save as
+  // new" must never fall back to overwriting the original.
+  | { phase: 'save-error'; error: ApiFailure; mode: 'new' | 'update' };
 
 export function ActionTray({
   recipeState,
@@ -94,7 +96,7 @@ export function ActionTray({
         }
       }
 
-      setStatus({ phase: 'save-error', error: result.error });
+      setStatus({ phase: 'save-error', error: result.error, mode });
     });
   }, [recipe, recipeState?.sourceId, onSaved]);
 
@@ -118,7 +120,7 @@ export function ActionTray({
       ) : null}
       {status.phase === 'save-error' ? (
         <div className="action-tray-feedback">
-          <ErrorBanner error={status.error} onRetry={() => handleSave(recipeState.sourceId ? 'update' : 'new')} onDismiss={handleDismissSaveError} />
+          <ErrorBanner error={status.error} onRetry={() => handleSave(status.mode)} onDismiss={handleDismissSaveError} />
         </div>
       ) : null}
 

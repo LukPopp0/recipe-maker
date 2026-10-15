@@ -213,4 +213,33 @@ describe('ActionTray', () => {
     expect(onSaved).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Save as new' })).toBeEnabled();
   });
+
+  it('retries a failed "Save as new" as a new save, never as an update', async () => {
+    const user = userEvent.setup();
+    mockedSaveRecipe
+      .mockResolvedValueOnce({ ok: false, error: { code: 'NETWORK_ERROR', message: 'Could not reach the server.' } })
+      .mockResolvedValueOnce({ ok: true, value: { id: 'new-1' } });
+    const { onSaved } = renderTray(stateFor(RECIPE, { sourceId: 'src-1' }));
+
+    await user.click(screen.getByRole('button', { name: 'Save as new' }));
+    await user.click(await screen.findByRole('button', { name: /retry/i }));
+
+    expect(mockedSaveRecipe).toHaveBeenCalledTimes(2);
+    expect(mockedUpdateRecipe).not.toHaveBeenCalled();
+    expect(onSaved).toHaveBeenCalledWith('new-1');
+  });
+
+  it('retries a failed "Save changes" as an update', async () => {
+    const user = userEvent.setup();
+    mockedUpdateRecipe
+      .mockResolvedValueOnce({ ok: false, error: { code: 'NETWORK_ERROR', message: 'Could not reach the server.' } })
+      .mockResolvedValueOnce({ ok: true, value: { id: 'src-1' } });
+    renderTray(stateFor(RECIPE, { sourceId: 'src-1' }));
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await user.click(await screen.findByRole('button', { name: /retry/i }));
+
+    expect(mockedUpdateRecipe).toHaveBeenCalledTimes(2);
+    expect(mockedSaveRecipe).not.toHaveBeenCalled();
+  });
 });
