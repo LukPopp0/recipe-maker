@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteImages, listUnusedImages } from '../../api/client.ts';
-import { UnusedImagesPanel } from './UnusedImagesPanel.tsx';
+import { DELETE_BATCH_SIZE, UnusedImagesPanel } from './UnusedImagesPanel.tsx';
 
 vi.mock('../../api/client.ts', () => ({
   listUnusedImages: vi.fn(),
@@ -39,6 +39,54 @@ describe('UnusedImagesPanel', () => {
 
     expect(mockedDelete).toHaveBeenCalledWith(['recipes/a/main-0.jpg', 'recipes/b/step-1.jpg']);
     expect(await screen.findByText('No unused images.')).toBeInTheDocument();
+  });
+
+  it('deletes in batches of 500 and reloads afterwards', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: DELETE_BATCH_SIZE + 1 }, (_, i) => ({
+      key: `recipes/a/img-${i}.jpg`,
+      url: `/images/recipes/a/img-${i}.jpg`,
+      sizeBytes: 1000,
+      modifiedAt: '2026-10-01T00:00:00Z',
+    }));
+    mockedList
+      .mockResolvedValueOnce({ ok: true, value: { images: many } })
+      .mockResolvedValueOnce({ ok: true, value: { images: [] } });
+    mockedDelete
+      .mockResolvedValueOnce({ ok: true, value: { deleted: DELETE_BATCH_SIZE } })
+      .mockResolvedValueOnce({ ok: true, value: { deleted: 1 } });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<UnusedImagesPanel onClose={vi.fn()} />);
+    await user.click(await screen.findByRole('button', { name: 'Delete all' }));
+
+    expect(await screen.findByText('No unused images.')).toBeInTheDocument();
+    expect(mockedDelete).toHaveBeenCalledTimes(2);
+    expect(mockedDelete.mock.calls[0][0]).toHaveLength(DELETE_BATCH_SIZE);
+    expect(mockedDelete.mock.calls[1][0]).toEqual(['recipes/a/img-500.jpg']);
+    expect(mockedList).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops at the first failing batch and shows the error', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: DELETE_BATCH_SIZE + 1 }, (_, i) => ({
+      key: `recipes/a/img-${i}.jpg`,
+      url: `/images/recipes/a/img-${i}.jpg`,
+      sizeBytes: 1000,
+      modifiedAt: '2026-10-01T00:00:00Z',
+    }));
+    mockedList.mockResolvedValue({ ok: true, value: { images: many } });
+    mockedDelete.mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'INTERNAL_ERROR', message: 'boom', status: 500 },
+    } as never);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<UnusedImagesPanel onClose={vi.fn()} />);
+    await user.click(await screen.findByRole('button', { name: 'Delete all' }));
+
+    expect(await screen.findByText(/boom/)).toBeInTheDocument();
+    expect(mockedDelete).toHaveBeenCalledTimes(1);
   });
 
   it('does nothing when the confirm is cancelled', async () => {

@@ -12,6 +12,9 @@ type PanelStatus =
   | { phase: 'ready'; images: UnusedImage[] }
   | { phase: 'deleting'; images: UnusedImage[] };
 
+// The server rejects more than 500 keys per request (deployment spec section 8).
+export const DELETE_BATCH_SIZE = 500;
+
 function formatKb(bytes: number): string {
   return `${Math.round(bytes / 1000)} KB`;
 }
@@ -32,10 +35,13 @@ export function UnusedImagesPanel({ onClose }: { onClose: () => void }) {
   const handleDeleteAll = useCallback(async (images: UnusedImage[]) => {
     if (!window.confirm(`Delete ${images.length} unused images? This cannot be undone.`)) return;
     setStatus({ phase: 'deleting', images });
-    const result = await deleteImages(images.map((image) => image.key));
-    if (!result.ok) {
-      setStatus({ phase: 'error', error: result.error });
-      return;
+    const keys = images.map((image) => image.key);
+    for (let start = 0; start < keys.length; start += DELETE_BATCH_SIZE) {
+      const result = await deleteImages(keys.slice(start, start + DELETE_BATCH_SIZE));
+      if (!result.ok) {
+        setStatus({ phase: 'error', error: result.error });
+        return;
+      }
     }
     await load();
   }, [load]);
