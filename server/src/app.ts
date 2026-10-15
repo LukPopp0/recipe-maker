@@ -11,6 +11,7 @@ import { createImageApp } from './routes/image.js';
 import { createIngestApp } from './routes/ingest.js';
 import { createHealthApp } from './routes/health.js';
 import { createMeApp } from './routes/me.js';
+import { mountPlaceholderImage } from './routes/placeholder-image.js';
 import { createRecipeApp } from './routes/recipe.js';
 import { mountWebApp } from './routes/web-app.js';
 import type { GeminiConfig } from './services/ai/config.js';
@@ -74,6 +75,10 @@ export function createApp(deps: AppDeps): App {
       publicBaseUrl: deps.env.PUBLIC_BASE_URL,
     }),
   );
+
+  // Must come before the /images/* mount below so the bundled default image
+  // never depends on the images volume.
+  mountPlaceholderImage(app);
 
   // Serves re-hosted recipe images (docs/specs/06) from IMAGE_DATA_DIR. Rehosted
   // URLs are built as `${PUBLIC_BASE_URL}/images/${key}` (see

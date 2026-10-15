@@ -6,6 +6,7 @@ import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
 import { closeBrowser } from './services/url-ingestion/browser-fetcher.js';
+import { PLACEHOLDER_RECIPE_IMAGE_URL } from './routes/placeholder-image.js';
 import { createRecipeRepository, recipeStorageDir } from './services/recipes/create-recipe-repository.js';
 import { ResizingStorageAdapter } from './services/storage/resizing-storage-adapter.js';
 import { LocalDiskStorageAdapter } from './services/storage/local-disk-storage-adapter.js';
@@ -15,8 +16,9 @@ const geminiConfig = loadGeminiConfig(process.env);
 
 // DEFAULT_MAIN_IMAGE_URL is optional in env (may be unset); post-processing and
 // image re-hosting require a non-empty string, so fall back to a local
-// placeholder served from the /images mount when it isn't configured.
-const defaultMainImageUrl = env.DEFAULT_MAIN_IMAGE_URL ?? '/images/placeholder-recipe.png';
+// placeholder (bundled in server/assets, served by its own route) when it
+// isn't configured.
+const defaultMainImageUrl = env.DEFAULT_MAIN_IMAGE_URL ?? PLACEHOLDER_RECIPE_IMAGE_URL;
 
 // Startup storage-readiness check: ensure the recipe store directory and
 // IMAGE_DATA_DIR exist and are writable before we start accepting traffic. Fail fast (exit 1)
