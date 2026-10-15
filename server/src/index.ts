@@ -29,7 +29,7 @@ async function checkStorageReady(): Promise<boolean> {
     console.error(
       JSON.stringify({
         level: 'error',
-        message: 'Recipe data directory is not writable',
+        message: 'Recipe storage directory is not writable',
         recipeStorageDir: recipeStorageDir(env),
         error: err instanceof Error ? err.message : String(err),
       }),
@@ -72,7 +72,7 @@ const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
       port: info.port,
       nodeEnv: env.NODE_ENV,
       recipeStore: env.RECIPE_STORE,
-      recipeDataDir: env.RECIPE_DATA_DIR,
+      recipeStorageDir: recipeStorageDir(env),
     }),
   );
 });

@@ -37,4 +37,22 @@ describe('SqliteRecipeRepository schema', () => {
     raw.close();
     await rm(dir, { recursive: true, force: true });
   });
+
+  it('refuses a database written by a newer schema and leaves its version alone', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'recipe-sqlite-newer-'));
+    try {
+      const dbPath = path.join(dir, 'recipes.db');
+      const raw = new Database(dbPath);
+      raw.pragma('user_version = 2');
+      raw.close();
+
+      expect(() => new SqliteRecipeRepository(dbPath)).toThrow(/newer than this app supports/);
+
+      const check = new Database(dbPath);
+      expect(check.pragma('user_version', { simple: true })).toBe(2);
+      check.close();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

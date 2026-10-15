@@ -18,6 +18,10 @@ const SCHEMA_VERSION = 1;
 // Applies schema migrations in order, tracked by PRAGMA user_version.
 function migrate(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
+  // A rolled-back image must not touch (or downgrade) a newer database.
+  if (version > SCHEMA_VERSION) {
+    throw new Error(`database schema version ${version} is newer than this app supports (${SCHEMA_VERSION})`);
+  }
   if (version < 1) {
     db.exec(`
       CREATE TABLE IF NOT EXISTS recipes (
@@ -30,7 +34,7 @@ function migrate(db: Database.Database): void {
       CREATE INDEX IF NOT EXISTS recipes_owner_created ON recipes (owner, created_at);
     `);
   }
-  db.pragma(`user_version = ${SCHEMA_VERSION}`);
+  if (version < SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }
 
 function toStored(row: RecipeRow): StoredRecipe {

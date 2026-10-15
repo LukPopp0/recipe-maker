@@ -92,7 +92,7 @@ Response success:
 Response error shape mirrors other endpoints.
 
 ### PUT /api/recipe/:id
-Replaces a saved recipe in place ("Save changes"). Any authenticated user may update any recipe; the owner and `createdAt` never change, `updatedAt` is bumped.
+Replaces a saved recipe in place ("Save changes"). Any user (with `AUTH_MODE=none` everyone is the admin user `local`) may update any recipe; the owner and `createdAt` never change, `updatedAt` is bumped.
 Request: canonical recipe object (same body as `POST /api/recipe/save`).
 Response success:
 ```json

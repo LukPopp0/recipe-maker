@@ -16,19 +16,24 @@ describeRecipeRepositoryContract('LocalJsonFileRecipeRepository', async () => {
 describe('LocalJsonFileRecipeRepository legacy envelopes', () => {
   it('reads a pre-ownership envelope as owned by "local" with updatedAt = createdAt', async () => {
     const dataDir = await mkdtemp(path.join(tmpdir(), 'recipe-repo-legacy-'));
-    const id = '11111111-1111-4111-8111-111111111111';
-    const createdAt = '2026-01-01T00:00:00.000Z';
-    await writeFile(path.join(dataDir, `${id}.json`), JSON.stringify({ id, createdAt, recipe: makeRecipe() }));
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
+    try {
+      const id = '11111111-1111-4111-8111-111111111111';
+      const createdAt = '2026-01-01T00:00:00.000Z';
+      await writeFile(path.join(dataDir, `${id}.json`), JSON.stringify({ id, createdAt, recipe: makeRecipe() }));
+      const repo = new LocalJsonFileRecipeRepository(dataDir);
 
-    const stored = await repo.get(id);
-    const [summary] = await repo.list({ owner: 'local' });
+      const stored = await repo.get(id);
+      const [summary] = await repo.list({ owner: 'local' });
 
-    expect(stored).toMatchObject({ id, owner: 'local', createdAt, updatedAt: createdAt });
-    expect(summary).toMatchObject({ id, owner: 'local', updatedAt: createdAt });
-    expect(await repo.update(id, makeRecipe({ title: 'Edited' }))).toBe(true);
-    expect((await repo.get(id))?.owner).toBe('local');
-    await rm(dataDir, { recursive: true, force: true });
+      expect(stored).toMatchObject({ id, owner: 'local', createdAt, updatedAt: createdAt });
+      expect(summary).toMatchObject({ id, owner: 'local', updatedAt: createdAt });
+      expect(await repo.update(id, makeRecipe({ title: 'Edited' }))).toBe(true);
+      expect((await repo.get(id))?.owner).toBe('local');
+      await repo.delete(id);
+      expect(await repo.get(id)).toBeNull();
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -66,7 +66,7 @@ Milestone 1 scope:
 - List view: grid/list of saved recipes showing title, main image thumbnail, and tags. Backed by `GET /api/recipes`.
 - My/All switch: "My recipes" (default, `scope=mine`) or "All recipes" (`scope=all`), remembered in `localStorage` key `recipe-maker.library-scope`. In All, each item shows "by <owner>".
 - View action: opens the recipe in the existing read-only review/JSON panel (no new rendering code), with "Saved by <owner>" in the detail. Backed by `GET /api/recipe/:id`.
-- Open in Create action (Phase 6 decision): copies the viewed recipe into the Create workspace for editing. The workspace then offers "Save changes" (update in place) or "Save as new" (see Save Flow).
+- Open in Create action (Phase 6 decision): loads the viewed recipe into the Create workspace for editing (it is not copied). The workspace then offers "Save changes" (updates the same recipe in place) or "Save as new" (makes a copy; see Save Flow).
 - Download action: triggers `GET /api/recipe/download/:id`.
 - Delete action: shown only to the owner or an admin; confirms, then calls `DELETE /api/recipe/:id` and removes the item from the list.
 
