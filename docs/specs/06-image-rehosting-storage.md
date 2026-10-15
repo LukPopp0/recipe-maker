@@ -28,8 +28,15 @@ Implementations:
 3. Normalize every image (sharp): EXIF auto-rotate, fit inside 1600x1600 (never
    upscale), flatten transparency onto white (#ffffff), strip metadata, re-encode
    as JPEG quality 82.
-4. Generate deterministic key naming:
-   - recipes/{recipeId}/{kind}-{index}.jpg
+4. Generate key naming:
+   - re-hosted URL images: recipes/{recipeId}/{kind}-{index}.jpg (fresh namespace
+     per ingest, so the key is deterministic within it)
+   - uploaded images (manual ingest, step upload):
+     recipes/{recipeId}/{kind}-{index}-{8 hex chars}.jpg. The random suffix makes
+     every upload a new file: a re-upload never rewrites a file a saved recipe
+     already shows (or another recipe's, via a shared namespace), and the URL
+     changes so browsers never serve a cached old image. Replaced files become
+     unreferenced and the admin "Unused images" cleanup removes them.
    The extension is always `.jpg` (the key is rewritten whatever the source
    format) and the stored content type is `image/jpeg`.
 5. Store image and return hosted URL.
@@ -50,7 +57,9 @@ generic image-download error result.
 - Which keys are still *used* (by remaining recipes on delete, by all recipes in
   the admin cleanup) is decided from the URL path only, ignoring origin and
   query string, so images saved under an older `PUBLIC_BASE_URL` are not treated
-  as unused. Which keys a delete may remove stays strict (own origin or
+  as unused. A `PUBLIC_BASE_URL` with a path (`https://host/app`) also counts:
+  `/app/images/...` and `/images/...` both match. `PUBLIC_BASE_URL` is stored
+  without trailing slashes. Which keys a delete may remove stays strict (own origin or
   root-relative only).
 - Images of unsaved ingests stay on disk until an admin cleans them up.
 - Admin "Unused images" cleanup (Library scope bar, admin only): lists stored

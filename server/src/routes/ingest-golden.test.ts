@@ -60,7 +60,12 @@ type IngestUrlSuccess = ApiSuccessEnvelope<{
 //   stable placeholder, and imageNamespaceId (the same UUID) -> "__ID__".
 // - diagnostics.durationMs (wall-clock, never deterministic).
 function normalizeResponseBody(body: IngestUrlSuccess): unknown {
-  const stripId = (url: string) => url.replace(/\/images\/recipes\/[0-9a-f-]{36}\//, '/images/recipes/__ID__/');
+  // Uploaded images carry a random 8-hex key suffix (-> "-N.jpg"); re-hosted
+  // URL images do not, so the second replace is a no-op for them.
+  const stripId = (url: string) =>
+    url
+      .replace(/\/images\/recipes\/[0-9a-f-]{36}\//, '/images/recipes/__ID__/')
+      .replace(/\/((?:main|step)-\d+)-[0-9a-f]{8}\./, '/$1.');
   return {
     ...body,
     recipe: {
@@ -85,7 +90,12 @@ type IngestManualSuccess = ApiSuccessEnvelope<{
 // Manual-pipeline variant of normalizeResponseBody (different diagnostics
 // shape, same stripping rules).
 function normalizeManualResponseBody(body: IngestManualSuccess): unknown {
-  const stripId = (url: string) => url.replace(/\/images\/recipes\/[0-9a-f-]{36}\//, '/images/recipes/__ID__/');
+  // Uploaded images carry a random 8-hex key suffix (-> "-N.jpg"); re-hosted
+  // URL images do not, so the second replace is a no-op for them.
+  const stripId = (url: string) =>
+    url
+      .replace(/\/images\/recipes\/[0-9a-f-]{36}\//, '/images/recipes/__ID__/')
+      .replace(/\/((?:main|step)-\d+)-[0-9a-f]{8}\./, '/$1.');
   return {
     ...body,
     recipe: {

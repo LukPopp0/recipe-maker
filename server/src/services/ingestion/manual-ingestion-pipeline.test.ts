@@ -128,7 +128,7 @@ describe('runManualIngestionPipeline', () => {
     });
 
     expect(result.warnings).toEqual([]);
-    expect(result.recipeCandidate.steps[0].image).toContain('recipes/recipe-1/step-0.jpg');
+    expect(result.recipeCandidate.steps[0].image).toMatch(/recipes\/recipe-1\/step-0-[0-9a-f]{8}\.jpg/);
     expect(result.recipeCandidate.steps[1].image).toContain('recipes/recipe-1/step-1.jpg');
   });
 
@@ -210,12 +210,12 @@ describe('runManualIngestionPipeline', () => {
     });
 
     expect(result.warnings).toEqual([]);
-    expect(result.recipeCandidate.main_image).toContain('recipes/recipe-1/main-0.jpg');
+    expect(result.recipeCandidate.main_image).toMatch(/recipes\/recipe-1\/main-0-[0-9a-f]{8}\.jpg/);
     expect(result.recipeCandidate.steps).toHaveLength(2);
     // step-1.jpg sorts before step-2.jpg (natural sort), so it is hosted first
     // and assigned to step index 0.
-    expect(result.recipeCandidate.steps[0].image).toContain('recipes/recipe-1/step-0.jpg');
-    expect(result.recipeCandidate.steps[1].image).toContain('recipes/recipe-1/step-1.jpg');
+    expect(result.recipeCandidate.steps[0].image).toMatch(/recipes\/recipe-1\/step-0-[0-9a-f]{8}\.jpg/);
+    expect(result.recipeCandidate.steps[1].image).toMatch(/recipes\/recipe-1\/step-1-[0-9a-f]{8}\.jpg/);
     expect(result.diagnostics.extractor).toBe('gemini-primary');
     expect(result.diagnostics.model).toBe('gemini-3.5-flash-lite');
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
@@ -340,7 +340,10 @@ describe('runManualIngestionPipeline', () => {
     const first = await run();
     const second = await run();
 
-    expect(first.recipeCandidate).toEqual(second.recipeCandidate);
+    // Uploaded keys carry a random suffix and the mock appends a counter.
+    const stable = (candidate: unknown) =>
+      JSON.parse(JSON.stringify(candidate).replace(/-[0-9a-f]{8}\.jpg\?v=\d+/g, '.jpg'));
+    expect(stable(first.recipeCandidate)).toEqual(stable(second.recipeCandidate));
     expect(first.warnings).toEqual(second.warnings);
     expect(first.diagnostics.extractor).toEqual(second.diagnostics.extractor);
     expect(first.diagnostics.model).toEqual(second.diagnostics.model);

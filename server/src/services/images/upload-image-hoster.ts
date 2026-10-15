@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 import { ImageDecodeError } from './normalize-image.js';
 import { ALLOWED_CONTENT_TYPES } from './image-rehoster.js';
@@ -39,7 +40,12 @@ export async function hostUploadedImage(
     };
   }
 
-  const key = `recipes/${recipeId}/${kind}-${index}.${ext}`;
+  // Unique per upload (deployment spec section 8): a fixed key would let a
+  // re-upload rewrite a file a saved recipe already shows, and since D3 every
+  // key ends in .jpg so the URL (and the browser cache) would never change.
+  // The replaced file is simply unreferenced and the admin cleanup removes it.
+  const suffix = randomBytes(4).toString('hex');
+  const key = `recipes/${recipeId}/${kind}-${index}-${suffix}.${ext}`;
   let url: string;
   try {
     url = await storageAdapter.put(file.buffer, key, file.contentType);

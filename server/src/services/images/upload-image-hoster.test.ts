@@ -37,7 +37,7 @@ describe('hostUploadedImage', () => {
     expect(result).toEqual({ url: 'http://localhost:8787/images/recipes/recipe-1/main-0.jpg' });
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-1/main-0.jpg',
+      expect.stringMatching(/^recipes\/recipe-1\/main-0-[0-9a-f]{8}\.jpg$/),
       'image/jpeg',
     );
   });
@@ -57,7 +57,7 @@ describe('hostUploadedImage', () => {
     expect(result).toEqual({ url: 'http://localhost:8787/images/recipes/recipe-1/main-0.jpg' });
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-1/main-0.png',
+      expect.stringMatching(/^recipes\/recipe-1\/main-0-[0-9a-f]{8}\.png$/),
       'image/png',
     );
   });
@@ -77,7 +77,7 @@ describe('hostUploadedImage', () => {
     expect(result).toEqual({ url: 'http://localhost:8787/images/recipes/recipe-1/main-0.jpg' });
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-1/main-0.webp',
+      expect.stringMatching(/^recipes\/recipe-1\/main-0-[0-9a-f]{8}\.webp$/),
       'image/webp',
     );
   });
@@ -130,7 +130,7 @@ describe('hostUploadedImage', () => {
 
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-2/step-3.jpg',
+      expect.stringMatching(/^recipes\/recipe-2\/step-3-[0-9a-f]{8}\.jpg$/),
       'image/jpeg',
     );
   });
@@ -149,9 +149,21 @@ describe('hostUploadedImage', () => {
 
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-2/main-0.jpg',
+      expect.stringMatching(/^recipes\/recipe-2\/main-0-[0-9a-f]{8}\.jpg$/),
       'image/jpeg',
     );
+  });
+
+  it('gives two uploads for the same step different keys so a re-upload never overwrites', async () => {
+    const storageAdapter = makeStorageAdapter();
+    const options = { recipeId: 'recipe-2', storageAdapter, maxBytes: 1024, kind: 'step' as const, index: 1 };
+
+    await hostUploadedImage(makeFile(), options);
+    await hostUploadedImage(makeFile(), options);
+
+    const [first, second] = storageAdapter.put.mock.calls.map((call) => call[1] as string);
+    expect(first).toMatch(/^recipes\/recipe-2\/step-1-[0-9a-f]{8}\.jpg$/);
+    expect(second).not.toBe(first);
   });
 
   it('returns a warning instead of throwing when the bytes are not a readable image', async () => {
