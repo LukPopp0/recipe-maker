@@ -34,6 +34,10 @@ main_image), ingest responses return `imageNamespaceId`, `POST /api/image/step`
 uploads a step image from the review panel (upload-only, per-step thumbnail),
 and a "Copy image prompt" button copies a generation prompt for Gemini's web
 UI (server-side AI image generation rejected - no API free tier).
+Deployment and multi-user work (phases D1-D7) is planned in
+`private/plans/deployment/` (start at `00-overview.md`; spec
+`private/specs/deployment-and-multi-user.md`). Outstanding items that are not
+in any plan: `private/plans/backlog.md`.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read
@@ -41,6 +45,8 @@ deferred new feature: needs brainstorming/spec and a cost decision first. Read
 strict phase order.
 
 ## Key docs
+- `private/plans/backlog.md` - outstanding work not yet in a plan; add items here
+- `private/plans/deployment/00-overview.md` - deployment/multi-user phases D1-D7
 - `private/plans/mvp/recipe-maker-implementation-plan.md` - phases, order, definition of done, risks
 - `docs/specs/01` through `docs/specs/14` - one spec per concern, referenced by phase in the plan
 - `docs/specs/12-shared-constants.md` - pantry allowlist + tag vocabulary (actual values)
@@ -49,12 +55,18 @@ strict phase order.
 ## Tech decisions (do not relitigate without asking)
 - Backend: Hono
 - Tests: Vitest (unit/integration), React Testing Library (frontend)
-- Recipe storage: flat JSON files, one per recipe, behind a `RecipeRepository` interface
-  (`server/data/recipes/{id}.json`, gitignored) - not a database
+- Recipe storage: behind a `RecipeRepository` interface. JSON files, one per recipe
+  (`server/data/recipes/{id}.json`, gitignored) locally; SQLite in production
+  (deployment phase D2, `RECIPE_STORE=sqlite`)
 - Image storage: separate `StorageAdapter` interface, local disk first
 - Save is an explicit user action, never automatic
-- Single-user, no auth for now; access gate only if/when deployed
-- Deployment: local-first, keep adapters pluggable for future hosting
+- Auth: login happens in a reverse proxy (tinyauth + nginx); the app trusts the
+  `Remote-User` header when `AUTH_MODE=header` and runs everyone as admin
+  `local` when `AUTH_MODE=none` (default, local dev). No in-app accounts.
+- Multi-user: every recipe has an owner; everyone can view and edit every
+  recipe, only the owner or an admin (`ADMIN_USERS`) can delete
+- Deployment: one Docker image (Playwright base, arm64, published to GHCR),
+  self-hostable; server-specific config stays in `private/`
 
 ## Repo layout (pnpm workspace, per docs/specs/01)
 - `/apps/web` - frontend (React + TS + Vite), package `web`
