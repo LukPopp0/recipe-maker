@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -300,6 +300,24 @@ describe('api/client', () => {
         ok: false,
         error: { code: 'SCHEMA_VALIDATION_FAILED', message: 'Invalid recipe.', details: undefined, requestId: 'req-9' },
       });
+    });
+  });
+
+  describe('admin images', () => {
+    it('lists unused images and posts keys to delete', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ ok: true, requestId: 'r', images: [] }))
+        .mockResolvedValueOnce(jsonResponse({ ok: true, requestId: 'r', deleted: 2 }));
+
+      await listUnusedImages();
+      const result = await deleteImages(['recipes/a/main-0.jpg', 'recipes/b/main-0.jpg']);
+
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/images/unused');
+      const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+      expect(url).toBe('/api/admin/images/delete');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({ keys: ['recipes/a/main-0.jpg', 'recipes/b/main-0.jpg'] });
+      expect(result).toEqual({ ok: true, value: { deleted: 2 } });
     });
   });
 

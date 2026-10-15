@@ -12,6 +12,7 @@ import { ErrorBanner } from '../ErrorBanner.tsx';
 import { LibraryFilterBar } from './LibraryFilterBar.tsx';
 import { RecipeList } from './RecipeList.tsx';
 import { RecipeDetail } from './RecipeDetail.tsx';
+import { UnusedImagesPanel } from './UnusedImagesPanel.tsx';
 
 type ListStatus =
   | { phase: 'loading' }
@@ -33,6 +34,8 @@ export function LibraryPanel({
   // deliberate: a stale filter hiding recipes days later would look like data loss.
   const [filters, setFilters] = useState<LibraryFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<LibrarySort>('newest');
+  // Admin-only cleanup view (deployment spec section 8), shown instead of the list.
+  const [showUnused, setShowUnused] = useState(false);
   // Delete failures render alongside the list/detail rather than replacing
   // them - the recipe still exists, so its card must stay visible.
   const [deleteFailure, setDeleteFailure] = useState<{ id: string; error: ApiFailure } | null>(null);
@@ -93,7 +96,9 @@ export function LibraryPanel({
         />
       ) : null}
 
-      {selectedId ? (
+      {showUnused ? (
+        <UnusedImagesPanel onClose={() => setShowUnused(false)} />
+      ) : selectedId ? (
         <RecipeDetail
           id={selectedId}
           currentUser={currentUser}
@@ -110,6 +115,11 @@ export function LibraryPanel({
             <button type="button" className="btn btn-sm" aria-pressed={scope === 'all'} onClick={() => changeScope('all')}>
               All recipes
             </button>
+            {currentUser?.isAdmin ? (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowUnused(true)}>
+                Unused images
+              </button>
+            ) : null}
           </div>
           {status.phase === 'loading' ? <p className="library-panel-loading">Loading library...</p> : null}
           {status.phase === 'error' ? (

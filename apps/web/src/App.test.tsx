@@ -13,6 +13,8 @@ vi.mock('./api/client.ts', () => ({
   getMe: vi.fn(),
   updateRecipe: vi.fn(),
   saveRecipe: vi.fn(),
+  listUnusedImages: vi.fn(),
+  deleteImages: vi.fn(),
 }));
 
 const mockedIngestUrl = vi.mocked(ingestUrl);

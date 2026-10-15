@@ -9,6 +9,7 @@ import type {
   LibraryScope,
   RecipeMeta,
   RecipeSummary,
+  UnusedImage,
 } from 'shared';
 
 export interface IngestDiagnostics {
@@ -210,4 +211,16 @@ export async function deleteRecipe(id: string): Promise<ClientResult<Record<stri
 
 export async function getMe(): Promise<ClientResult<{ user: CurrentUser }>> {
   return request('/api/me');
+}
+
+export async function listUnusedImages(): Promise<ClientResult<{ images: UnusedImage[] }>> {
+  return request('/api/admin/images/unused');
+}
+
+export async function deleteImages(keys: string[]): Promise<ClientResult<{ deleted: number }>> {
+  return request('/api/admin/images/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keys }),
+  });
 }

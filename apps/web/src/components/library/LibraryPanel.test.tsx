@@ -9,6 +9,8 @@ vi.mock('../../api/client.ts', () => ({
   listRecipes: vi.fn(),
   deleteRecipe: vi.fn(),
   getRecipe: vi.fn(),
+  listUnusedImages: vi.fn(),
+  deleteImages: vi.fn(),
 }));
 
 const mockedListRecipes = vi.mocked(listRecipes);
@@ -25,6 +27,17 @@ describe('LibraryPanel', () => {
     mockedDeleteRecipe.mockReset();
     vi.restoreAllMocks();
     localStorage.clear();
+  });
+
+  it('shows the Unused images button to admins only', async () => {
+    mockedListRecipes.mockResolvedValue({ ok: true, value: { recipes: SUMMARIES } });
+    const { unmount } = render(<LibraryPanel currentUser={{ username: 'admin', isAdmin: true }} onOpenInCreate={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: 'Unused images' })).toBeInTheDocument();
+    unmount();
+
+    render(<LibraryPanel currentUser={{ username: 'alice', isAdmin: false }} onOpenInCreate={vi.fn()} />);
+    await screen.findByText('Newer');
+    expect(screen.queryByRole('button', { name: 'Unused images' })).not.toBeInTheDocument();
   });
 
   it('lists saved recipes sorted newest first', async () => {
