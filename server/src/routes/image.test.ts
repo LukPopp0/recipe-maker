@@ -61,7 +61,7 @@ describe('POST /api/image/step', () => {
     return form;
   }
 
-  it('hosts a valid upload under recipes/{namespace}/step-{index} and returns the URL', async () => {
+  it('hosts a valid upload under recipes/{namespace}/step-{index}-{suffix} and returns the URL', async () => {
     const app = makeApp();
 
     const res = await app.request('/api/image/step', { method: 'POST', body: makeForm() });
@@ -69,11 +69,14 @@ describe('POST /api/image/step', () => {
 
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.url).toBe(`http://localhost:8787/images/recipes/${NAMESPACE}/step-1.png`);
-    expect(existsSync(path.join(imageDir, 'recipes', NAMESPACE, 'step-1.png'))).toBe(true);
+    expect(body.url).toMatch(
+      new RegExp(`^http://localhost:8787/images/recipes/${NAMESPACE}/step-1-[0-9a-f]{8}\\.png$`),
+    );
+    const key = body.url.replace('http://localhost:8787/images/', '');
+    expect(existsSync(path.join(imageDir, key))).toBe(true);
   });
 
-  it('overwrites on re-upload for the same step (replace semantics)', async () => {
+  it('keeps both files on re-upload for the same step (unique keys)', async () => {
     const app = makeApp();
 
     const first = await app.request('/api/image/step', { method: 'POST', body: makeForm() });
@@ -84,9 +87,10 @@ describe('POST /api/image/step', () => {
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
-    expect(((await second.json()) as UploadSuccess).url).toBe(
-      `http://localhost:8787/images/recipes/${NAMESPACE}/step-1.png`,
-    );
+    const firstUrl = ((await first.json()) as UploadSuccess).url;
+    const secondUrl = ((await second.json()) as UploadSuccess).url;
+    expect(secondUrl).not.toBe(firstUrl);
+    expect(existsSync(path.join(imageDir, firstUrl.replace('http://localhost:8787/images/', '')))).toBe(true);
   });
 
   it('rejects an unsupported content type with 400 INVALID_INPUT', async () => {

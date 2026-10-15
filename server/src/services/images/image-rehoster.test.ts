@@ -31,6 +31,7 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
       Promise.resolve(`http://localhost:8787/images/${key}`),
     ),
     get: vi.fn(),
+    list: vi.fn(),
     delete: vi.fn(),
   };
 }

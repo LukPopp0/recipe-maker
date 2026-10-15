@@ -23,8 +23,9 @@ const StepImageFieldsSchema = z.object({
 // Standalone image upload for the review panel (docs/specs/14): lets the user add
 // or replace a single step image after ingestion, before Save. Reuses the
 // manual-ingestion hosting path (same MIME/size validation, same
-// recipes/{id}/step-{i} key scheme), so a re-upload for the same step
-// overwrites the previous file. Deliberately NOT mounted under /ingest/* -
+// recipes/{id}/step-{i}-{suffix} key scheme). Every upload gets a new unique
+// key, so a re-upload never overwrites a file a saved recipe shows; the old
+// file stays until the 24 h admin cleanup. Deliberately NOT mounted under /ingest/* -
 // the ingestion rate limiter must not throttle uploads.
 export function createImageApp(deps: ImageDeps) {
   const app = new Hono<{ Variables: AppVariables }>();

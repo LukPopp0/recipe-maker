@@ -2,7 +2,8 @@ import dns from 'node:dns';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadGeminiConfig } from '../ai/config.js';
 import { MANUAL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
-import type { GeminiClient } from '../ai/gemini-client.js';
+import { AppError } from '../../lib/errors.js';
+import { QUOTA_MESSAGE, type GeminiClient } from '../ai/gemini-client.js';
 import type { ManualImageInput, ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 import { runManualIngestionPipeline } from './manual-ingestion-pipeline.js';
@@ -15,6 +16,7 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
       return `http://localhost:8787/images/${key}?v=${counter}`;
     }),
     get: vi.fn(),
+    list: vi.fn(),
     delete: vi.fn(),
   };
 }
@@ -126,7 +128,7 @@ describe('runManualIngestionPipeline', () => {
     });
 
     expect(result.warnings).toEqual([]);
-    expect(result.recipeCandidate.steps[0].image).toContain('recipes/recipe-1/step-0.jpg');
+    expect(result.recipeCandidate.steps[0].image).toMatch(/recipes\/recipe-1\/step-0-[0-9a-f]{8}\.jpg/);
     expect(result.recipeCandidate.steps[1].image).toContain('recipes/recipe-1/step-1.jpg');
   });
 
@@ -208,12 +210,12 @@ describe('runManualIngestionPipeline', () => {
     });
 
     expect(result.warnings).toEqual([]);
-    expect(result.recipeCandidate.main_image).toContain('recipes/recipe-1/main-0.jpg');
+    expect(result.recipeCandidate.main_image).toMatch(/recipes\/recipe-1\/main-0-[0-9a-f]{8}\.jpg/);
     expect(result.recipeCandidate.steps).toHaveLength(2);
     // step-1.jpg sorts before step-2.jpg (natural sort), so it is hosted first
     // and assigned to step index 0.
-    expect(result.recipeCandidate.steps[0].image).toContain('recipes/recipe-1/step-0.jpg');
-    expect(result.recipeCandidate.steps[1].image).toContain('recipes/recipe-1/step-1.jpg');
+    expect(result.recipeCandidate.steps[0].image).toMatch(/recipes\/recipe-1\/step-0-[0-9a-f]{8}\.jpg/);
+    expect(result.recipeCandidate.steps[1].image).toMatch(/recipes\/recipe-1\/step-1-[0-9a-f]{8}\.jpg/);
     expect(result.diagnostics.extractor).toBe('gemini-primary');
     expect(result.diagnostics.model).toBe('gemini-3.5-flash-lite');
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
@@ -338,10 +340,29 @@ describe('runManualIngestionPipeline', () => {
     const first = await run();
     const second = await run();
 
-    expect(first.recipeCandidate).toEqual(second.recipeCandidate);
+    // Uploaded keys carry a random suffix and the mock appends a counter.
+    const stable = (candidate: unknown) =>
+      JSON.parse(JSON.stringify(candidate).replace(/-[0-9a-f]{8}\.jpg\?v=\d+/g, '.jpg'));
+    expect(stable(first.recipeCandidate)).toEqual(stable(second.recipeCandidate));
     expect(first.warnings).toEqual(second.warnings);
     expect(first.diagnostics.extractor).toEqual(second.diagnostics.extractor);
     expect(first.diagnostics.model).toEqual(second.diagnostics.model);
+  });
+
+  it('passes AI_QUOTA_EXCEEDED through unchanged', async () => {
+    const geminiClient = fakeGeminiClient(vi.fn().mockRejectedValue(new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE)));
+
+    await expect(
+      runManualIngestionPipeline({
+        parsed: makeParsed(),
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        storageAdapter: makeStorageAdapter(),
+        recipeId: 'recipe-1',
+        maxImageBytes: 1024,
+        requestId: 'req-quota',
+      }),
+    ).rejects.toMatchObject({ code: 'AI_QUOTA_EXCEEDED' });
   });
 
   describe('stage logging', () => {

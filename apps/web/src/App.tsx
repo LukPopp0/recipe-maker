@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import type { CanonicalRecipe } from 'shared';
-import type { IngestDiagnostics } from './api/client.ts';
+import { useCallback, useEffect, useState } from 'react';
+import type { CanonicalRecipe, CurrentUser } from 'shared';
+import { getMe, type IngestDiagnostics } from './api/client.ts';
 import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-types.ts';
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
@@ -55,12 +55,21 @@ function App() {
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [jsonOpen, setJsonOpen] = useState(false);
   const [theme, toggleTheme] = useTheme();
+  // Who is logged in (always "local" without AUTH_MODE=header). Library uses
+  // it for owner/admin actions; a failed lookup just hides the name.
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    void getMe().then((result) => {
+      if (result.ok) setCurrentUser(result.value.user);
+    });
+  }, []);
 
   // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any
   // unsaved edits, so confirm first when the current state is dirty (plan
   // decision 12).
   const adoptRecipe = useCallback(
-    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string): boolean => {
+    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string, sourceId?: string): boolean => {
       if (shouldConfirmReplace(recipeState)) {
         const proceed = window.confirm(
           'Loading a new recipe will discard your unsaved changes. Continue?',
@@ -75,6 +84,7 @@ function App() {
         savedId: null,
         dirty: false,
         imageNamespaceId: imageNamespaceId ?? crypto.randomUUID(),
+        sourceId: sourceId ?? null,
       });
       setShowCardPreview(false);
       setInputCollapsed(true);
@@ -94,11 +104,11 @@ function App() {
     setInputCollapsed(false);
   }, []);
 
-  // Open in Create copies a saved recipe into the workspace (docs/specs/13):
-  // saving it again creates a new id, the library original is untouched.
+  // Open in Create loads a saved recipe for editing: Save changes updates it
+  // in place, Save as new makes a copy.
   const handleOpenInCreate = useCallback(
-    (recipe: CanonicalRecipe) => {
-      if (adoptRecipe(recipe, null)) {
+    (recipe: CanonicalRecipe, sourceId: string) => {
+      if (adoptRecipe(recipe, null, undefined, sourceId)) {
         setView('create');
       }
     },
@@ -112,10 +122,10 @@ function App() {
     setRecipeState((prev) => (prev ? { ...prev, recipe, dirty: true, savedId: null } : prev));
   }, []);
 
-  // Only the ActionTray's explicit Save Recipe action calls this - it is the
+  // Only the ActionTray's explicit save actions call this - it is the
   // single place that marks the workspace saved and clears dirty.
   const handleSaved = useCallback((id: string) => {
-    setRecipeState((prev) => (prev ? { ...prev, savedId: id, dirty: false } : prev));
+    setRecipeState((prev) => (prev ? { ...prev, savedId: id, sourceId: id, dirty: false } : prev));
   }, []);
 
   const inCreate = view === 'create' && !showCardPreview;
@@ -145,6 +155,7 @@ function App() {
         <span className={`workspace-status workspace-status--${statusVariant(recipeState)}`}>
           {statusLabel(recipeState)}
         </span>
+        {currentUser ? <span className="workspace-user">{currentUser.username}</span> : null}
         <button
           type="button"
           className="btn btn-ghost btn-sm"
@@ -247,7 +258,7 @@ function App() {
       {view === 'library' ? (
         <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">
           <h2 id="library-panel-heading">Library</h2>
-          <LibraryPanel onOpenInCreate={handleOpenInCreate} />
+          <LibraryPanel currentUser={currentUser} onOpenInCreate={handleOpenInCreate} />
         </section>
       ) : null}
 

@@ -76,7 +76,7 @@ at extraction (spec 04), not here - the matcher no longer receives or returns un
 - When every entry carries an in-range, unique "i", entries are aligned by it (exact, order-independent); a missing "i" leaves that input unaligned. Otherwise the fallbacks below apply.
 - Count mismatch is salvaged, not discarded: response entries are aligned to input ingredients in order by normalized name (exact, then whole-word containment), and runs of unaligned inputs are paired by position only when the gap holds exactly as many entries. Unaligned inputs keep their extracted name/amount, get INGREDIENT_NOT_FOUND.png and a per-ingredient warning.
 - One retry with the configured retry model when the primary call fails (error, unparseable output) or leaves any input unaligned; the attempt with fewer unaligned inputs wins (primary on a tie).
-- If both attempts fail outright, every ingredient gets INGREDIENT_NOT_FOUND.png and a single warning is added.
+- If both attempts fail outright, every ingredient gets INGREDIENT_NOT_FOUND.png and a single warning is added. When every attempt failed on Gemini quota the warning reads "Ingredient image matching skipped: Gemini daily quota reached. All ingredients set to INGREDIENT_NOT_FOUND.png."
 
 ## Acceptance Criteria
 - Gemini response conforms to schema and filename constraints.

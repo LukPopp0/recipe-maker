@@ -2,12 +2,15 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import type { ServerEnv } from './env.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { createAuthMiddleware } from './middleware/auth.js';
 import { logger } from './middleware/logger.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
 import { requestId, type AppVariables } from './middleware/request-id.js';
+import { createAdminApp } from './routes/admin.js';
 import { createImageApp } from './routes/image.js';
 import { createIngestApp } from './routes/ingest.js';
 import { createHealthApp } from './routes/health.js';
+import { createMeApp } from './routes/me.js';
 import { createRecipeApp } from './routes/recipe.js';
 import type { GeminiConfig } from './services/ai/config.js';
 import type { GeminiClient } from './services/ai/gemini-client.js';
@@ -36,11 +39,16 @@ export function createApp(deps: AppDeps): App {
 
   app.use('*', requestId);
   app.use('*', logger);
+  app.use('/api/*', createAuthMiddleware({ mode: deps.env.AUTH_MODE, adminUsers: deps.env.ADMIN_USERS }));
   // Fresh limiter per createApp call keeps test instances isolated from each other.
   app.use('/api/ingest/*', createRateLimiter({ max: deps.env.RATE_LIMIT_MAX, windowMs: deps.env.RATE_LIMIT_WINDOW_MS }));
 
   const healthApp = createHealthApp({ checkStorageReady: deps.checkStorageReady });
-  const recipeApp = createRecipeApp({ recipeRepository: deps.recipeRepository });
+  const recipeApp = createRecipeApp({
+    recipeRepository: deps.recipeRepository,
+    storageAdapter: deps.storageAdapter,
+    publicBaseUrl: deps.env.PUBLIC_BASE_URL,
+  });
   const ingestApp = createIngestApp({
     env: deps.env,
     geminiClient: deps.geminiClient,
@@ -53,9 +61,18 @@ export function createApp(deps: AppDeps): App {
 
   app.route('/', healthApp);
   app.route('/api', healthApp);
+  app.route('/api', createMeApp());
   app.route('/api', recipeApp);
   app.route('/api', ingestApp);
   app.route('/api', imageApp);
+  app.route(
+    '/api',
+    createAdminApp({
+      recipeRepository: deps.recipeRepository,
+      storageAdapter: deps.storageAdapter,
+      publicBaseUrl: deps.env.PUBLIC_BASE_URL,
+    }),
+  );
 
   // Serves re-hosted recipe images (docs/specs/06) from IMAGE_DATA_DIR. Rehosted
   // URLs are built as `${PUBLIC_BASE_URL}/images/${key}` (see

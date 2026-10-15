@@ -83,6 +83,28 @@ describe('ErrorBanner', () => {
     expect(screen.getByText(/backend running on port 8787/i)).toBeInTheDocument();
   });
 
+  it('shows a log-in-again hint for UNAUTHENTICATED', () => {
+    render(
+      <ErrorBanner
+        error={{ code: 'UNAUTHENTICATED', message: 'You are not logged in.' }}
+        onRetry={() => {}}
+        onDismiss={() => {}}
+      />,
+    );
+    expect(screen.getByText(/reload the page to log in again/i)).toBeInTheDocument();
+  });
+
+  it('shows a quota-reset hint for AI_QUOTA_EXCEEDED', () => {
+    render(
+      <ErrorBanner
+        error={{ code: 'AI_QUOTA_EXCEEDED', message: 'Gemini daily quota reached. It resets at midnight Pacific time.' }}
+        onRetry={() => {}}
+        onDismiss={() => {}}
+      />,
+    );
+    expect(screen.getByText('Try again after the quota resets, or paste the recipe later.')).toBeInTheDocument();
+  });
+
   it('shows a generic recovery hint for unknown codes', () => {
     render(
       <ErrorBanner

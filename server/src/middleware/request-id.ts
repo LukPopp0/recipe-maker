@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { MiddlewareHandler } from 'hono';
+import type { CurrentUser } from 'shared';
 
 const REQUEST_ID_HEADER = 'x-request-id';
 
@@ -7,6 +8,8 @@ const REQUEST_ID_HEADER = 'x-request-id';
 // requestId once this middleware has run.
 export type AppVariables = {
   requestId: string
+  // Set by the auth middleware on every /api/* request (see auth.ts).
+  user: CurrentUser
 }
 
 // Reads the inbound x-request-id header (so callers/proxies can correlate

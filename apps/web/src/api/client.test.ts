@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -21,6 +21,19 @@ describe('api/client', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  describe('getMe', () => {
+    it('gets /api/me and unwraps the user', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ ok: true, requestId: 'r', user: { username: 'alice', isAdmin: false } }),
+      );
+
+      const result = await getMe();
+
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/me');
+      expect(result).toEqual({ ok: true, value: { user: { username: 'alice', isAdmin: false } } });
+    });
   });
 
   describe('ingestUrl', () => {
@@ -170,6 +183,20 @@ describe('api/client', () => {
     });
   });
 
+  describe('updateRecipe', () => {
+    it('PUTs the recipe JSON to /api/recipe/:id', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', id: 'abc' }));
+
+      const result = await updateRecipe('abc', fakeRecipe);
+
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/recipe/abc');
+      expect(init.method).toBe('PUT');
+      expect(JSON.parse(init.body as string)).toEqual(fakeRecipe);
+      expect(result).toEqual({ ok: true, value: { id: 'abc' } });
+    });
+  });
+
   describe('uploadStepImage', () => {
     it('posts FormData with namespaceId, stepIndex, and the file to /api/image/step', async () => {
       fetchMock.mockResolvedValue(
@@ -276,13 +303,31 @@ describe('api/client', () => {
     });
   });
 
+  describe('admin images', () => {
+    it('lists unused images and posts keys to delete', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ ok: true, requestId: 'r', images: [] }))
+        .mockResolvedValueOnce(jsonResponse({ ok: true, requestId: 'r', deleted: 2 }));
+
+      await listUnusedImages();
+      const result = await deleteImages(['recipes/a/main-0.jpg', 'recipes/b/main-0.jpg']);
+
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/images/unused');
+      const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+      expect(url).toBe('/api/admin/images/delete');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({ keys: ['recipes/a/main-0.jpg', 'recipes/b/main-0.jpg'] });
+      expect(result).toEqual({ ok: true, value: { deleted: 2 } });
+    });
+  });
+
   describe('library endpoints', () => {
     it('listRecipes unwraps the recipes array from the envelope', async () => {
       fetchMock.mockResolvedValue(
         jsonResponse({
           ok: true,
           requestId: 'r1',
-          recipes: [{ id: 'a', title: 'T', tags: [], main_image: '/images/x.png', createdAt: '2026-01-01T00:00:00.000Z', time: 60, source_type: 'url' }],
+          recipes: [{ id: 'a', title: 'T', tags: [], main_image: '/images/x.png', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', owner: 'local', time: 60, source_type: 'url' }],
         }),
       );
 
@@ -290,8 +335,16 @@ describe('api/client', () => {
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.value.recipes).toHaveLength(1);
       const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('/api/recipes');
+      expect(url).toBe('/api/recipes?scope=all');
       expect((init.headers as Record<string, string>)['x-request-id']).toEqual(expect.any(String));
+    });
+
+    it('listRecipes sends the scope as a query parameter', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', recipes: [] }));
+
+      await listRecipes('mine');
+
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/recipes?scope=mine');
     });
 
     it('getRecipe hits /api/recipe/:id and unwraps the recipe', async () => {

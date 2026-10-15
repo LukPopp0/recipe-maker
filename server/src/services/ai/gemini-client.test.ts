@@ -110,8 +110,39 @@ describe('GeminiClient.generateCanonicalRecipe', () => {
       await client.generateCanonicalRecipe({ model: 'gemini-2.5-pro', prompt: 'x', timeoutMs: 1000 });
       expect.unreachable();
     } catch (err) {
+      expect((err as AppError).code).toBe('AI_QUOTA_EXCEEDED');
       expect((err as AppError).details).toMatchObject({ cause: 'Quota exceeded, retry in 7s.' });
     }
+  });
+
+  it('throws AI_QUOTA_EXCEEDED with the reset message for a RESOURCE_EXHAUSTED JSON blob', async () => {
+    const rawBlob = JSON.stringify({
+      error: { code: 429, message: 'Quota exceeded, retry in 7s.', status: 'RESOURCE_EXHAUSTED' },
+    });
+    const client = new GeminiClient(config, makeSdkClient(vi.fn().mockRejectedValue(new Error(rawBlob))));
+
+    await expect(client.generateCanonicalRecipe({ model: 'm', prompt: 'x', timeoutMs: 1000 })).rejects.toMatchObject({
+      code: 'AI_QUOTA_EXCEEDED',
+      message: 'Gemini daily quota reached. It resets at midnight Pacific time.',
+      details: { model: 'm', cause: 'Quota exceeded, retry in 7s.' },
+    });
+  });
+
+  it('detects an SDK error carrying status 429', async () => {
+    const err = Object.assign(new Error('Too Many Requests'), { status: 429 });
+    const client = new GeminiClient(config, makeSdkClient(vi.fn().mockRejectedValue(err)));
+
+    await expect(client.generateCanonicalRecipe({ model: 'm', prompt: 'x', timeoutMs: 1000 })).rejects.toMatchObject({
+      code: 'AI_QUOTA_EXCEEDED',
+    });
+  });
+
+  it('does not treat an unrelated error mentioning 429 as quota', async () => {
+    const client = new GeminiClient(config, makeSdkClient(vi.fn().mockRejectedValue(new Error('bad recipe 429'))));
+
+    await expect(client.generateCanonicalRecipe({ model: 'm', prompt: 'x', timeoutMs: 1000 })).rejects.toMatchObject({
+      code: 'AI_NORMALIZATION_FAILED',
+    });
   });
 
   it('throws AI_NORMALIZATION_FAILED when the response has no text', async () => {

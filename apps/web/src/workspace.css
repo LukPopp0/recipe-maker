@@ -64,6 +64,11 @@
   font-size: var(--font-size-xs);
 }
 
+.workspace-user {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 /* Status chip: coral tint while dirty, green tint when saved */
 .workspace-status {
   margin-left: auto;
@@ -959,6 +964,24 @@
   font-size: var(--font-size-sm);
 }
 
+.library-scope {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.library-scope [aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.recipe-list-owner,
+.recipe-detail-owner {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .recipe-list-date {
   margin: 0;
   font-size: var(--font-size-sm);
@@ -986,4 +1009,25 @@
 .review-panel-static-label {
   font-weight: 600;
   margin-right: 0.5em;
+}
+
+.unused-images-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.unused-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.unused-images-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
 }

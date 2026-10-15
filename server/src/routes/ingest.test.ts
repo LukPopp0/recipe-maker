@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../app.js';
 import { loadServerEnv } from '../env.js';
 import { loadGeminiConfig } from '../services/ai/config.js';
-import type { GeminiClient } from '../services/ai/gemini-client.js';
+import { QUOTA_MESSAGE, type GeminiClient } from '../services/ai/gemini-client.js';
+import { AppError } from '../lib/errors.js';
 import { LocalDiskStorageAdapter } from '../services/storage/local-disk-storage-adapter.js';
 import { LocalJsonFileRecipeRepository } from '../services/recipes/local-json-file-recipe-repository.js';
 
@@ -166,6 +167,24 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
       'pasta-linguine.png',
       'meat-beef-ground.png',
     ]);
+  });
+
+  // Pins deployment spec section 6 "HTTP 429" end to end: a Gemini quota error
+  // surfaces as 429 AI_QUOTA_EXCEEDED with the fixed user-facing message.
+  it('returns 429 AI_QUOTA_EXCEEDED when Gemini rejects every call with the quota error', async () => {
+    mockFetch();
+    const app = makeApp(fakeGemini(() => Promise.reject(new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE, { model: 'x' }))));
+
+    const res = await app.request('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/lasagna' }),
+    });
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(429);
+    expect(body.error.code).toBe('AI_QUOTA_EXCEEDED');
+    expect(body.error.message).toBe(QUOTA_MESSAGE);
   });
 
   it('degrades an invented matcher filename to INGREDIENT_NOT_FOUND.png with a warning', async () => {
@@ -531,6 +550,21 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
 
     expect(res.status).toBe(400);
     expect(body.error.code).toBe('INVALID_INPUT');
+  });
+
+  // Manual ingestion has no retry; the quota error passes straight through.
+  it('returns 429 AI_QUOTA_EXCEEDED when Gemini rejects the call with the quota error', async () => {
+    const app = makeApp(fakeGemini(() => Promise.reject(new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE, { model: 'x' }))));
+
+    const res = await app.request('/api/ingest/manual', {
+      method: 'POST',
+      body: validFormData(),
+    });
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(429);
+    expect(body.error.code).toBe('AI_QUOTA_EXCEEDED');
+    expect(body.error.message).toBe(QUOTA_MESSAGE);
   });
 
   it('returns AI_NORMALIZATION_FAILED when Gemini returns a stepless/titleless candidate', async () => {

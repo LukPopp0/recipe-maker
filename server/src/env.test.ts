@@ -1,8 +1,15 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadServerEnv } from './env.js';
+import { authModeWarning, loadServerEnv } from './env.js';
 
 describe('loadServerEnv', () => {
+  it('defaults RECIPE_STORE to json and resolves RECIPE_DB_PATH', () => {
+    const env = loadServerEnv({});
+
+    expect(env.RECIPE_STORE).toBe('json');
+    expect(env.RECIPE_DB_PATH).toBe(path.resolve('./data/db/recipes.db'));
+  });
+
   it('applies defaults when no env vars are set', () => {
     const env = loadServerEnv({});
 
@@ -20,6 +27,12 @@ describe('loadServerEnv', () => {
     expect(env.PUBLIC_BASE_URL).toBe('http://localhost:8787');
     expect(env.RATE_LIMIT_MAX).toBe(10);
     expect(env.RATE_LIMIT_WINDOW_MS).toBe(60000);
+  });
+
+  it('strips trailing slashes from PUBLIC_BASE_URL', () => {
+    expect(loadServerEnv({ PUBLIC_BASE_URL: 'https://recipes.example.com/app//' }).PUBLIC_BASE_URL).toBe(
+      'https://recipes.example.com/app',
+    );
   });
 
   it('derives PUBLIC_BASE_URL default from a non-default PORT', () => {
@@ -75,5 +88,39 @@ describe('loadServerEnv', () => {
 
   it('throws descriptively on a non-numeric PORT', () => {
     expect(() => loadServerEnv({ PORT: 'not-a-number' })).toThrow(/PORT/);
+  });
+
+  it('defaults AUTH_MODE to none and ADMIN_USERS to an empty list', () => {
+    const env = loadServerEnv({});
+
+    expect(env.AUTH_MODE).toBe('none');
+    expect(env.ADMIN_USERS).toEqual([]);
+  });
+
+  it('parses ADMIN_USERS as a trimmed, lowercased list without empty entries', () => {
+    const env = loadServerEnv({ AUTH_MODE: 'header', ADMIN_USERS: ' Alice , bob,, ' });
+
+    expect(env.AUTH_MODE).toBe('header');
+    expect(env.ADMIN_USERS).toEqual(['alice', 'bob']);
+  });
+
+  it('throws on an unknown AUTH_MODE', () => {
+    expect(() => loadServerEnv({ AUTH_MODE: 'basic' })).toThrow(/AUTH_MODE/);
+  });
+});
+
+describe('authModeWarning', () => {
+  it('warns when production runs with AUTH_MODE=none', () => {
+    const msg = authModeWarning(loadServerEnv({ NODE_ENV: 'production', AUTH_MODE: 'none' }));
+
+    expect(msg).toMatch(/AUTH_MODE=none/);
+  });
+
+  it('is silent for production with header auth', () => {
+    expect(authModeWarning(loadServerEnv({ NODE_ENV: 'production', AUTH_MODE: 'header' }))).toBeNull();
+  });
+
+  it('is silent for development with AUTH_MODE=none', () => {
+    expect(authModeWarning(loadServerEnv({ NODE_ENV: 'development', AUTH_MODE: 'none' }))).toBeNull();
   });
 });

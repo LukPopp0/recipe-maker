@@ -12,15 +12,21 @@ function formatDate(iso: string): string {
 
 export function RecipeList({
   recipes,
+  showOwner,
+  emptyMessage,
+  canDelete,
   onView,
   onDelete,
 }: {
   recipes: RecipeSummary[]
+  showOwner: boolean
+  emptyMessage: string
+  canDelete: (recipe: RecipeSummary) => boolean
   onView: (id: string) => void
   onDelete: (id: string) => void
 }) {
   if (recipes.length === 0) {
-    return <p className="recipe-list-empty">No saved recipes yet. Save one from the Create workspace to see it here.</p>;
+    return <p className="recipe-list-empty">{emptyMessage}</p>;
   }
 
   return (
@@ -44,6 +50,7 @@ export function RecipeList({
             </ul>
           ) : null}
           <p className="recipe-list-date">Saved {formatDate(recipe.createdAt)}</p>
+          {showOwner ? <p className="recipe-list-owner">by {recipe.owner}</p> : null}
           <div className="recipe-list-actions">
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => onView(recipe.id)} aria-label={`View ${recipe.title}`}>
               View
@@ -51,9 +58,11 @@ export function RecipeList({
             <a className="btn btn-ghost btn-sm" href={`/api/recipe/download/${encodeURIComponent(recipe.id)}`} aria-label={`Download ${recipe.title}`} download>
               Download
             </a>
-            <button type="button" className="btn btn-danger btn-sm" onClick={() => onDelete(recipe.id)} aria-label={`Delete ${recipe.title}`}>
-              Delete
-            </button>
+            {canDelete(recipe) ? (
+              <button type="button" className="btn btn-danger btn-sm" onClick={() => onDelete(recipe.id)} aria-label={`Delete ${recipe.title}`}>
+                Delete
+              </button>
+            ) : null}
           </div>
         </li>
       ))}

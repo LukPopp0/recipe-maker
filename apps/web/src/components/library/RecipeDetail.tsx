@@ -1,10 +1,12 @@
 // Read-only detail view for one saved recipe. Fetches its own copy by id;
 // LibraryPanel owns the list, selection, and the delete confirm/API flow.
-// Open in Create hands the loaded recipe up so App can copy it into the
-// Create workspace (a copy - saving there creates a new id, per docs/specs/13).
+// Open in Create hands the loaded recipe and its id up so App can load it into
+// the Create workspace for editing (Save changes updates it in place, Save as
+// new makes a copy).
 import { useCallback, useEffect, useState } from 'react';
-import type { CanonicalRecipe } from 'shared';
+import type { CanonicalRecipe, CurrentUser, RecipeMeta } from 'shared';
 import { getRecipe, type ApiFailure } from '../../api/client.ts';
+import { canDeleteRecipe } from '../../lib/permissions.ts';
 import { ReviewPanel } from '../review/ReviewPanel.tsx';
 import { JsonPanel } from '../json/JsonPanel.tsx';
 import { ErrorBanner } from '../ErrorBanner.tsx';
@@ -13,17 +15,19 @@ import { CardView } from '../card/CardView.tsx';
 type DetailStatus =
   | { phase: 'loading' }
   | { phase: 'error'; error: ApiFailure }
-  | { phase: 'loaded'; recipe: CanonicalRecipe };
+  | { phase: 'loaded'; recipe: CanonicalRecipe; meta: RecipeMeta };
 
 export function RecipeDetail({
   id,
+  currentUser,
   onBack,
   onOpenInCreate,
   onDelete,
 }: {
   id: string
+  currentUser: CurrentUser | null
   onBack: () => void
-  onOpenInCreate: (recipe: CanonicalRecipe) => void
+  onOpenInCreate: (recipe: CanonicalRecipe, sourceId: string) => void
   onDelete: (id: string) => void
 }) {
   const [status, setStatus] = useState<DetailStatus>({ phase: 'loading' });
@@ -33,7 +37,7 @@ export function RecipeDetail({
     setStatus({ phase: 'loading' });
     const result = await getRecipe(id);
     if (result.ok) {
-      setStatus({ phase: 'loaded', recipe: result.value.recipe });
+      setStatus({ phase: 'loaded', recipe: result.value.recipe, meta: result.value.meta });
     } else {
       setStatus({ phase: 'error', error: result.error });
     }
@@ -55,7 +59,7 @@ export function RecipeDetail({
         </button>
         {status.phase === 'loaded' ? (
           <>
-            <button type="button" className="btn btn-secondary" onClick={() => onOpenInCreate(status.recipe)}>
+            <button type="button" className="btn btn-secondary" onClick={() => onOpenInCreate(status.recipe, id)}>
               Open in Create
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => setShowCard(true)}>
@@ -64,9 +68,12 @@ export function RecipeDetail({
             <a className="btn btn-ghost" href={`/api/recipe/download/${encodeURIComponent(id)}`} download>
               Download
             </a>
-            <button type="button" className="btn btn-danger" onClick={() => onDelete(id)}>
-              Delete
-            </button>
+            {canDeleteRecipe(currentUser, status.meta.owner) ? (
+              <button type="button" className="btn btn-danger" onClick={() => onDelete(id)}>
+                Delete
+              </button>
+            ) : null}
+            <small className="recipe-detail-owner">Saved by {status.meta.owner}</small>
           </>
         ) : null}
       </div>

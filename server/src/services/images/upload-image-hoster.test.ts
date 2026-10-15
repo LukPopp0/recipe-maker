@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
+import { ImageDecodeError } from './normalize-image.js';
 import { hostUploadedImage, type UploadedFile } from './upload-image-hoster.js';
 
 function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> } {
   return {
     put: vi.fn().mockResolvedValue('http://localhost:8787/images/recipes/recipe-1/main-0.jpg'),
     get: vi.fn(),
+    list: vi.fn(),
     delete: vi.fn(),
   };
 }
@@ -35,7 +37,7 @@ describe('hostUploadedImage', () => {
     expect(result).toEqual({ url: 'http://localhost:8787/images/recipes/recipe-1/main-0.jpg' });
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-1/main-0.jpg',
+      expect.stringMatching(/^recipes\/recipe-1\/main-0-[0-9a-f]{8}\.jpg$/),
       'image/jpeg',
     );
   });
@@ -55,7 +57,7 @@ describe('hostUploadedImage', () => {
     expect(result).toEqual({ url: 'http://localhost:8787/images/recipes/recipe-1/main-0.jpg' });
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-1/main-0.png',
+      expect.stringMatching(/^recipes\/recipe-1\/main-0-[0-9a-f]{8}\.png$/),
       'image/png',
     );
   });
@@ -75,7 +77,7 @@ describe('hostUploadedImage', () => {
     expect(result).toEqual({ url: 'http://localhost:8787/images/recipes/recipe-1/main-0.jpg' });
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-1/main-0.webp',
+      expect.stringMatching(/^recipes\/recipe-1\/main-0-[0-9a-f]{8}\.webp$/),
       'image/webp',
     );
   });
@@ -128,7 +130,7 @@ describe('hostUploadedImage', () => {
 
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-2/step-3.jpg',
+      expect.stringMatching(/^recipes\/recipe-2\/step-3-[0-9a-f]{8}\.jpg$/),
       'image/jpeg',
     );
   });
@@ -147,8 +149,35 @@ describe('hostUploadedImage', () => {
 
     expect(storageAdapter.put).toHaveBeenCalledWith(
       file.buffer,
-      'recipes/recipe-2/main-0.jpg',
+      expect.stringMatching(/^recipes\/recipe-2\/main-0-[0-9a-f]{8}\.jpg$/),
       'image/jpeg',
     );
+  });
+
+  it('gives two uploads for the same step different keys so a re-upload never overwrites', async () => {
+    const storageAdapter = makeStorageAdapter();
+    const options = { recipeId: 'recipe-2', storageAdapter, maxBytes: 1024, kind: 'step' as const, index: 1 };
+
+    await hostUploadedImage(makeFile(), options);
+    await hostUploadedImage(makeFile(), options);
+
+    const [first, second] = storageAdapter.put.mock.calls.map((call) => call[1] as string);
+    expect(first).toMatch(/^recipes\/recipe-2\/step-1-[0-9a-f]{8}\.jpg$/);
+    expect(second).not.toBe(first);
+  });
+
+  it('returns a warning instead of throwing when the bytes are not a readable image', async () => {
+    const storageAdapter = makeStorageAdapter();
+    storageAdapter.put.mockRejectedValue(new ImageDecodeError('bad'));
+
+    const result = await hostUploadedImage(makeFile({ contentType: 'image/jpeg', filename: 'broken.jpg' }), {
+      recipeId: 'r1',
+      storageAdapter,
+      maxBytes: 1_000_000,
+      kind: 'step',
+      index: 0,
+    });
+
+    expect(result).toEqual({ warning: '"broken.jpg" was not uploaded: the file is not a readable image.' });
   });
 });

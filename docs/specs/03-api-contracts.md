@@ -7,8 +7,26 @@ Define backend APIs for ingestion, upload, and export.
 - Prefix: /api
 - Content-Type: application/json for JSON routes.
 - Multipart: for manual upload route.
+- Auth: when `AUTH_MODE=header`, every `/api/*` route except `GET /api/health`
+  requires a non-empty `Remote-User` header (set by the reverse proxy); a missing
+  or blank header returns 401 `UNAUTHENTICATED`. With `AUTH_MODE=none` (default)
+  every request runs as admin user `local`. Non-API paths (`/images/*`,
+  `/ingredient-images/*`) are not gated by the app.
 
 ## Endpoints
+
+### GET /api/me
+Returns the caller resolved by the auth middleware.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "user": { "username": "alice", "isAdmin": false }
+}
+```
+Username is trimmed and lowercased; `isAdmin` is true when it appears in
+`ADMIN_USERS` (always true for `local` in `AUTH_MODE=none`).
 
 ### POST /api/ingest/url
 Request:
@@ -61,6 +79,7 @@ Returns normalized JSON as attachment.
 
 ### POST /api/recipe/save
 Persists a canonical recipe candidate to server-side storage (explicit user action, not automatic).
+The caller (`c.get('user')`, spec 11 Authentication Settings) becomes the recipe owner.
 Request: canonical recipe object.
 Response success:
 ```json
@@ -72,30 +91,78 @@ Response success:
 ```
 Response error shape mirrors other endpoints.
 
+### PUT /api/recipe/:id
+Replaces a saved recipe in place ("Save changes"). Any user (with `AUTH_MODE=none` everyone is the admin user `local`) may update any recipe; the owner and `createdAt` never change, `updatedAt` is bumped.
+Request: canonical recipe object (same body as `POST /api/recipe/save`).
+Response success:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "id": "..."
+}
+```
+Errors: 404 `RECIPE_NOT_FOUND` for an unknown id (never creates a recipe), 422 `SCHEMA_VALIDATION_FAILED` for an invalid body.
+
 ### GET /api/recipes
-Returns saved recipe summaries for the library view.
+Returns saved recipe summaries for the library view, newest first.
+Query: `scope=mine|all` (default `all`). `mine` returns only recipes owned by the caller. Any other value is 400 `INVALID_INPUT`.
 Response:
 ```json
 {
   "ok": true,
   "requestId": "...",
   "recipes": [
-    { "id": "...", "title": "...", "tags": [], "main_image": "...", "createdAt": "..." }
+    { "id": "...", "title": "...", "tags": [], "main_image": "...", "owner": "alice", "createdAt": "...", "updatedAt": "..." }
   ]
 }
 ```
 
 ### GET /api/recipe/:id
 Returns the full canonical recipe for a saved id.
-Response shape mirrors /api/ingest/url (recipe field populated, no diagnostics).
+Response shape mirrors /api/ingest/url (recipe field populated, no diagnostics), plus record metadata:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "recipe": {},
+  "meta": { "id": "...", "owner": "alice", "createdAt": "...", "updatedAt": "..." }
+}
+```
 
 ### DELETE /api/recipe/:id
-Removes a saved recipe.
+Removes a saved recipe. Only the owner or an admin may delete; anyone else gets 403 `FORBIDDEN` and the recipe is kept. Unknown id is 404 `RECIPE_NOT_FOUND`. Local images used only by this recipe are deleted with it (see spec 06); image cleanup failures never fail the delete.
 Response:
 ```json
 {
   "ok": true,
   "requestId": "..."
+}
+```
+
+### GET /api/admin/images/unused
+Admin only (403 `FORBIDDEN` otherwise). Lists stored images no saved recipe references that are older than 24 hours. The `url` is `${PUBLIC_BASE_URL}/images/<key>`.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "images": [
+    { "key": "recipes/ns1/main-0.jpg", "url": "https://recipes.example.com/images/recipes/ns1/main-0.jpg", "sizeBytes": 48211, "modifiedAt": "..." }
+  ]
+}
+```
+
+### POST /api/admin/images/delete
+Admin only (403 `FORBIDDEN` otherwise). Deletes unused images by key.
+Request: `{ "keys": ["recipes/ns1/main-0.jpg"] }` (1 to 500 keys).
+The server re-derives the unused set (unreferenced and older than 24 hours); keys that are referenced, too recent, or outside `recipes/` are ignored.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "deleted": 1
 }
 ```
 
@@ -105,9 +172,12 @@ Response:
 - URL_FETCH_TIMEOUT
 - URL_EXTRACTION_FAILED
 - AI_NORMALIZATION_FAILED
+- AI_QUOTA_EXCEEDED (429, Gemini daily quota reached: "Gemini daily quota reached. It resets at midnight Pacific time."; distinct from the app's own RATE_LIMITED; every Gemini 429 maps here, including short per-minute limits)
 - SCHEMA_VALIDATION_FAILED
 - IMAGE_DOWNLOAD_FAILED
 - RECIPE_NOT_FOUND
+- UNAUTHENTICATED (401, missing `Remote-User` in header mode)
+- FORBIDDEN (403, caller lacks permission for the action)
 - INTERNAL_ERROR
 
 ## Non-Functional Rules

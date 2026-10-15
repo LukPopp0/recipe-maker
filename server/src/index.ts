@@ -1,12 +1,13 @@
-import { access, constants, mkdir } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
-import { loadServerEnv } from './env.js';
+import { authModeWarning, loadServerEnv } from './env.js';
+import { ensureWritableDirs } from './lib/writable-dirs.js';
 import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
 import { closeBrowser } from './services/url-ingestion/browser-fetcher.js';
-import { LocalJsonFileRecipeRepository } from './services/recipes/local-json-file-recipe-repository.js';
+import { createRecipeRepository, recipeStorageDir } from './services/recipes/create-recipe-repository.js';
+import { ResizingStorageAdapter } from './services/storage/resizing-storage-adapter.js';
 import { LocalDiskStorageAdapter } from './services/storage/local-disk-storage-adapter.js';
 
 const env = loadServerEnv(process.env);
@@ -17,25 +18,25 @@ const geminiConfig = loadGeminiConfig(process.env);
 // placeholder served from the /images mount when it isn't configured.
 const defaultMainImageUrl = env.DEFAULT_MAIN_IMAGE_URL ?? '/images/placeholder-recipe.png';
 
-// Startup storage-readiness check: ensure the recipe data directory exists
-// and is writable before we start accepting traffic. Fail fast (exit 1)
+// Startup storage-readiness check: ensure the recipe store directory and
+// IMAGE_DATA_DIR exist and are writable before we start accepting traffic. Fail fast (exit 1)
 // rather than serving requests that will fail on first save.
 async function checkStorageReady(): Promise<boolean> {
-  try {
-    await mkdir(env.RECIPE_DATA_DIR, { recursive: true });
-    await access(env.RECIPE_DATA_DIR, constants.W_OK);
-    return true;
-  } catch (err) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        message: 'Recipe data directory is not writable',
-        recipeDataDir: env.RECIPE_DATA_DIR,
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
-    return false;
-  }
+  const result = await ensureWritableDirs({
+    recipeStorageDir: recipeStorageDir(env),
+    imageDataDir: env.IMAGE_DATA_DIR,
+  });
+  if (result.ok) return true;
+
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      message: 'Storage directory is not writable',
+      [result.name]: result.dir,
+      error: result.error,
+    }),
+  );
+  return false;
 }
 
 const storageReady = await checkStorageReady();
@@ -50,9 +51,9 @@ if (!checkIngredientCatalogReady()) {
   process.exit(1);
 }
 
-const recipeRepository = new LocalJsonFileRecipeRepository(env.RECIPE_DATA_DIR);
+const recipeRepository = createRecipeRepository(env);
 const geminiClient = new GeminiClient(geminiConfig);
-const storageAdapter = new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL);
+const storageAdapter = new ResizingStorageAdapter(new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL));
 
 const app = createApp({
   env,
@@ -71,17 +72,36 @@ const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
       message: 'Server listening',
       port: info.port,
       nodeEnv: env.NODE_ENV,
-      recipeDataDir: env.RECIPE_DATA_DIR,
+      authMode: env.AUTH_MODE,
+      recipeStore: env.RECIPE_STORE,
+      recipeStorageDir: recipeStorageDir(env),
     }),
   );
+
+  const authWarning = authModeWarning(env);
+  if (authWarning) {
+    console.warn(JSON.stringify({ level: 'warn', message: authWarning }));
+  }
 });
 
-// On restart/kill signals: stop accepting connections, then close the
-// headless Chromium the browser fallback keeps alive across requests so no
-// orphaned browser processes linger.
+// On restart/kill signals: stop accepting connections, close the recipe store
+// (checkpoints the SQLite WAL), then close the headless Chromium the browser
+// fallback keeps alive across requests so no orphaned browser processes linger.
 const shutdown = () => {
   console.log('Shutting down server...');
   server.close(() => {
+    // A failing close must not leave Chromium running or block the exit.
+    try {
+      recipeRepository.close?.();
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          message: 'Failed to close recipe store',
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
     void closeBrowser().finally(() => process.exit(0));
   });
 };

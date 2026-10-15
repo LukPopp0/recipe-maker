@@ -140,16 +140,16 @@ function overlayJsonLdStepImages(
   return overlaid;
 }
 
-// Runs a Gemini extraction call, swallowing any thrown error into `null` so
-// the caller can decide whether to retry - a thrown error here (e.g.
-// AI_NORMALIZATION_FAILED from a timeout or unparseable JSON) is just
-// another kind of extraction failure, not fatal until the retry is also
-// exhausted.
-async function tryExtract(fn: () => Promise<unknown>): Promise<unknown | null> {
+// Runs a Gemini extraction call. A thrown error (e.g. AI_NORMALIZATION_FAILED
+// from a timeout or unparseable JSON) is just another kind of extraction
+// failure until the retry is also exhausted, so it is returned rather than
+// thrown; the caller inspects it only to tell a quota failure apart
+// (deployment spec section 6).
+async function tryExtract(fn: () => Promise<unknown>): Promise<{ result: unknown | null; error: unknown }> {
   try {
-    return await fn();
-  } catch {
-    return null;
+    return { result: await fn(), error: null };
+  } catch (err) {
+    return { result: null, error: err };
   }
 }
 
@@ -275,7 +275,7 @@ export async function runUrlIngestionPipeline({
     recipeJsonLd: cleaned.recipeJsonLd,
   });
 
-  const primaryResult = await tryExtract(() =>
+  const primary = await tryExtract(() =>
     geminiClient.generateCanonicalRecipe({
       model: geminiConfig.primaryModel,
       prompt: primaryPrompt,
@@ -283,6 +283,8 @@ export async function runUrlIngestionPipeline({
       responseJsonSchema: URL_RECIPE_OUTPUT_JSON_SCHEMA,
     }),
   );
+
+  const primaryResult = primary.result;
 
   if (passesStructuralPreCheck(primaryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
@@ -324,7 +326,7 @@ export async function runUrlIngestionPipeline({
     previousFailure: describeExtractionFailure(primaryResult) ?? 'unknown failure',
   });
 
-  const retryResult = await tryExtract(() =>
+  const retry = await tryExtract(() =>
     geminiClient.generateCanonicalRecipe({
       model: geminiConfig.retryModel,
       prompt: retryPrompt,
@@ -332,6 +334,8 @@ export async function runUrlIngestionPipeline({
       responseJsonSchema: URL_RECIPE_OUTPUT_JSON_SCHEMA,
     }),
   );
+
+  const retryResult = retry.result;
 
   if (passesStructuralPreCheck(retryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
@@ -361,6 +365,19 @@ export async function runUrlIngestionPipeline({
   }
 
   // Both attempts failed.
+  // Quotas are per model: the retry model may still have quota left, so a
+  // quota error counts only when the final attempt hit it too.
+  if (retry.error instanceof AppError && retry.error.code === 'AI_QUOTA_EXCEEDED') {
+    logStage({
+      requestId,
+      stage: 'extract',
+      durationMs: Date.now() - extractStart,
+      outcome: 'error',
+      errorCode: 'AI_QUOTA_EXCEEDED',
+    });
+    throw retry.error;
+  }
+
   logStage({
     requestId,
     stage: 'extract',

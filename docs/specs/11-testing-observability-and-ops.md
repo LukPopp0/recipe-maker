@@ -43,6 +43,22 @@ Tooling: Vitest for unit/integration tests; React Testing Library for UI/compone
   `RATE_LIMITED` error code.
 - Input size limits for text and files.
 
+## Authentication Settings
+| Variable | Default | Meaning |
+|---|---|---|
+| `AUTH_MODE` | `none` | `none`: every request is admin user `local`. `header`: trust the `Remote-User` header from the reverse proxy; 401 `UNAUTHENTICATED` without it (`/api/health` exempt). |
+| `ADMIN_USERS` | empty | Comma-separated usernames (trimmed, lowercased) treated as admins in header mode. Empty means nobody is admin. |
+
+With `NODE_ENV=production` and `AUTH_MODE=none` the server logs a startup warning (every request would run as admin `local`).
+
+## Storage Settings
+| Variable | Default | Meaning |
+|---|---|---|
+| `RECIPE_STORE` | `json` | `json`: one file per recipe under `RECIPE_DATA_DIR`. `sqlite`: single SQLite database (spec 13). |
+| `RECIPE_DB_PATH` | `./data/db/recipes.db` | SQLite database file, resolved to an absolute path. Only used when `RECIPE_STORE=sqlite`. The readiness check (`/api/health`) uses the selected store's directory. |
+
+Startup (and `/api/health`) creates and checks both the recipe storage directory and `IMAGE_DATA_DIR` for write access; the error log names the failing one.
+
 ## Gemini Usage Controls
 - Configurable model selection.
 - Token budget controls per request.

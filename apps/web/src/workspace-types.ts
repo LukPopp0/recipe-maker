@@ -26,6 +26,10 @@ export type WorkspaceRecipeState = {
   // the ingest response when available; minted client-side for recipes that
   // never went through ingestion (Load JSON, Open in Create).
   imageNamespaceId: string
+  // Id of the saved recipe this workspace edits: set by Open in Create and
+  // by every successful save, so "Save changes" updates it in place. null
+  // until the recipe has been saved once (fresh ingest, Load JSON).
+  sourceId: string | null
 } | null;
 
 // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any

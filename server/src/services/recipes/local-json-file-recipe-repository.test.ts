@@ -1,23 +1,41 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { CanonicalRecipe } from 'shared';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LocalJsonFileRecipeRepository } from './local-json-file-recipe-repository.js';
+import { describeRecipeRepositoryContract, makeRecipe } from './recipe-repository-contract.js';
 
-function makeRecipe(overrides: Partial<CanonicalRecipe> = {}): CanonicalRecipe {
+describeRecipeRepositoryContract('LocalJsonFileRecipeRepository', async () => {
+  const dataDir = await mkdtemp(path.join(tmpdir(), 'recipe-repo-test-'));
   return {
-    title: 'Test Recipe',
-    tags: ['quick'],
-    time: 20,
-    ingredients: [{ name: 'Salt', amount_text: '1 tsp' }],
-    pantry_items: ['salt'],
-    main_image: 'salt.png',
-    steps: [{ step_header: 'Cook', step_description: 'Cook it.' }],
-    metadata: { source_type: 'manual', language: 'en', warnings: [] },
-    ...overrides,
+    repo: new LocalJsonFileRecipeRepository(dataDir),
+    cleanup: () => rm(dataDir, { recursive: true, force: true }),
   };
-}
+});
+
+describe('LocalJsonFileRecipeRepository legacy envelopes', () => {
+  it('reads a pre-ownership envelope as owned by "local" with updatedAt = createdAt', async () => {
+    const dataDir = await mkdtemp(path.join(tmpdir(), 'recipe-repo-legacy-'));
+    try {
+      const id = '11111111-1111-4111-8111-111111111111';
+      const createdAt = '2026-01-01T00:00:00.000Z';
+      await writeFile(path.join(dataDir, `${id}.json`), JSON.stringify({ id, createdAt, recipe: makeRecipe() }));
+      const repo = new LocalJsonFileRecipeRepository(dataDir);
+
+      const stored = await repo.get(id);
+      const [summary] = await repo.list({ owner: 'local' });
+
+      expect(stored).toMatchObject({ id, owner: 'local', createdAt, updatedAt: createdAt });
+      expect(summary).toMatchObject({ id, owner: 'local', updatedAt: createdAt });
+      expect(await repo.update(id, makeRecipe({ title: 'Edited' }))).toBe(true);
+      expect((await repo.get(id))?.owner).toBe('local');
+      await repo.delete(id);
+      expect(await repo.get(id)).toBeNull();
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('LocalJsonFileRecipeRepository', () => {
   let dataDir: string;
@@ -28,73 +46,6 @@ describe('LocalJsonFileRecipeRepository', () => {
 
   afterEach(async () => {
     await rm(dataDir, { recursive: true, force: true });
-  });
-
-  it('round-trips a saved recipe through get', async () => {
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
-    const recipe = makeRecipe({ title: 'Round Trip' });
-
-    const { id } = await repo.save(recipe);
-    const fetched = await repo.get(id);
-
-    expect(fetched).toEqual(recipe);
-  });
-
-  it('returns null from get for an unknown id', async () => {
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
-
-    const fetched = await repo.get('does-not-exist');
-
-    expect(fetched).toBeNull();
-  });
-
-  it('lists summaries newest-first', async () => {
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
-
-    const { id: firstId } = await repo.save(makeRecipe({ title: 'First' }));
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    const { id: secondId } = await repo.save(makeRecipe({ title: 'Second' }));
-
-    const list = await repo.list();
-
-    expect(list.map((s) => s.id)).toEqual([secondId, firstId]);
-    expect(list[0]).toMatchObject({
-      id: secondId,
-      title: 'Second',
-      tags: ['quick'],
-      main_image: 'salt.png',
-    });
-    expect(typeof list[0].createdAt).toBe('string');
-  });
-
-  it('includes time and source_type in summaries', async () => {
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
-
-    await repo.save(makeRecipe({ time: 45, metadata: { source_type: 'url', source_url: 'https://example.com/r', language: 'en', warnings: [] } }));
-    await repo.save(makeRecipe({ time: null }));
-
-    const list = await repo.list();
-    const urlSummary = list.find((s) => s.source_type === 'url');
-    const manualSummary = list.find((s) => s.source_type === 'manual');
-
-    expect(urlSummary?.time).toBe(45);
-    expect(manualSummary?.time).toBeNull();
-  });
-
-  it('delete removes the recipe from get and list', async () => {
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
-    const { id } = await repo.save(makeRecipe());
-
-    await repo.delete(id);
-
-    expect(await repo.get(id)).toBeNull();
-    expect(await repo.list()).toEqual([]);
-  });
-
-  it('delete is idempotent for an unknown id', async () => {
-    const repo = new LocalJsonFileRecipeRepository(dataDir);
-
-    await expect(repo.delete('does-not-exist')).resolves.toBeUndefined();
   });
 
   it('rejects a get() id containing a path separator (path traversal defense-in-depth)', async () => {
@@ -112,15 +63,21 @@ describe('LocalJsonFileRecipeRepository', () => {
     await expect(repo.delete('foo/bar')).rejects.toThrow();
   });
 
+  it('rejects an update() id containing a path separator', async () => {
+    const repo = new LocalJsonFileRecipeRepository(dataDir);
+
+    await expect(repo.update('../../etc/passwd', makeRecipe())).rejects.toThrow();
+  });
+
   it('finds saved recipes after re-instantiating against the same dir (restart simulation)', async () => {
     const repo1 = new LocalJsonFileRecipeRepository(dataDir);
-    const { id } = await repo1.save(makeRecipe({ title: 'Survives Restart' }));
+    const { id } = await repo1.save(makeRecipe({ title: 'Survives Restart' }), 'alice');
 
     const repo2 = new LocalJsonFileRecipeRepository(dataDir);
     const fetched = await repo2.get(id);
     const list = await repo2.list();
 
-    expect(fetched?.title).toBe('Survives Restart');
+    expect(fetched?.recipe.title).toBe('Survives Restart');
     expect(list.map((s) => s.id)).toContain(id);
   });
 });

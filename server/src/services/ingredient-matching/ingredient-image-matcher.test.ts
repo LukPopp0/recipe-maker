@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../lib/errors.js';
 import { loadGeminiConfig } from '../ai/config.js';
-import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
+import { QUOTA_MESSAGE, type GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { RawIngredient } from '../post-processing/index.js';
 import { INGREDIENT_NOT_FOUND_IMAGE, type IngredientCatalog } from './catalog.js';
 import { createIngredientImageMatcher } from './ingredient-image-matcher.js';
@@ -215,6 +215,42 @@ describe('createIngredientImageMatcher', () => {
       { name: 'onions', amount_text: '2', amount_value: 2, image: INGREDIENT_NOT_FOUND_IMAGE },
       { name: 'tomato sauce', amount_text: '400g', amount_value: 400, unit: 'g', image: INGREDIENT_NOT_FOUND_IMAGE },
       { name: 'ground beef', amount_text: '1 lb', amount_value: 1, unit: 'lb', image: INGREDIENT_NOT_FOUND_IMAGE },
+    ]);
+  });
+
+  it('degrades with a quota warning when both attempts hit the Gemini quota', async () => {
+    const quota = new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE);
+    const generateCanonicalRecipe = vi.fn().mockRejectedValueOnce(quota).mockRejectedValueOnce(quota);
+    const matcher = createIngredientImageMatcher({
+      geminiClient: { generateCanonicalRecipe },
+      geminiConfig: makeGeminiConfig(),
+      catalog: CATALOG,
+    });
+
+    const result = await matcher.matchIngredientImages([{ name: 'onion', amount_text: '1' }]);
+
+    expect(result.ingredients).toEqual([{ name: 'onion', amount_text: '1', image: 'INGREDIENT_NOT_FOUND.png' }]);
+    expect(result.warnings).toEqual([
+      'Ingredient image matching skipped: Gemini daily quota reached. All ingredients set to INGREDIENT_NOT_FOUND.png.',
+    ]);
+  });
+
+  it('keeps the generic warning when only the primary attempt hit the quota', async () => {
+    const quota = new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE);
+    const generateCanonicalRecipe = vi
+      .fn()
+      .mockRejectedValueOnce(quota)
+      .mockRejectedValueOnce(new Error('network down'));
+    const matcher = createIngredientImageMatcher({
+      geminiClient: { generateCanonicalRecipe },
+      geminiConfig: makeGeminiConfig(),
+      catalog: CATALOG,
+    });
+
+    const result = await matcher.matchIngredientImages([{ name: 'onion', amount_text: '1' }]);
+
+    expect(result.warnings).toEqual([
+      'Ingredient image matching failed after retry; all ingredients set to INGREDIENT_NOT_FOUND.png.',
     ]);
   });
 

@@ -48,7 +48,7 @@ review panel.
 
 ### Re-hosting
 - `rehostRecipeImages` re-hosts remote `steps[].image` URLs alongside
-  main_image, keys `recipes/{recipeId}/step-{index}.{ext}` - the same scheme
+  main_image, keys `recipes/{recipeId}/step-{index}.jpg` - the same scheme
   manual ingestion uses.
 - Same guardrails as main_image (these URLs are attacker-controllable):
   SSRF validation, hard timeout, streaming maxBytes, MIME allowlist
@@ -76,8 +76,10 @@ review panel.
   INVALID_INPUT. MIME/size failures from hostUploadedImage -> 400
   INVALID_INPUT with the hosting warning as the message.
 - Hosts via the manual-ingestion path (`hostUploadedImage`), key
-  `recipes/{namespaceId}/step-{stepIndex}.{ext}` -> re-upload for the same
-  step overwrites (replace semantics). Returns `{ url }`.
+  `recipes/{namespaceId}/step-{stepIndex}-{8 hex chars}.jpg`. Every upload gets
+  a new key, so a re-upload for the same step never overwrites a file a saved
+  recipe shows; the replaced file is cleaned up as unused by the admin cleanup
+  (docs/specs/06). Returns `{ url }`.
 - Mounted under /api but NOT under /ingest/*, so the ingestion rate limiter
   does not throttle uploads. Body-limited by MANUAL_REQUEST_MAX_BYTES.
 

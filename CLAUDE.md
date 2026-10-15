@@ -38,6 +38,17 @@ Deployment and multi-user work (phases D1-D7) is planned in
 `private/plans/deployment/` (start at `00-overview.md`; spec
 `private/specs/deployment-and-multi-user.md`). Outstanding items that are not
 in any plan: `private/plans/backlog.md`.
+Deployment D1 (auth and users) is done: `AUTH_MODE`/`ADMIN_USERS` middleware on
+`/api/*`, `GET /api/me`, UNAUTHENTICATED/FORBIDDEN errors, username in the header.
+Deployment D2 (storage and ownership) is done: recipe owners, `PUT /api/recipe/:id`
+(Save changes / Save as new), `RECIPE_STORE=json|sqlite` (`RECIPE_DB_PATH`), Library
+My/All switch, delete limited to owner or admin.
+Deployment D3 (images) is done: every stored image is normalized with sharp (max 1600 px,
+JPEG 82, `.jpg` keys) via `ResizingStorageAdapter`, recipe delete removes images no other
+recipe uses, and admins get an "Unused images" cleanup (`/api/admin/images/*`).
+Deployment D4 (Gemini quota message) is done: Gemini 429/RESOURCE_EXHAUSTED errors surface as
+`AI_QUOTA_EXCEEDED` (429), URL ingestion reports it only when the single retry also hits quota,
+and image matching names the quota in its warning.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read

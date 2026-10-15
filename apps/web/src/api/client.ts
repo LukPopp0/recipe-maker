@@ -1,7 +1,16 @@
 // Typed API client for the frontend. All fetch calls live here - the rest of
 // the app never calls fetch directly. Every endpoint returns a ClientResult
 // so callers branch on `.ok` instead of catching exceptions.
-import type { ApiErrorEnvelope, ApiResponse, CanonicalRecipe, RecipeSummary } from 'shared';
+import type {
+  ApiErrorEnvelope,
+  ApiResponse,
+  CanonicalRecipe,
+  CurrentUser,
+  LibraryScope,
+  RecipeMeta,
+  RecipeSummary,
+  UnusedImage,
+} from 'shared';
 
 export interface IngestDiagnostics {
   extractor: string
@@ -142,7 +151,7 @@ export async function ingestManual(fields: {
 }
 
 // Uploads one step image from the review panel. The server hosts it under
-// recipes/{namespaceId}/step-{stepIndex} and returns the hosted URL; the
+// recipes/{namespaceId}/step-{stepIndex}-{suffix} and returns the hosted URL; the
 // caller writes that URL onto the step being edited.
 export async function uploadStepImage(
   namespaceId: string,
@@ -178,14 +187,40 @@ export async function saveRecipe(recipe: CanonicalRecipe): Promise<ClientResult<
   });
 }
 
-export async function listRecipes(): Promise<ClientResult<{ recipes: RecipeSummary[] }>> {
-  return request('/api/recipes');
+// Replaces the stored recipe in place. The owner never changes on update, so
+// the body is the recipe alone.
+export async function updateRecipe(id: string, recipe: CanonicalRecipe): Promise<ClientResult<{ id: string }>> {
+  return request(`/api/recipe/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(recipe),
+  });
 }
 
-export async function getRecipe(id: string): Promise<ClientResult<{ recipe: CanonicalRecipe }>> {
+export async function listRecipes(scope: LibraryScope = 'all'): Promise<ClientResult<{ recipes: RecipeSummary[] }>> {
+  return request(`/api/recipes?scope=${scope}`);
+}
+
+export async function getRecipe(id: string): Promise<ClientResult<{ recipe: CanonicalRecipe; meta: RecipeMeta }>> {
   return request(`/api/recipe/${encodeURIComponent(id)}`);
 }
 
 export async function deleteRecipe(id: string): Promise<ClientResult<Record<string, never>>> {
   return request(`/api/recipe/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function getMe(): Promise<ClientResult<{ user: CurrentUser }>> {
+  return request('/api/me');
+}
+
+export async function listUnusedImages(): Promise<ClientResult<{ images: UnusedImage[] }>> {
+  return request('/api/admin/images/unused');
+}
+
+export async function deleteImages(keys: string[]): Promise<ClientResult<{ deleted: number }>> {
+  return request('/api/admin/images/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keys }),
+  });
 }

@@ -12,6 +12,13 @@ const ServerEnvSchema = z.object({
     .string()
     .default('./data/recipes')
     .transform((value) => path.resolve(value)),
+  // json: one file per recipe under RECIPE_DATA_DIR (local default).
+  // sqlite: a single database file at RECIPE_DB_PATH (production).
+  RECIPE_STORE: z.enum(['json', 'sqlite']).default('json'),
+  RECIPE_DB_PATH: z
+    .string()
+    .default('./data/db/recipes.db')
+    .transform((value) => path.resolve(value)),
   DEFAULT_MAIN_IMAGE_URL: z
     .string()
     .optional()
@@ -36,12 +43,27 @@ const ServerEnvSchema = z.object({
     .transform((value) => path.resolve(value)),
   // No schema-level default: PUBLIC_BASE_URL defaults to
   // `http://localhost:{PORT}` in loadServerEnv below, once PORT is known.
+  // Trailing slashes are stripped so `${PUBLIC_BASE_URL}/images/<key>` URLs
+  // and the image-key matchers (deployment spec section 8) always agree.
   PUBLIC_BASE_URL: z
     .string()
     .optional()
-    .transform((value) => (value === '' ? undefined : value)),
+    .transform((value) => (value === '' || value === undefined ? undefined : value.replace(/\/+$/, ''))),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  // none: every request runs as the admin user "local" (local dev, tests).
+  // header: trust the Remote-User header set by the reverse proxy after
+  // tinyauth login; only safe when the app is reachable through that proxy.
+  AUTH_MODE: z.enum(['none', 'header']).default('none'),
+  ADMIN_USERS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((name) => name.trim().toLowerCase())
+        .filter((name) => name.length > 0),
+    ),
 });
 
 // PUBLIC_BASE_URL is optional at the schema level but loadServerEnv always
@@ -68,6 +90,16 @@ export function loadServerEnv(raw: RawEnv): ServerEnv {
 
   return {
     ...result.data,
-    PUBLIC_BASE_URL: result.data.PUBLIC_BASE_URL ?? `http://localhost:${result.data.PORT}`,
+    PUBLIC_BASE_URL: result.data.PUBLIC_BASE_URL || `http://localhost:${result.data.PORT}`,
   };
+}
+
+// AUTH_MODE=none makes every request the admin "local"; fine for local dev,
+// but on a public production server it means no login at all, so index.ts
+// logs this at startup.
+export function authModeWarning(env: ServerEnv): string | null {
+  if (env.NODE_ENV === 'production' && env.AUTH_MODE === 'none') {
+    return 'AUTH_MODE=none in production: every request runs as the admin user "local"; set AUTH_MODE=header behind the login proxy.';
+  }
+  return null;
 }
