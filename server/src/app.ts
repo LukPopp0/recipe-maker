@@ -6,6 +6,7 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import { logger } from './middleware/logger.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
 import { requestId, type AppVariables } from './middleware/request-id.js';
+import { createAdminApp } from './routes/admin.js';
 import { createImageApp } from './routes/image.js';
 import { createIngestApp } from './routes/ingest.js';
 import { createHealthApp } from './routes/health.js';
@@ -64,6 +65,14 @@ export function createApp(deps: AppDeps): App {
   app.route('/api', recipeApp);
   app.route('/api', ingestApp);
   app.route('/api', imageApp);
+  app.route(
+    '/api',
+    createAdminApp({
+      recipeRepository: deps.recipeRepository,
+      storageAdapter: deps.storageAdapter,
+      publicBaseUrl: deps.env.PUBLIC_BASE_URL,
+    }),
+  );
 
   // Serves re-hosted recipe images (docs/specs/06) from IMAGE_DATA_DIR. Rehosted
   // URLs are built as `${PUBLIC_BASE_URL}/images/${key}` (see

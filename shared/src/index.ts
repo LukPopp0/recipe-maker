@@ -18,6 +18,7 @@ export type { ErrorCode, ApiError, ApiSuccessEnvelope, ApiErrorEnvelope, ApiResp
 
 export type { RecipeMeta, RecipeSummary, LibraryScope } from './contracts/recipe-repository.js';
 export type { CurrentUser } from './contracts/user.js';
+export type { UnusedImage } from './contracts/images.js';
 
 export { amountContainsUnit, formatIngredientAmount } from './lib/ingredient-amount.js';
 
