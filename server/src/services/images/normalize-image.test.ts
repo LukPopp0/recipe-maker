@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { ImageDecodeError, MAX_INPUT_PIXELS, normalizeImage } from './normalize-image.js';
+import { ImageDecodeError, MAX_INPUT_PIXELS, DECODABLE_FORMATS, normalizeImage } from './normalize-image.js';
 
 async function makePng(width: number, height: number, alpha = 1): Promise<Buffer> {
   return sharp({ create: { width, height, channels: 4, background: { r: 200, g: 0, b: 0, alpha } } }).png().toBuffer();
@@ -57,5 +57,36 @@ describe('normalizeImage', () => {
       .toBuffer();
 
     await expect(normalizeImage(huge)).rejects.toBeInstanceOf(ImageDecodeError);
+  });
+
+  it('accepts WebP input', async () => {
+    const webp = await sharp({ create: { width: 20, height: 10, channels: 3, background: '#336699' } })
+      .webp()
+      .toBuffer();
+
+    const meta = await sharp(await normalizeImage(webp)).metadata();
+
+    expect(meta.format).toBe('jpeg');
+    expect(meta.width).toBe(20);
+  });
+
+  it('only allows jpeg, png and webp', () => {
+    expect([...DECODABLE_FORMATS].sort()).toEqual(['jpeg', 'png', 'webp']);
+  });
+
+  it('rejects an SVG as ImageDecodeError', async () => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>',
+    );
+
+    await expect(normalizeImage(svg)).rejects.toBeInstanceOf(ImageDecodeError);
+  });
+
+  it('rejects a GIF as ImageDecodeError', async () => {
+    const gif = await sharp({ create: { width: 10, height: 10, channels: 3, background: '#fff' } })
+      .gif()
+      .toBuffer();
+
+    await expect(normalizeImage(gif)).rejects.toBeInstanceOf(ImageDecodeError);
   });
 });

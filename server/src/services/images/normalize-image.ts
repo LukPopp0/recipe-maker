@@ -6,6 +6,11 @@ export const JPEG_QUALITY = 82;
 // on the 4 GB server; larger inputs fail as ImageDecodeError.
 export const MAX_INPUT_PIXELS = 50_000_000;
 
+// Formats we decode. Anything else (SVG, GIF, TIFF, HEIF, ...) is refused
+// before the resize pipeline: smaller libvips decoder attack surface on a
+// public server, and it matches the accepted types in docs/specs/06.
+export const DECODABLE_FORMATS: ReadonlySet<string> = new Set(['jpeg', 'png', 'webp']);
+
 // Thrown when the input bytes cannot be decoded as an image, so callers can
 // report it like any other rejected upload instead of a 500.
 export class ImageDecodeError extends Error {
@@ -21,6 +26,11 @@ export class ImageDecodeError extends Error {
 // EXIF/ICC metadata unless asked to keep it.
 export async function normalizeImage(input: Buffer): Promise<Buffer> {
   try {
+    // Header-only read: decides the format before any pixel decoding happens.
+    const { format } = await sharp(input, { failOn: 'error', limitInputPixels: MAX_INPUT_PIXELS }).metadata();
+    if (!format || !DECODABLE_FORMATS.has(format)) {
+      throw new ImageDecodeError(`unsupported image format: ${format ?? 'unknown'}`);
+    }
     return await sharp(input, { failOn: 'error', limitInputPixels: MAX_INPUT_PIXELS })
       .rotate()
       .resize({
@@ -33,6 +43,7 @@ export async function normalizeImage(input: Buffer): Promise<Buffer> {
       .jpeg({ quality: JPEG_QUALITY })
       .toBuffer();
   } catch (err) {
+    if (err instanceof ImageDecodeError) throw err;
     throw new ImageDecodeError(err instanceof Error ? err.message : 'unreadable image');
   }
 }

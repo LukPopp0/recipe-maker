@@ -41,6 +41,9 @@ Implementations:
    format) and the stored content type is `image/jpeg`.
 5. Store image and return hosted URL.
 
+Only JPEG, PNG and WebP are decoded, whatever the declared content type (checked from the
+file header before decoding); SVG, GIF, TIFF, HEIF etc. are rejected like undecodable bytes.
+
 Undecodable bytes (corrupt data with an image content type) are not stored and
 never cause a 500: the upload hoster returns the warning "<file> was not
 uploaded: the file is not a readable image."; the remote fetcher returns its
