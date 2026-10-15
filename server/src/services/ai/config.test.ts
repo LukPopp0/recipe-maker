@@ -6,8 +6,8 @@ describe('loadGeminiConfig', () => {
     const config = loadGeminiConfig({});
 
     expect(config.geminiApiKey).toBeUndefined();
-    expect(config.primaryModel).toBe('gemini-3.1-flash-lite');
-    expect(config.retryModel).toBe('gemini-2.5-flash');
+    expect(config.primaryModel).toBe('gemini-3.5-flash-lite');
+    expect(config.retryModel).toBe('gemini-3.1-flash-lite');
     expect(config.timeoutMs).toBe(60000);
     expect(config.tokenBudget).toBe(8000);
     expect(config.generationConfig).toEqual({
@@ -46,7 +46,7 @@ describe('loadGeminiConfig', () => {
       GEMINI_MAX_RETRIES: '2',
     });
 
-    expect(config.primaryModel).toBe('gemini-3.1-flash-lite');
-    expect(config.retryModel).toBe('gemini-2.5-flash');
+    expect(config.primaryModel).toBe('gemini-3.5-flash-lite');
+    expect(config.retryModel).toBe('gemini-3.1-flash-lite');
   });
 });

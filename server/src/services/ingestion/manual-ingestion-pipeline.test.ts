@@ -215,7 +215,7 @@ describe('runManualIngestionPipeline', () => {
     expect(result.recipeCandidate.steps[0].image).toContain('recipes/recipe-1/step-0.jpg');
     expect(result.recipeCandidate.steps[1].image).toContain('recipes/recipe-1/step-1.jpg');
     expect(result.diagnostics.extractor).toBe('gemini-primary');
-    expect(result.diagnostics.model).toBe('gemini-3.1-flash-lite');
+    expect(result.diagnostics.model).toBe('gemini-3.5-flash-lite');
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
     expect(generateCanonicalRecipe.mock.calls[0][0].responseJsonSchema).toBe(MANUAL_RECIPE_OUTPUT_JSON_SCHEMA);
   });

@@ -90,7 +90,7 @@ describe('runUrlIngestionPipeline', () => {
 
     expect(result.recipeCandidate).toBe(VALID_CANDIDATE);
     expect(result.diagnostics.extractor).toBe('gemini-primary');
-    expect(result.diagnostics.model).toBe('gemini-3.1-flash-lite');
+    expect(result.diagnostics.model).toBe('gemini-3.5-flash-lite');
     expect(result.diagnostics.durationMs).toBeGreaterThanOrEqual(0);
     expect(generateCanonicalRecipe).toHaveBeenCalledTimes(1);
   });
@@ -113,9 +113,9 @@ describe('runUrlIngestionPipeline', () => {
 
     expect(result.recipeCandidate).toBe(VALID_CANDIDATE);
     expect(result.diagnostics.extractor).toBe('gemini-retry');
-    expect(result.diagnostics.model).toBe('gemini-2.5-flash');
+    expect(result.diagnostics.model).toBe('gemini-3.1-flash-lite');
     expect(generateCanonicalRecipe).toHaveBeenCalledTimes(2);
-    expect(generateCanonicalRecipe.mock.calls[1][0].model).toBe('gemini-2.5-flash');
+    expect(generateCanonicalRecipe.mock.calls[1][0].model).toBe('gemini-3.1-flash-lite');
     // Both attempts request structured output.
     expect(generateCanonicalRecipe.mock.calls[0][0].responseJsonSchema).toBe(URL_RECIPE_OUTPUT_JSON_SCHEMA);
     expect(generateCanonicalRecipe.mock.calls[1][0].responseJsonSchema).toBe(URL_RECIPE_OUTPUT_JSON_SCHEMA);

@@ -4,9 +4,9 @@ import { z } from 'zod';
 // Deterministic generationConfig ensures reproducible outputs.
 const geminiConfigSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_PRIMARY_MODEL: z.string().default('gemini-3.1-flash-lite'),
-  GEMINI_RETRY_MODEL: z.string().default('gemini-2.5-flash'),
-  // Real-world full-recipe extractions with 2.5-class models routinely take
+  GEMINI_PRIMARY_MODEL: z.string().default('gemini-3.5-flash-lite'),
+  GEMINI_RETRY_MODEL: z.string().default('gemini-3.1-flash-lite'),
+  // Real-world full-recipe extractions routinely take
   // 20-40s (thinking + large JSON output); 20s timed out on the happy path.
   GEMINI_TIMEOUT_MS: z.coerce.number().default(60000),
   GEMINI_TOKEN_BUDGET: z.coerce.number().default(8000),
