@@ -68,6 +68,8 @@ jobs:
           context: .
           platforms: linux/arm64
           push: true
+          # one push = one GHCR version, so the prune keeps 10 pullable images
+          provenance: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
