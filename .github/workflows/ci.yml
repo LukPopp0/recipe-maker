@@ -28,6 +28,9 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
+    concurrency:
+      group: image-main
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write

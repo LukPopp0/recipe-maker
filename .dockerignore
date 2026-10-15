@@ -11,3 +11,5 @@ server/data
 *.log
 graphify-out
 .agents
+data
+.superpowers

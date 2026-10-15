@@ -38,6 +38,15 @@ describe('web app serving', () => {
     expect(await asset.text()).toBe('console.log(1)');
   });
 
+  it('sends no-cache for index.html but not for hashed assets', async () => {
+    const app = makeApp({ WEB_DIST_DIR: distDir });
+
+    expect((await app.request('/')).headers.get('Cache-Control')).toBe('no-cache');
+    expect((await app.request('/index.html')).headers.get('Cache-Control')).toBe('no-cache');
+    expect((await app.request('/library/x')).headers.get('Cache-Control')).toBe('no-cache');
+    expect((await app.request('/assets/app.js')).headers.get('Cache-Control')).not.toBe('no-cache');
+  });
+
   it('falls back to index.html for unknown non-API paths', async () => {
     const res = await makeApp({ WEB_DIST_DIR: distDir }).request('/library/some-recipe');
 

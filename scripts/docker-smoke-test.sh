@@ -7,7 +7,15 @@ IMAGE="$1"
 NAME="recipe-maker-smoke-$$"
 PORT=18787
 
-cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
+# On failure show the container logs first, otherwise CI only shows a curl error.
+cleanup() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "smoke test failed; container logs:" >&2
+    docker logs "$NAME" 2>&1 | tail -n 200 >&2 || true
+  fi
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 
 docker run -d --name "$NAME" -p "127.0.0.1:${PORT}:8787" \

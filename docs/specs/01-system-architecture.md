@@ -71,7 +71,7 @@ This is a pnpm workspace with three sibling packages: `/apps/web` (package `web`
 - Frontend cannot call Gemini directly in production.
 - Uploaded files validated by MIME and size.
 - URL fetch restricted by protocol and denylist (local/internal targets blocked).
-- server/data/recipes is excluded from version control. If deployed beyond local use, add a basic access gate (single shared secret) in front of the API; full multi-user auth is out of scope for now.
+- server/data/recipes is excluded from version control. Login happens in a reverse proxy (tinyauth + nginx); the app trusts the `Remote-User` header when `AUTH_MODE=header` and runs everyone as admin `local` when `AUTH_MODE=none` (default, local dev). There are no in-app accounts.
 
 ## Performance Requirements
 - P50 ingest response under 12s for typical recipes.
