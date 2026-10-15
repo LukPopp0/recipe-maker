@@ -52,6 +52,9 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
      quotas are per model. AI_QUOTA_EXCEEDED is returned only when the retry
      attempt itself fails on quota; any other retry failure stays
      URL_EXTRACTION_FAILED.
+     Known limitation: Gemini answers per-minute (RPM/TPM) and per-day limits
+     alike with 429 RESOURCE_EXHAUSTED, so every Gemini 429 is reported as the
+     daily quota, including short per-minute limits.
 8. Post-process and validate:
    - pantry split.
    - ingredient dedupe: merge near-duplicates differing only by preparation

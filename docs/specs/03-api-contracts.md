@@ -172,7 +172,7 @@ Response:
 - URL_FETCH_TIMEOUT
 - URL_EXTRACTION_FAILED
 - AI_NORMALIZATION_FAILED
-- AI_QUOTA_EXCEEDED (429, Gemini daily quota reached: "Gemini daily quota reached. It resets at midnight Pacific time."; distinct from the app's own RATE_LIMITED)
+- AI_QUOTA_EXCEEDED (429, Gemini daily quota reached: "Gemini daily quota reached. It resets at midnight Pacific time."; distinct from the app's own RATE_LIMITED; every Gemini 429 maps here, including short per-minute limits)
 - SCHEMA_VALIDATION_FAILED
 - IMAGE_DOWNLOAD_FAILED
 - RECIPE_NOT_FOUND

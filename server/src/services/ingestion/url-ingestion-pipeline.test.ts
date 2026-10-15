@@ -384,6 +384,13 @@ describe('runUrlIngestionPipeline', () => {
 
       await expect(run(generate)).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
     });
+
+    // The final attempt decides the reported error (docs/specs/04).
+    it('reports AI_QUOTA_EXCEEDED when the primary returns garbage and the retry hits the quota', async () => {
+      const generate = vi.fn().mockResolvedValueOnce(GARBAGE_CANDIDATE).mockRejectedValueOnce(quota());
+
+      await expect(run(generate)).rejects.toMatchObject({ code: 'AI_QUOTA_EXCEEDED' });
+    });
   });
 
   describe('stage logging', () => {
