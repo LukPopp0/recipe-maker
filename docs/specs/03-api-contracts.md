@@ -141,14 +141,14 @@ Response:
 ```
 
 ### GET /api/admin/images/unused
-Admin only (403 `FORBIDDEN` otherwise). Lists stored images no saved recipe references that are older than 24 hours.
+Admin only (403 `FORBIDDEN` otherwise). Lists stored images no saved recipe references that are older than 24 hours. The `url` is `${PUBLIC_BASE_URL}/images/<key>`.
 Response:
 ```json
 {
   "ok": true,
   "requestId": "...",
   "images": [
-    { "key": "recipes/ns1/main-0.jpg", "url": "/images/recipes/ns1/main-0.jpg", "sizeBytes": 48211, "modifiedAt": "..." }
+    { "key": "recipes/ns1/main-0.jpg", "url": "https://recipes.example.com/images/recipes/ns1/main-0.jpg", "sizeBytes": 48211, "modifiedAt": "..." }
   ]
 }
 ```
