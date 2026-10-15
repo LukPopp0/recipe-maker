@@ -3,15 +3,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import { ActionTray } from './ActionTray.tsx';
-import { saveRecipe } from '../api/client.ts';
+import { saveRecipe, updateRecipe } from '../api/client.ts';
 import type { WorkspaceRecipeState } from '../workspace-types.ts';
 
 vi.mock('../api/client.ts', async () => {
   const actual = await vi.importActual<typeof import('../api/client.ts')>('../api/client.ts');
-  return { ...actual, saveRecipe: vi.fn() };
+  return { ...actual, saveRecipe: vi.fn(), updateRecipe: vi.fn() };
 });
 
 const mockedSaveRecipe = vi.mocked(saveRecipe);
+const mockedUpdateRecipe = vi.mocked(updateRecipe);
 
 const RECIPE: CanonicalRecipe = {
   title: 'Spicy Noodles',
@@ -26,8 +27,8 @@ const RECIPE: CanonicalRecipe = {
 
 const INVALID_RECIPE: CanonicalRecipe = { ...RECIPE, title: '' };
 
-function stateFor(recipe: CanonicalRecipe, overrides: Partial<{ savedId: string | null; dirty: boolean }> = {}): WorkspaceRecipeState {
-  return { recipe, diagnostics: null, savedId: null, dirty: false, imageNamespaceId: 'ns-test', ...overrides };
+function stateFor(recipe: CanonicalRecipe, overrides: Partial<{ savedId: string | null; dirty: boolean; sourceId: string | null }> = {}): WorkspaceRecipeState {
+  return { recipe, diagnostics: null, savedId: null, dirty: false, imageNamespaceId: 'ns-test', sourceId: null, ...overrides };
 }
 
 function renderTray(
@@ -166,5 +167,50 @@ describe('ActionTray', () => {
     await user.click(screen.getByRole('button', { name: /preview card/i }));
     expect(onPreviewCard).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toBeInTheDocument(); // FieldErrors container
+  });
+
+  it('offers only "Save Recipe" for a recipe that was never saved', () => {
+    renderTray(stateFor(RECIPE));
+
+    expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+  });
+
+  it('"Save changes" PUTs to the source recipe and reports the same id', async () => {
+    const user = userEvent.setup();
+    mockedUpdateRecipe.mockResolvedValueOnce({ ok: true, value: { id: 'src-1' } });
+    const { onSaved } = renderTray(stateFor(RECIPE, { sourceId: 'src-1' }));
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(mockedUpdateRecipe).toHaveBeenCalledWith('src-1', RECIPE);
+    expect(onSaved).toHaveBeenCalledWith('src-1');
+  });
+
+  it('"Save as new" POSTs a new recipe', async () => {
+    const user = userEvent.setup();
+    mockedSaveRecipe.mockResolvedValueOnce({ ok: true, value: { id: 'new-1' } });
+    const { onSaved } = renderTray(stateFor(RECIPE, { sourceId: 'src-1' }));
+
+    await user.click(screen.getByRole('button', { name: 'Save as new' }));
+
+    expect(mockedSaveRecipe).toHaveBeenCalledWith(RECIPE);
+    expect(mockedUpdateRecipe).not.toHaveBeenCalled();
+    expect(onSaved).toHaveBeenCalledWith('new-1');
+  });
+
+  it('shows RECIPE_NOT_FOUND from "Save changes" and keeps the edits', async () => {
+    const user = userEvent.setup();
+    mockedUpdateRecipe.mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'RECIPE_NOT_FOUND', message: 'No recipe exists with id "src-1".' },
+    });
+    const { onSaved } = renderTray(stateFor(RECIPE, { sourceId: 'src-1', dirty: true }));
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText(/No recipe exists/)).toBeInTheDocument();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Save as new' })).toBeEnabled();
   });
 });

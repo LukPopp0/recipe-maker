@@ -22,13 +22,15 @@ const RECIPE: CanonicalRecipe = {
   metadata: { source_type: 'url', language: 'en', warnings: [] },
 };
 
+const META = { id: 'id-1', owner: 'alice', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
+
 describe('RecipeDetail', () => {
   beforeEach(() => {
     mockedGetRecipe.mockReset();
   });
 
   it('fetches by id and renders the recipe read-only with no Save button', async () => {
-    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE } });
+    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
     render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
 
     expect(await screen.findByText('Saved Soup')).toBeInTheDocument();
@@ -37,21 +39,21 @@ describe('RecipeDetail', () => {
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 
-  it('fires onOpenInCreate with the loaded recipe', async () => {
+  it('fires onOpenInCreate with the loaded recipe and its id', async () => {
     const user = userEvent.setup();
     const onOpenInCreate = vi.fn();
-    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE } });
+    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
     render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={onOpenInCreate} onDelete={vi.fn()} />);
 
     await user.click(await screen.findByRole('button', { name: /open in create/i }));
-    expect(onOpenInCreate).toHaveBeenCalledWith(RECIPE);
+    expect(onOpenInCreate).toHaveBeenCalledWith(RECIPE, 'id-1');
   });
 
   it('fires onDelete with the id and onBack from the Back button', async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
     const onBack = vi.fn();
-    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE } });
+    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
     render(<RecipeDetail id="id-1" onBack={onBack} onOpenInCreate={vi.fn()} onDelete={onDelete} />);
 
     await user.click(await screen.findByRole('button', { name: /delete/i }));
@@ -76,7 +78,7 @@ describe('RecipeDetail', () => {
 describe('View as Card', () => {
   it('replaces the detail view with the card and returns via Back', async () => {
     const user = userEvent.setup();
-    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE } });
+    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
     render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
 
     await user.click(await screen.findByRole('button', { name: /view as card/i }));

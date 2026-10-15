@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import App from './App.tsx';
-import { getMe, ingestUrl, listRecipes } from './api/client.ts';
+import { getMe, getRecipe, ingestUrl, listRecipes } from './api/client.ts';
 
 vi.mock('./api/client.ts', () => ({
   ingestUrl: vi.fn(),
@@ -11,6 +11,8 @@ vi.mock('./api/client.ts', () => ({
   getRecipe: vi.fn(),
   deleteRecipe: vi.fn(),
   getMe: vi.fn(),
+  updateRecipe: vi.fn(),
+  saveRecipe: vi.fn(),
 }));
 
 const mockedIngestUrl = vi.mocked(ingestUrl);
@@ -281,5 +283,44 @@ describe('Create card preview', () => {
     // view should be the only thing occupying vertical space.
     const reviewPanel = screen.getByRole('heading', { name: /^review$/i }).closest('section');
     expect(reviewPanel).toHaveStyle({ height: '0px', overflow: 'hidden' });
+  });
+});
+
+describe('Open in Create', () => {
+  it('shows Save changes and Save as new for a recipe opened from the Library', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listRecipes).mockResolvedValueOnce({
+      ok: true,
+      value: {
+        recipes: [
+          {
+            id: 'id-1',
+            title: 'Test Recipe',
+            tags: [],
+            main_image: '/images/placeholder.png',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            owner: 'alice',
+            time: 30,
+            source_type: 'url',
+          },
+        ],
+      },
+    });
+    vi.mocked(getRecipe).mockResolvedValueOnce({
+      ok: true,
+      value: {
+        recipe: RECIPE,
+        meta: { id: 'id-1', owner: 'alice', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      },
+    });
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /library/i }));
+    await user.click(await screen.findByRole('button', { name: 'View Test Recipe' }));
+    await user.click(await screen.findByRole('button', { name: /open in create/i }));
+
+    expect(await screen.findByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save as new' })).toBeInTheDocument();
   });
 });

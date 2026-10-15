@@ -6,7 +6,7 @@
 // server-side). Save never fires automatically - only a direct click.
 import { useCallback, useState } from 'react';
 import { CanonicalRecipeSchema, type CanonicalRecipe } from 'shared';
-import { saveRecipe, type ApiFailure, type FlattenedErrors } from '../api/client.ts';
+import { saveRecipe, updateRecipe, type ApiFailure, type FlattenedErrors } from '../api/client.ts';
 import type { WorkspaceRecipeState } from '../workspace-types.ts';
 import { FieldErrors } from './review/FieldErrors.tsx';
 import { ErrorBanner } from './ErrorBanner.tsx';
@@ -67,7 +67,7 @@ export function ActionTray({
     onPreviewCard();
   }, [recipe, onPreviewCard]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback((mode: 'new' | 'update') => {
     if (!recipe) return;
     const parsed = CanonicalRecipeSchema.safeParse(recipe);
     if (!parsed.success) {
@@ -75,8 +75,10 @@ export function ActionTray({
       return;
     }
 
+    const sourceId = recipeState?.sourceId ?? null;
     setStatus({ phase: 'saving' });
-    void saveRecipe(recipe).then((result) => {
+    const pending = mode === 'update' && sourceId ? updateRecipe(sourceId, recipe) : saveRecipe(recipe);
+    void pending.then((result) => {
       if (result.ok) {
         setStatus({ phase: 'saved', id: result.value.id });
         onSaved(result.value.id);
@@ -94,7 +96,7 @@ export function ActionTray({
 
       setStatus({ phase: 'save-error', error: result.error });
     });
-  }, [recipe, onSaved]);
+  }, [recipe, recipeState?.sourceId, onSaved]);
 
   const handleDismissSaveError = useCallback(() => {
     setStatus({ phase: 'idle' });
@@ -116,14 +118,25 @@ export function ActionTray({
       ) : null}
       {status.phase === 'save-error' ? (
         <div className="action-tray-feedback">
-          <ErrorBanner error={status.error} onRetry={handleSave} onDismiss={handleDismissSaveError} />
+          <ErrorBanner error={status.error} onRetry={() => handleSave(recipeState.sourceId ? 'update' : 'new')} onDismiss={handleDismissSaveError} />
         </div>
       ) : null}
 
       <div className="action-tray">
-        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save Recipe'}
-        </button>
+        {recipeState.sourceId ? (
+          <>
+            <button type="button" className="btn btn-primary" onClick={() => handleSave('update')} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save changes'}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => handleSave('new')} disabled={isSaving}>
+              Save as new
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn-primary" onClick={() => handleSave('new')} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Recipe'}
+          </button>
+        )}
         <button type="button" className="btn btn-secondary" onClick={handlePreviewCard}>
           Preview Card
         </button>

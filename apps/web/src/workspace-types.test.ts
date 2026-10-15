@@ -18,6 +18,7 @@ describe('shouldConfirmReplace', () => {
       imageNamespaceId: 'ns-test',
       savedId: null,
       dirty: true,
+      sourceId: null,
     };
 
     expect(shouldConfirmReplace(state)).toBe(true);
@@ -30,6 +31,7 @@ describe('shouldConfirmReplace', () => {
       imageNamespaceId: 'ns-test',
       savedId: null,
       dirty: false,
+      sourceId: null,
     };
 
     expect(shouldConfirmReplace(state)).toBe(false);
@@ -42,6 +44,7 @@ describe('shouldConfirmReplace', () => {
       imageNamespaceId: 'ns-test',
       savedId: 'recipe-123',
       dirty: true,
+      sourceId: 'recipe-123',
     };
 
     expect(shouldConfirmReplace(state)).toBe(false);

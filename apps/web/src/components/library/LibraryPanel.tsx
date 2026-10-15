@@ -19,7 +19,7 @@ type ListStatus =
 export function LibraryPanel({
   onOpenInCreate,
 }: {
-  onOpenInCreate: (recipe: CanonicalRecipe) => void
+  onOpenInCreate: (recipe: CanonicalRecipe, sourceId: string) => void
 }) {
   const [summaries, setSummaries] = useState<RecipeSummary[]>([]);
   const [status, setStatus] = useState<ListStatus>({ phase: 'loading' });

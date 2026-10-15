@@ -69,7 +69,7 @@ function App() {
   // unsaved edits, so confirm first when the current state is dirty (plan
   // decision 12).
   const adoptRecipe = useCallback(
-    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string): boolean => {
+    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string, sourceId?: string): boolean => {
       if (shouldConfirmReplace(recipeState)) {
         const proceed = window.confirm(
           'Loading a new recipe will discard your unsaved changes. Continue?',
@@ -84,6 +84,7 @@ function App() {
         savedId: null,
         dirty: false,
         imageNamespaceId: imageNamespaceId ?? crypto.randomUUID(),
+        sourceId: sourceId ?? null,
       });
       setShowCardPreview(false);
       setInputCollapsed(true);
@@ -103,11 +104,11 @@ function App() {
     setInputCollapsed(false);
   }, []);
 
-  // Open in Create copies a saved recipe into the workspace (docs/specs/13):
-  // saving it again creates a new id, the library original is untouched.
+  // Open in Create loads a saved recipe for editing: Save changes updates it
+  // in place, Save as new makes a copy.
   const handleOpenInCreate = useCallback(
-    (recipe: CanonicalRecipe) => {
-      if (adoptRecipe(recipe, null)) {
+    (recipe: CanonicalRecipe, sourceId: string) => {
+      if (adoptRecipe(recipe, null, undefined, sourceId)) {
         setView('create');
       }
     },
@@ -121,10 +122,10 @@ function App() {
     setRecipeState((prev) => (prev ? { ...prev, recipe, dirty: true, savedId: null } : prev));
   }, []);
 
-  // Only the ActionTray's explicit Save Recipe action calls this - it is the
+  // Only the ActionTray's explicit save actions call this - it is the
   // single place that marks the workspace saved and clears dirty.
   const handleSaved = useCallback((id: string) => {
-    setRecipeState((prev) => (prev ? { ...prev, savedId: id, dirty: false } : prev));
+    setRecipeState((prev) => (prev ? { ...prev, savedId: id, sourceId: id, dirty: false } : prev));
   }, []);
 
   const inCreate = view === 'create' && !showCardPreview;
