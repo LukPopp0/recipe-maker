@@ -49,6 +49,18 @@ describe('deleteUnsharedRecipeImages', () => {
     expect(storageAdapter.delete).not.toHaveBeenCalled();
   });
 
+  it('keeps a referenced key when PUBLIC_BASE_URL has a path', async () => {
+    const APP = 'https://recipes.example.com/app';
+    const storageAdapter = { put: vi.fn(), get: vi.fn(), list: vi.fn(), delete: vi.fn(async () => {}) };
+    const deleted = recipeWith(`${APP}/images/recipes/a/main-0.jpg`);
+    const remaining = [stored(recipeWith(`${APP}/images/recipes/a/main-0.jpg`))];
+
+    const keys = await deleteUnsharedRecipeImages({ deleted, remaining, storageAdapter, publicBaseUrl: APP, requestId: 'r' });
+
+    expect(keys).toEqual([]);
+    expect(storageAdapter.delete).not.toHaveBeenCalled();
+  });
+
   it('never deletes the placeholder and never throws when a delete fails', async () => {
     const storageAdapter = {
       put: vi.fn(),

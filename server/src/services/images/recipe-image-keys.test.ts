@@ -61,3 +61,24 @@ describe('referencedImageKeys', () => {
     expect(referencedImageKeys(recipe, BASE).sort()).toEqual(['recipes/abc/main-0.jpg', 'recipes/abc/step-0.jpg']);
   });
 });
+
+describe('base URL with a path', () => {
+  const APP = 'https://recipes.example.com/app';
+
+  it('keeps localImageKey strict', () => {
+    expect(localImageKey(`${APP}/images/recipes/abc/main-0.jpg`, APP)).toBe('recipes/abc/main-0.jpg');
+    expect(localImageKey('/images/recipes/abc/main-0.jpg', APP)).toBe('recipes/abc/main-0.jpg');
+    expect(localImageKey('https://old.example.com/app/images/recipes/abc/main-0.jpg', APP)).toBeNull();
+  });
+
+  it('counts own, other-origin and root-relative URLs as referenced', () => {
+    expect(referencedImageKey(`${APP}/images/recipes/abc/main-0.jpg`, APP)).toBe('recipes/abc/main-0.jpg');
+    expect(referencedImageKey('https://old.example.com/app/images/recipes/abc/main-0.jpg', APP)).toBe('recipes/abc/main-0.jpg');
+    expect(referencedImageKey('/images/recipes/abc/main-0.jpg', APP)).toBe('recipes/abc/main-0.jpg');
+  });
+
+  it('tolerates a trailing slash on the base URL and an invalid base URL', () => {
+    expect(referencedImageKey(`${APP}/images/recipes/abc/main-0.jpg`, `${APP}/`)).toBe('recipes/abc/main-0.jpg');
+    expect(referencedImageKey('/images/recipes/abc/main-0.jpg', 'not a url')).toBe('recipes/abc/main-0.jpg');
+  });
+});

@@ -18,18 +18,35 @@ export function localImageKey(url: string, publicBaseUrl: string): string | null
 }
 
 // Liberal counterpart for deciding what is still *used* (deployment spec
-// section 8): only the path counts, so images saved under an older
-// PUBLIC_BASE_URL (or with a ?v= query) are never mistaken for unused.
-// Never use this to pick what to delete; localImageKey stays strict for that.
+// section 8): the origin and query are ignored, so images saved under an
+// older PUBLIC_BASE_URL (or with a ?v= query) are never mistaken for unused.
+// It accepts everything localImageKey accepts, plus a `/images/` path under
+// the current base path (a base like https://host/app puts files at
+// /app/images/...). Never use this to pick what to delete; localImageKey
+// stays strict for that.
 export function referencedImageKey(url: string, publicBaseUrl: string): string | null {
+  const local = localImageKey(url, publicBaseUrl);
+  if (local) return local;
+
+  // An unparseable base fails toward "used": only the plain /images/ path is tried.
+  let basePath = '';
+  let base = 'http://localhost';
+  try {
+    const parsed = new URL(publicBaseUrl);
+    basePath = parsed.pathname.replace(/\/+$/, '');
+    base = publicBaseUrl;
+  } catch {
+    // keep defaults
+  }
+
   let pathname: string;
   try {
-    pathname = new URL(url, publicBaseUrl).pathname;
+    pathname = new URL(url, base).pathname;
   } catch {
     return null;
   }
-  const prefix = '/images/';
-  if (!pathname.startsWith(prefix)) return null;
+  const prefix = [`${basePath}/images/`, '/images/'].find((candidate) => pathname.startsWith(candidate));
+  if (!prefix) return null;
 
   const key = pathname.slice(prefix.length);
   return RECIPE_KEY_PATTERN.test(key) && !key.split('/').includes('..') ? key : null;

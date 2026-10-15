@@ -29,6 +29,12 @@ describe('loadServerEnv', () => {
     expect(env.RATE_LIMIT_WINDOW_MS).toBe(60000);
   });
 
+  it('strips trailing slashes from PUBLIC_BASE_URL', () => {
+    expect(loadServerEnv({ PUBLIC_BASE_URL: 'https://recipes.example.com/app//' }).PUBLIC_BASE_URL).toBe(
+      'https://recipes.example.com/app',
+    );
+  });
+
   it('derives PUBLIC_BASE_URL default from a non-default PORT', () => {
     const env = loadServerEnv({ PORT: '4000' });
 

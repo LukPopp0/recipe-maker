@@ -43,10 +43,12 @@ const ServerEnvSchema = z.object({
     .transform((value) => path.resolve(value)),
   // No schema-level default: PUBLIC_BASE_URL defaults to
   // `http://localhost:{PORT}` in loadServerEnv below, once PORT is known.
+  // Trailing slashes are stripped so `${PUBLIC_BASE_URL}/images/<key>` URLs
+  // and the image-key matchers (deployment spec section 8) always agree.
   PUBLIC_BASE_URL: z
     .string()
     .optional()
-    .transform((value) => (value === '' ? undefined : value)),
+    .transform((value) => (value === '' || value === undefined ? undefined : value.replace(/\/+$/, ''))),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   // none: every request runs as the admin user "local" (local dev, tests).
@@ -88,6 +90,6 @@ export function loadServerEnv(raw: RawEnv): ServerEnv {
 
   return {
     ...result.data,
-    PUBLIC_BASE_URL: result.data.PUBLIC_BASE_URL ?? `http://localhost:${result.data.PORT}`,
+    PUBLIC_BASE_URL: result.data.PUBLIC_BASE_URL || `http://localhost:${result.data.PORT}`,
   };
 }

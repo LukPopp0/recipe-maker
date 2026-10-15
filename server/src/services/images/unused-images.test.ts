@@ -42,4 +42,20 @@ describe('findUnusedImages', () => {
 
     expect(findUnusedImages({ objects, recipes, publicBaseUrl: BASE, now: NOW })).toEqual([]);
   });
+
+  it('keeps images out of the unused list when PUBLIC_BASE_URL has a path', () => {
+    const APP = 'https://recipes.example.com/app';
+    const objects = [{ key: 'recipes/b/main-0.jpg', sizeBytes: 1, modifiedAt: OLD }];
+    const recipes = [
+      {
+        id: '1',
+        owner: 'alice',
+        createdAt: '',
+        updatedAt: '',
+        recipe: { main_image: `${APP}/images/recipes/b/main-0.jpg`, steps: [] },
+      },
+    ] as never;
+
+    expect(findUnusedImages({ objects, recipes, publicBaseUrl: APP, now: NOW })).toEqual([]);
+  });
 });
