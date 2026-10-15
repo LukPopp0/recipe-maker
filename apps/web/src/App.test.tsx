@@ -225,7 +225,7 @@ describe('Library view', () => {
     const libraryButton = screen.getByRole('button', { name: /library/i });
     expect(libraryButton).toBeEnabled();
     await user.click(libraryButton);
-    expect(await screen.findByText(/no saved recipes yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/you have not saved any recipes yet/i)).toBeInTheDocument();
   });
 
   it('hides the Create panels while in the Library view without unmounting them', async () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RecipeSummary } from 'shared';
 import { LibraryPanel } from './LibraryPanel.tsx';
@@ -206,5 +206,50 @@ describe('LibraryPanel', () => {
 
     expect(await screen.findByText('Older')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
+  });
+
+  it('ignores a superseded response that resolves after a later scope request', async () => {
+    const user = userEvent.setup();
+    const mine = { ...SUMMARIES[1], id: 'id-mine', title: 'Mine only' };
+    const everyones = { ...SUMMARIES[0], id: 'id-all', title: 'Everyones' };
+    let resolveAll!: (value: Awaited<ReturnType<typeof listRecipes>>) => void;
+    mockedListRecipes
+      .mockResolvedValueOnce({ ok: true, value: { recipes: [mine] } })
+      .mockReturnValueOnce(new Promise((resolve) => { resolveAll = resolve; }))
+      .mockResolvedValueOnce({ ok: true, value: { recipes: [mine] } });
+    render(<LibraryPanel currentUser={{ username: 'alice', isAdmin: false }} onOpenInCreate={vi.fn()} />);
+    expect(await screen.findByText('Mine only')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'All recipes' }));
+    await user.click(screen.getByRole('button', { name: 'My recipes' }));
+    expect(await screen.findByText('Mine only')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveAll({ ok: true, value: { recipes: [everyones] } });
+    });
+
+    expect(screen.getByRole('button', { name: 'My recipes' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Mine only')).toBeInTheDocument();
+    expect(screen.queryByText('Everyones')).not.toBeInTheDocument();
+  });
+
+  it('explains an empty "My recipes" list and points at All recipes', async () => {
+    mockedListRecipes.mockResolvedValue({ ok: true, value: { recipes: [] } });
+    render(<LibraryPanel currentUser={{ username: 'alice', isAdmin: false }} onOpenInCreate={vi.fn()} />);
+
+    expect(
+      await screen.findByText("You have not saved any recipes yet. Switch to All recipes to see everyone's."),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the generic empty message for an empty "All recipes" list', async () => {
+    const user = userEvent.setup();
+    mockedListRecipes.mockResolvedValue({ ok: true, value: { recipes: [] } });
+    render(<LibraryPanel currentUser={{ username: 'alice', isAdmin: false }} onOpenInCreate={vi.fn()} />);
+    await screen.findByText(/You have not saved any recipes yet/);
+
+    await user.click(screen.getByRole('button', { name: 'All recipes' }));
+
+    expect(await screen.findByText(/No saved recipes yet/)).toBeInTheDocument();
   });
 });

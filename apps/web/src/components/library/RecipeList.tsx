@@ -13,18 +13,20 @@ function formatDate(iso: string): string {
 export function RecipeList({
   recipes,
   showOwner,
+  emptyMessage,
   canDelete,
   onView,
   onDelete,
 }: {
   recipes: RecipeSummary[]
   showOwner: boolean
+  emptyMessage: string
   canDelete: (recipe: RecipeSummary) => boolean
   onView: (id: string) => void
   onDelete: (id: string) => void
 }) {
   if (recipes.length === 0) {
-    return <p className="recipe-list-empty">No saved recipes yet. Save one from the Create workspace to see it here.</p>;
+    return <p className="recipe-list-empty">{emptyMessage}</p>;
   }
 
   return (

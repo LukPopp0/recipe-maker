@@ -2,7 +2,7 @@
 // and the delete confirm/API flow (RecipeList and RecipeDetail delegate
 // delete up here so list state has one owner). Fetches on mount - the
 // component remounts on each Library visit, so the list is always fresh.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CanonicalRecipe, CurrentUser, LibraryScope, RecipeSummary } from 'shared';
 import { deleteRecipe, listRecipes, type ApiFailure } from '../../api/client.ts';
 import { loadLibraryScope, storeLibraryScope } from '../../lib/library-scope.ts';
@@ -37,9 +37,15 @@ export function LibraryPanel({
   // them - the recipe still exists, so its card must stay visible.
   const [deleteFailure, setDeleteFailure] = useState<{ id: string; error: ApiFailure } | null>(null);
 
+  // Scope switches can overlap; only the latest request may write state,
+  // otherwise a slow "all" response could overwrite the "mine" list.
+  const latestRequest = useRef(0);
+
   const load = useCallback(async () => {
+    const request = ++latestRequest.current;
     setStatus({ phase: 'loading' });
     const result = await listRecipes(scope);
+    if (request !== latestRequest.current) return;
     if (result.ok) {
       setSummaries(result.value.recipes);
       setStatus({ phase: 'ready' });
@@ -130,6 +136,11 @@ export function LibraryPanel({
                   <RecipeList
                     recipes={visible}
                     showOwner={scope === 'all'}
+                    emptyMessage={
+                      scope === 'mine'
+                        ? "You have not saved any recipes yet. Switch to All recipes to see everyone's."
+                        : 'No saved recipes yet. Save one from the Create workspace to see it here.'
+                    }
                     canDelete={(summary) => canDeleteRecipe(currentUser, summary.owner)}
                     onView={setSelectedId}
                     onDelete={handleDelete}

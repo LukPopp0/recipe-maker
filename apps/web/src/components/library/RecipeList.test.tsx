@@ -12,7 +12,7 @@ const SUMMARIES: RecipeSummary[] = [
 
 describe('RecipeList', () => {
   it('renders title, thumbnail, and tags per recipe', () => {
-    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} emptyMessage="" canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Soup')).toBeInTheDocument();
     expect(screen.getByText('dinner')).toBeInTheDocument();
     expect(screen.getByText('dinner')).toHaveClass(tagColorClass('dinner'));
@@ -20,7 +20,7 @@ describe('RecipeList', () => {
   });
 
   it('renders an empty state when there are no recipes', () => {
-    render(<RecipeList recipes={[]} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={[]} showOwner={false} emptyMessage="No saved recipes yet." canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/no saved recipes yet/i)).toBeInTheDocument();
   });
 
@@ -28,7 +28,7 @@ describe('RecipeList', () => {
     const user = userEvent.setup();
     const onView = vi.fn();
     const onDelete = vi.fn();
-    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={onView} onDelete={onDelete} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} emptyMessage="" canDelete={() => true} onView={onView} onDelete={onDelete} />);
 
     await user.click(screen.getByRole('button', { name: 'View Soup' }));
     expect(onView).toHaveBeenCalledWith('id-1');
@@ -38,12 +38,12 @@ describe('RecipeList', () => {
   });
 
   it('links Download to the server download endpoint', () => {
-    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} emptyMessage="" canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByRole('link', { name: 'Download Soup' })).toHaveAttribute('href', '/api/recipe/download/id-1');
   });
 
   it('hides a thumbnail that fails to load instead of showing a broken image', () => {
-    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} emptyMessage="" canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     const img = screen.getByRole('img', { name: 'Soup' });
     fireEvent.error(img);
     expect(img).not.toBeVisible();
@@ -54,6 +54,7 @@ describe('RecipeList', () => {
       <RecipeList
         recipes={[{ ...SUMMARIES[0], owner: 'bob' }]}
         showOwner
+        emptyMessage=""
         canDelete={() => false}
         onView={vi.fn()}
         onDelete={vi.fn()}
