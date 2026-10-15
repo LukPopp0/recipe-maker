@@ -40,6 +40,9 @@ Deployment and multi-user work (phases D1-D7) is planned in
 in any plan: `private/plans/backlog.md`.
 Deployment D1 (auth and users) is done: `AUTH_MODE`/`ADMIN_USERS` middleware on
 `/api/*`, `GET /api/me`, UNAUTHENTICATED/FORBIDDEN errors, username in the header.
+Deployment D2 (storage and ownership) is done: recipe owners, `PUT /api/recipe/:id`
+(Save changes / Save as new), `RECIPE_STORE=json|sqlite` (`RECIPE_DB_PATH`), Library
+My/All switch, delete limited to owner or admin.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read

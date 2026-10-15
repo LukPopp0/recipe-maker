@@ -79,6 +79,7 @@ Returns normalized JSON as attachment.
 
 ### POST /api/recipe/save
 Persists a canonical recipe candidate to server-side storage (explicit user action, not automatic).
+The caller (`c.get('user')`, spec 11 Authentication Settings) becomes the recipe owner.
 Request: canonical recipe object.
 Response success:
 ```json
@@ -90,25 +91,47 @@ Response success:
 ```
 Response error shape mirrors other endpoints.
 
+### PUT /api/recipe/:id
+Replaces a saved recipe in place ("Save changes"). Any authenticated user may update any recipe; the owner and `createdAt` never change, `updatedAt` is bumped.
+Request: canonical recipe object (same body as `POST /api/recipe/save`).
+Response success:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "id": "..."
+}
+```
+Errors: 404 `RECIPE_NOT_FOUND` for an unknown id (never creates a recipe), 422 `SCHEMA_VALIDATION_FAILED` for an invalid body.
+
 ### GET /api/recipes
-Returns saved recipe summaries for the library view.
+Returns saved recipe summaries for the library view, newest first.
+Query: `scope=mine|all` (default `all`). `mine` returns only recipes owned by the caller. Any other value is 400 `INVALID_INPUT`.
 Response:
 ```json
 {
   "ok": true,
   "requestId": "...",
   "recipes": [
-    { "id": "...", "title": "...", "tags": [], "main_image": "...", "createdAt": "..." }
+    { "id": "...", "title": "...", "tags": [], "main_image": "...", "owner": "alice", "createdAt": "...", "updatedAt": "..." }
   ]
 }
 ```
 
 ### GET /api/recipe/:id
 Returns the full canonical recipe for a saved id.
-Response shape mirrors /api/ingest/url (recipe field populated, no diagnostics).
+Response shape mirrors /api/ingest/url (recipe field populated, no diagnostics), plus record metadata:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "recipe": {},
+  "meta": { "id": "...", "owner": "alice", "createdAt": "...", "updatedAt": "..." }
+}
+```
 
 ### DELETE /api/recipe/:id
-Removes a saved recipe.
+Removes a saved recipe. Only the owner or an admin may delete; anyone else gets 403 `FORBIDDEN` and the recipe is kept. Unknown id is 404 `RECIPE_NOT_FOUND`.
 Response:
 ```json
 {
