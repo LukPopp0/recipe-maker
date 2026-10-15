@@ -357,4 +357,29 @@ describe('recipe routes', () => {
     expect(storageAdapter.delete).toHaveBeenCalledTimes(1);
     expect(storageAdapter.delete).toHaveBeenCalledWith('recipes/n1/step-0.jpg');
   });
+
+  it('DELETE still succeeds and skips image cleanup when listing remaining recipes fails', async () => {
+    const storageAdapter = { put: vi.fn(), get: vi.fn(), list: async () => [], delete: vi.fn(async () => {}) };
+    const real = new LocalJsonFileRecipeRepository(dataDir);
+    const recipeRepository = Object.assign(Object.create(real) as LocalJsonFileRecipeRepository, {
+      getAll: async () => {
+        throw new Error('corrupt store');
+      },
+    });
+    const app = makeApp({}, { storageAdapter, recipeRepository });
+    const id = await saveAs(
+      app,
+      'local',
+      makeRecipe({ main_image: 'http://localhost:8787/images/recipes/n2/main-0.jpg' }),
+    );
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await app.request(`/api/recipe/${id}`, { method: 'DELETE' });
+
+    expect(res.status).toBe(200);
+    expect(storageAdapter.delete).not.toHaveBeenCalled();
+    expect(errorLog).toHaveBeenCalled();
+    errorLog.mockRestore();
+    expect((await app.request(`/api/recipe/${id}`)).status).toBe(404);
+  });
 });

@@ -180,13 +180,28 @@ export function createRecipeApp(deps: RecipeDeps) {
     }
 
     await recipeRepository.delete(id);
-    await deleteUnsharedRecipeImages({
-      deleted: stored.recipe,
-      remaining: await recipeRepository.getAll(),
-      storageAdapter,
-      publicBaseUrl,
-      requestId,
-    });
+    // Best-effort (deployment spec section 8): the recipe is already gone, so
+    // a failure here must not fail the request. If getAll() fails we skip
+    // cleanup entirely - an empty `remaining` would delete shared images.
+    try {
+      await deleteUnsharedRecipeImages({
+        deleted: stored.recipe,
+        remaining: await recipeRepository.getAll(),
+        storageAdapter,
+        publicBaseUrl,
+        requestId,
+      });
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          message: 'Failed to clean up recipe images',
+          requestId,
+          id,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
 
     return c.json(ok(requestId, {}));
   });
