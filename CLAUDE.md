@@ -27,7 +27,7 @@ stays frontend-tested; `GEMINI_MAX_RETRIES` removed in favor of a fixed
 single retry via `GEMINI_RETRY_MODEL`; CI (`.github/workflows/ci.yml`) runs
 install/typecheck/test with Playwright mocked.
 Phase 8.5 fix backlog from end-to-end testing:
-`plans/phase-8.5-fixes-and-improvements.md` (check items off as fixed).
+`private/plans/mvp/phase-8.5-fixes-and-improvements.md` (check items off as fixed).
 Phase 10 (specs/14) is done: URL ingestion extracts step images (JSON-LD
 HowToStep.image overlay + Gemini candidate mapping, prompt v4, re-hosted like
 main_image), ingest responses return `imageNamespaceId`, `POST /api/image/step`
@@ -37,11 +37,11 @@ UI (server-side AI image generation rejected - no API free tier).
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read
-`plans/recipe-maker-implementation-plan.md` before writing any code - it has the
+`private/plans/mvp/recipe-maker-implementation-plan.md` before writing any code - it has the
 strict phase order.
 
 ## Key docs
-- `plans/recipe-maker-implementation-plan.md` - phases, order, definition of done, risks
+- `private/plans/mvp/recipe-maker-implementation-plan.md` - phases, order, definition of done, risks
 - `specs/01` through `specs/14` - one spec per concern, referenced by phase in the plan
 - `specs/12-shared-constants.md` - pantry allowlist + tag vocabulary (actual values)
 - `specs/13-recipe-persistence-and-library.md` - RecipeRepository, save/library flow
@@ -61,10 +61,10 @@ strict phase order.
 - `/server` - backend API, package `server` (not yet created)
 - `/shared` - shared types, schema, constants, `assets/ingredients` (215 images, already
   in place); package `shared` (not yet an installable package - added in a later Phase 1 task)
-- `/plans`, `/specs` - planning docs
+- `/specs` - public per-feature specs; `/private` (gitignored) - plans (`private/plans/<area>/`) and private specs
 
 ## Conventions
-- Follow `plans/*` and `specs/*` as source of truth; update both together if scope changes
+- Follow `private/plans/*` and `specs/*` (plus `private/specs/*`) as source of truth; update both together if scope changes
 - Ask before making architecture decisions not already covered above
 - Prefer targeted, minimal edits over broad refactors
 - No emojis, ASCII only in responses and comments
