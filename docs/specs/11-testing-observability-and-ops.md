@@ -59,6 +59,20 @@ With `NODE_ENV=production` and `AUTH_MODE=none` the server logs a startup warnin
 
 Startup (and `/api/health`) creates and checks both the recipe storage directory and `IMAGE_DATA_DIR` for write access; the error log names the failing one.
 
+## Web App Serving and Docker
+| Variable | Default | Meaning |
+|---|---|---|
+| `WEB_DIST_DIR` | unset | Directory of the built web app. When set, the server serves its files and falls back to `index.html` for other GETs (never under `/api/`, `/images/`, `/ingredient-images/`, `/health`). Unset in local dev. The Docker image sets it to `/app/apps/web/dist`. |
+
+The default recipe placeholder (`server/assets/placeholder-recipe.png`) is served at `/images/placeholder-recipe.png` and is the main-image default when `DEFAULT_MAIN_IMAGE_URL` is unset.
+
+The Docker image defaults to `RECIPE_STORE=sqlite`, `RECIPE_DB_PATH=/app/data/db/recipes.db` and `IMAGE_DATA_DIR=/app/data/images`; mounted host directories must be writable by uid 1001 (`pwuser`). The base image tag must match the installed `playwright` version (`PLAYWRIGHT_VERSION` build arg). `docker-compose.example.yml` and `docker.env.example` show a deployment behind tinyauth.
+
+`scripts/docker-smoke-test.sh <image>` starts the image with empty volumes and `AUTH_MODE=header` and checks `/api/health`, the web app at `/`, `/api/me` returning 401 without a header, admin identity via `Remote-User`, and an empty recipe list.
+
+## CI Image Job
+The `image` job in `.github/workflows/ci.yml` needs the `test` job and runs only on push to `main`, on `ubuntu-24.04-arm`. It builds `linux/arm64`, runs the smoke test against the built image, then pushes `ghcr.io/<owner>/recipe-maker:latest` and `:sha-<short>` with provenance disabled (one push is one GHCR version) and prunes the package to the last 10 versions. Tests themselves run on Node 22; the image ships Node 24.
+
 ## Gemini Usage Controls
 - Configurable model selection.
 - Token budget controls per request.

@@ -60,12 +60,18 @@ This is a pnpm workspace with three sibling packages: `/apps/web` (package `web`
 8. If user chooses Save, frontend calls POST /api/recipe/save; backend writes via RecipeRepository and returns an id.
 9. Frontend can later list/view/download/delete saved recipes via RecipeRepository-backed endpoints.
 
+## Deployment View
+- One Docker container (`Dockerfile`, arm64 image published to GHCR) runs the Hono server on port 8787 as the non-root `pwuser`. It is based on the official Playwright image so the Chromium used by the URL-ingestion browser fallback is included.
+- The same process serves the API, `/images/*`, `/ingredient-images/*` and the built web app. The web build (`apps/web/dist`) is served when `WEB_DIST_DIR` is set: static files first, then `index.html` for other GET paths. Misses under `/api/`, `/images/`, `/ingredient-images/` and `/health` stay 404. In local dev `WEB_DIST_DIR` is unset and Vite serves the frontend.
+- The server runs from TypeScript via `tsx` (no separate server build). State lives in two volumes: `/app/data/db` (SQLite) and `/app/data/images`.
+- TLS and login happen in a reverse proxy in front of the container (see `docker-compose.example.yml`); the app trusts `Remote-User` when `AUTH_MODE=header`.
+
 ## Security Requirements
 - Gemini API key only on backend.
 - Frontend cannot call Gemini directly in production.
 - Uploaded files validated by MIME and size.
 - URL fetch restricted by protocol and denylist (local/internal targets blocked).
-- server/data/recipes is excluded from version control. If deployed beyond local use, add a basic access gate (single shared secret) in front of the API; full multi-user auth is out of scope for now.
+- server/data/recipes is excluded from version control. Login happens in a reverse proxy (tinyauth + nginx); the app trusts the `Remote-User` header when `AUTH_MODE=header` and runs everyone as admin `local` when `AUTH_MODE=none` (default, local dev). There are no in-app accounts.
 
 ## Performance Requirements
 - P50 ingest response under 12s for typical recipes.

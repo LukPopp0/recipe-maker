@@ -49,6 +49,12 @@ const ServerEnvSchema = z.object({
     .string()
     .optional()
     .transform((value) => (value === '' || value === undefined ? undefined : value.replace(/\/+$/, ''))),
+  // Built web app (apps/web/dist). When set, the server also serves the
+  // frontend (Docker image); unset in local dev, where Vite serves it.
+  WEB_DIST_DIR: z
+    .string()
+    .optional()
+    .transform((value) => (value ? path.resolve(value) : undefined)),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   // none: every request runs as the admin user "local" (local dev, tests).

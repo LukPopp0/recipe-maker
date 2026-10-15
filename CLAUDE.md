@@ -49,6 +49,11 @@ recipe uses, and admins get an "Unused images" cleanup (`/api/admin/images/*`).
 Deployment D4 (Gemini quota message) is done: Gemini 429/RESOURCE_EXHAUSTED errors surface as
 `AI_QUOTA_EXCEEDED` (429), URL ingestion reports it only when the single retry also hits quota,
 and image matching names the quota in its warning.
+Deployment D5 (Docker image and CI) is done: `WEB_DIST_DIR` makes Hono serve the built web app,
+the default recipe placeholder is shipped and served at `/images/placeholder-recipe.png`, the
+`Dockerfile` (Playwright base, arm64) and `docker-compose.example.yml` exist, and the CI `image`
+job (push to `main` only) builds the image, runs `scripts/docker-smoke-test.sh`, and publishes
+`ghcr.io/<owner>/recipe-maker` (`latest` + `sha-<7>`, last 10 versions kept).
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read

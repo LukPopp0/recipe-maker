@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { authModeWarning, loadServerEnv } from './env.js';
 
 describe('loadServerEnv', () => {
+  it('leaves WEB_DIST_DIR unset by default and resolves it when given', () => {
+    expect(loadServerEnv({}).WEB_DIST_DIR).toBeUndefined();
+    expect(loadServerEnv({ WEB_DIST_DIR: './dist' }).WEB_DIST_DIR).toBe(path.resolve('./dist'));
+  });
+
   it('defaults RECIPE_STORE to json and resolves RECIPE_DB_PATH', () => {
     const env = loadServerEnv({});
 
