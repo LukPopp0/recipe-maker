@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -183,6 +183,20 @@ describe('api/client', () => {
     });
   });
 
+  describe('updateRecipe', () => {
+    it('PUTs the recipe JSON to /api/recipe/:id', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', id: 'abc' }));
+
+      const result = await updateRecipe('abc', fakeRecipe);
+
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/recipe/abc');
+      expect(init.method).toBe('PUT');
+      expect(JSON.parse(init.body as string)).toEqual(fakeRecipe);
+      expect(result).toEqual({ ok: true, value: { id: 'abc' } });
+    });
+  });
+
   describe('uploadStepImage', () => {
     it('posts FormData with namespaceId, stepIndex, and the file to /api/image/step', async () => {
       fetchMock.mockResolvedValue(
@@ -303,8 +317,16 @@ describe('api/client', () => {
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.value.recipes).toHaveLength(1);
       const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('/api/recipes');
+      expect(url).toBe('/api/recipes?scope=all');
       expect((init.headers as Record<string, string>)['x-request-id']).toEqual(expect.any(String));
+    });
+
+    it('listRecipes sends the scope as a query parameter', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', recipes: [] }));
+
+      await listRecipes('mine');
+
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/recipes?scope=mine');
     });
 
     it('getRecipe hits /api/recipe/:id and unwraps the recipe', async () => {
