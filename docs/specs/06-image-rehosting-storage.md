@@ -8,9 +8,14 @@ Define interface:
 - put(fileBuffer, key, contentType) -> publicUrl
 - get(key) -> stream/buffer
 - delete(key)
+- list(prefix) -> StoredObject[] ({ key, sizeBytes, modifiedAt })
 
 Implementations:
 - LocalDiskStorageAdapter (milestone 1 default).
+- ResizingStorageAdapter: decorator around any adapter (wraps LocalDiskStorageAdapter
+  in the server entry point). Every put (step uploads, manual ingest images,
+  re-hosted URL images) goes through normalization first, so call sites need no
+  changes.
 - CloudStorageAdapter (future).
 
 ## Image Sources
@@ -20,10 +25,35 @@ Implementations:
 ## Processing Rules
 1. Validate MIME type (jpeg/png/webp).
 2. Validate max size per image.
-3. Optionally normalize image dimensions and compress.
+3. Normalize every image (sharp): EXIF auto-rotate, fit inside 1600x1600 (never
+   upscale), flatten transparency onto white (#ffffff), strip metadata, re-encode
+   as JPEG quality 82.
 4. Generate deterministic key naming:
-   - recipes/{recipeId}/{kind}-{index}.{ext}
+   - recipes/{recipeId}/{kind}-{index}.jpg
+   The extension is always `.jpg` (the key is rewritten whatever the source
+   format) and the stored content type is `image/jpeg`.
 5. Store image and return hosted URL.
+
+Undecodable bytes (corrupt data with an image content type) are not stored and
+never cause a 500: the upload hoster returns the warning "<file> was not
+uploaded: the file is not a readable image."; the remote fetcher returns its
+generic image-download error result.
+
+## Image Lifecycle
+- Image URLs of the form `${PUBLIC_BASE_URL}/images/<key>` or `/images/<key>`
+  map to a storage key; only keys matching `recipes/<namespace>/<file>` count.
+  External URLs, the default placeholder and ingredient catalog filenames never
+  map to a key and are never deleted.
+- Deleting a recipe deletes the local images it references that no other saved
+  recipe references. Failures (including failing to list the remaining recipes)
+  are logged and never fail the delete.
+- Images of unsaved ingests stay on disk until an admin cleans them up.
+- Admin "Unused images" cleanup (Library scope bar, admin only): lists stored
+  images under `recipes/` that no saved recipe references and that are older than
+  24 hours (so a fresh, not-yet-saved ingest is never offered), with a total, and
+  "Delete all" (after confirmation). The server re-derives the unused set on
+  delete, so referenced or foreign keys sent by a client are ignored. See spec 03
+  for the endpoints.
 
 ## Metadata Rules
 - Keep source image URL in diagnostics metadata for Option A.
@@ -35,5 +65,6 @@ Implementations:
 
 ## Acceptance Criteria
 - Hosted URLs are stable across sessions.
+- Stored images are at most 1600 px on the longest side, JPEG, without metadata.
 - Card renderer consumes hosted URLs only.
 - Missing images do not break recipe output.

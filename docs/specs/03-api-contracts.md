@@ -131,12 +131,38 @@ Response shape mirrors /api/ingest/url (recipe field populated, no diagnostics),
 ```
 
 ### DELETE /api/recipe/:id
-Removes a saved recipe. Only the owner or an admin may delete; anyone else gets 403 `FORBIDDEN` and the recipe is kept. Unknown id is 404 `RECIPE_NOT_FOUND`.
+Removes a saved recipe. Only the owner or an admin may delete; anyone else gets 403 `FORBIDDEN` and the recipe is kept. Unknown id is 404 `RECIPE_NOT_FOUND`. Local images used only by this recipe are deleted with it (see spec 06); image cleanup failures never fail the delete.
 Response:
 ```json
 {
   "ok": true,
   "requestId": "..."
+}
+```
+
+### GET /api/admin/images/unused
+Admin only (403 `FORBIDDEN` otherwise). Lists stored images no saved recipe references that are older than 24 hours.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "images": [
+    { "key": "recipes/ns1/main-0.jpg", "url": "/images/recipes/ns1/main-0.jpg", "sizeBytes": 48211, "modifiedAt": "..." }
+  ]
+}
+```
+
+### POST /api/admin/images/delete
+Admin only (403 `FORBIDDEN` otherwise). Deletes unused images by key.
+Request: `{ "keys": ["recipes/ns1/main-0.jpg"] }` (1 to 500 keys).
+The server re-derives the unused set (unreferenced and older than 24 hours); keys that are referenced, too recent, or outside `recipes/` are ignored.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "deleted": 1
 }
 ```
 
