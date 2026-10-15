@@ -1,4 +1,5 @@
 import type { StorageAdapter } from '../storage/storage-adapter.js';
+import { ImageDecodeError } from './normalize-image.js';
 import { ALLOWED_CONTENT_TYPES } from './image-rehoster.js';
 
 export interface UploadedFile {
@@ -39,7 +40,15 @@ export async function hostUploadedImage(
   }
 
   const key = `recipes/${recipeId}/${kind}-${index}.${ext}`;
-  const url = await storageAdapter.put(file.buffer, key, file.contentType);
+  let url: string;
+  try {
+    url = await storageAdapter.put(file.buffer, key, file.contentType);
+  } catch (err) {
+    if (err instanceof ImageDecodeError) {
+      return { warning: `"${file.filename}" was not uploaded: the file is not a readable image.` };
+    }
+    throw err;
+  }
 
   return { url };
 }

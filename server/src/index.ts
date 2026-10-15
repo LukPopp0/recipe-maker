@@ -7,6 +7,7 @@ import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
 import { closeBrowser } from './services/url-ingestion/browser-fetcher.js';
 import { createRecipeRepository, recipeStorageDir } from './services/recipes/create-recipe-repository.js';
+import { ResizingStorageAdapter } from './services/storage/resizing-storage-adapter.js';
 import { LocalDiskStorageAdapter } from './services/storage/local-disk-storage-adapter.js';
 
 const env = loadServerEnv(process.env);
@@ -52,7 +53,7 @@ if (!checkIngredientCatalogReady()) {
 
 const recipeRepository = createRecipeRepository(env);
 const geminiClient = new GeminiClient(geminiConfig);
-const storageAdapter = new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL);
+const storageAdapter = new ResizingStorageAdapter(new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL));
 
 const app = createApp({
   env,

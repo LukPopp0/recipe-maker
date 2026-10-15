@@ -1,6 +1,7 @@
 import dns from 'node:dns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
+import { ImageDecodeError } from './normalize-image.js';
 import { fetchAndStoreRemoteImage } from './remote-image-fetcher.js';
 
 // remote.example.com is a fake hostname; stub DNS to a public address so
@@ -156,5 +157,21 @@ describe('fetchAndStoreRemoteImage', () => {
 
     expect(result).toEqual({ ok: false, reason: 'timeout' });
     expect(storageAdapter.put).not.toHaveBeenCalled();
+  });
+
+  it('returns an error result when the stored bytes are not a readable image', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'content-type': 'image/jpeg' } }),
+    );
+    const storageAdapter = makeStorageAdapter();
+    storageAdapter.put.mockRejectedValue(new ImageDecodeError('bad'));
+
+    const result = await fetchAndStoreRemoteImage('https://remote.example.com/photo.jpg', {
+      storageAdapter,
+      maxBytes: 1_000_000,
+      keyPrefix: 'recipes/recipe-1/main-0',
+    });
+
+    expect(result).toMatchObject({ ok: false, reason: 'error' });
   });
 });

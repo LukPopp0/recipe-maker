@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
+import { ImageDecodeError } from './normalize-image.js';
 import { hostUploadedImage, type UploadedFile } from './upload-image-hoster.js';
 
 function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> } {
@@ -150,5 +151,20 @@ describe('hostUploadedImage', () => {
       'recipes/recipe-2/main-0.jpg',
       'image/jpeg',
     );
+  });
+
+  it('returns a warning instead of throwing when the bytes are not a readable image', async () => {
+    const storageAdapter = makeStorageAdapter();
+    storageAdapter.put.mockRejectedValue(new ImageDecodeError('bad'));
+
+    const result = await hostUploadedImage(makeFile({ contentType: 'image/jpeg', filename: 'broken.jpg' }), {
+      recipeId: 'r1',
+      storageAdapter,
+      maxBytes: 1_000_000,
+      kind: 'step',
+      index: 0,
+    });
+
+    expect(result).toEqual({ warning: '"broken.jpg" was not uploaded: the file is not a readable image.' });
   });
 });
