@@ -151,7 +151,7 @@ export async function ingestManual(fields: {
 }
 
 // Uploads one step image from the review panel. The server hosts it under
-// recipes/{namespaceId}/step-{stepIndex} and returns the hosted URL; the
+// recipes/{namespaceId}/step-{stepIndex}-{suffix} and returns the hosted URL; the
 // caller writes that URL onto the step being edited.
 export async function uploadStepImage(
   namespaceId: string,

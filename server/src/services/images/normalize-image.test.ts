@@ -74,6 +74,11 @@ describe('normalizeImage', () => {
     expect([...DECODABLE_FORMATS].sort()).toEqual(['jpeg', 'png', 'webp']);
   });
 
+  it('rejects a JPEG magic prefix followed by garbage as ImageDecodeError', async () => {
+    const fake = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from('garbage body, not a jpeg')]);
+    await expect(normalizeImage(fake)).rejects.toBeInstanceOf(ImageDecodeError);
+  });
+
   it('rejects an SVG as ImageDecodeError', async () => {
     const svg = Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>',

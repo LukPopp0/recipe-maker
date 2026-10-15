@@ -60,8 +60,8 @@ generic image-download error result.
 - Which keys are still *used* (by remaining recipes on delete, by all recipes in
   the admin cleanup) is decided from the URL path only, ignoring origin and
   query string, so images saved under an older `PUBLIC_BASE_URL` are not treated
-  as unused. A `PUBLIC_BASE_URL` with a path (`https://host/app`) also counts:
-  `/app/images/...` and `/images/...` both match. `PUBLIC_BASE_URL` is stored
+  as unused. Any path prefix before `/images/recipes/...` is accepted, so images saved
+  under an older `PUBLIC_BASE_URL` with a different base path also count. `PUBLIC_BASE_URL` is stored
   without trailing slashes. Which keys a delete may remove stays strict (own origin or
   root-relative only).
 - Images of unsaved ingests stay on disk until an admin cleans them up.

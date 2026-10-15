@@ -77,6 +77,12 @@ describe('base URL with a path', () => {
     expect(referencedImageKey('/images/recipes/abc/main-0.jpg', APP)).toBe('recipes/abc/main-0.jpg');
   });
 
+  it('counts images saved under an older base path as referenced', () => {
+    const base = 'https://recipes.example.com';
+    expect(referencedImageKey('https://host/app/images/recipes/a/main-0.jpg', base)).toBe('recipes/a/main-0.jpg');
+    expect(localImageKey('https://host/app/images/recipes/a/main-0.jpg', base)).toBeNull();
+  });
+
   it('tolerates a trailing slash on the base URL and an invalid base URL', () => {
     expect(referencedImageKey(`${APP}/images/recipes/abc/main-0.jpg`, `${APP}/`)).toBe('recipes/abc/main-0.jpg');
     expect(referencedImageKey('/images/recipes/abc/main-0.jpg', 'not a url')).toBe('recipes/abc/main-0.jpg');

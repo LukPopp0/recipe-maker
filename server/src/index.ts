@@ -18,8 +18,8 @@ const geminiConfig = loadGeminiConfig(process.env);
 // placeholder served from the /images mount when it isn't configured.
 const defaultMainImageUrl = env.DEFAULT_MAIN_IMAGE_URL ?? '/images/placeholder-recipe.png';
 
-// Startup storage-readiness check: ensure the recipe data directory exists
-// and is writable before we start accepting traffic. Fail fast (exit 1)
+// Startup storage-readiness check: ensure the recipe store directory and
+// IMAGE_DATA_DIR exist and are writable before we start accepting traffic. Fail fast (exit 1)
 // rather than serving requests that will fail on first save.
 async function checkStorageReady(): Promise<boolean> {
   const result = await ensureWritableDirs({
