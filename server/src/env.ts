@@ -42,6 +42,19 @@ const ServerEnvSchema = z.object({
     .transform((value) => (value === '' ? undefined : value)),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  // none: every request runs as the admin user "local" (local dev, tests).
+  // header: trust the Remote-User header set by the reverse proxy after
+  // tinyauth login; only safe when the app is reachable through that proxy.
+  AUTH_MODE: z.enum(['none', 'header']).default('none'),
+  ADMIN_USERS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((name) => name.trim().toLowerCase())
+        .filter((name) => name.length > 0),
+    ),
 });
 
 // PUBLIC_BASE_URL is optional at the schema level but loadServerEnv always

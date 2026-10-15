@@ -76,4 +76,22 @@ describe('loadServerEnv', () => {
   it('throws descriptively on a non-numeric PORT', () => {
     expect(() => loadServerEnv({ PORT: 'not-a-number' })).toThrow(/PORT/);
   });
+
+  it('defaults AUTH_MODE to none and ADMIN_USERS to an empty list', () => {
+    const env = loadServerEnv({});
+
+    expect(env.AUTH_MODE).toBe('none');
+    expect(env.ADMIN_USERS).toEqual([]);
+  });
+
+  it('parses ADMIN_USERS as a trimmed, lowercased list without empty entries', () => {
+    const env = loadServerEnv({ AUTH_MODE: 'header', ADMIN_USERS: ' Lukas , bob,, ' });
+
+    expect(env.AUTH_MODE).toBe('header');
+    expect(env.ADMIN_USERS).toEqual(['lukas', 'bob']);
+  });
+
+  it('throws on an unknown AUTH_MODE', () => {
+    expect(() => loadServerEnv({ AUTH_MODE: 'basic' })).toThrow(/AUTH_MODE/);
+  });
 });
