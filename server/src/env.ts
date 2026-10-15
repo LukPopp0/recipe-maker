@@ -93,3 +93,13 @@ export function loadServerEnv(raw: RawEnv): ServerEnv {
     PUBLIC_BASE_URL: result.data.PUBLIC_BASE_URL || `http://localhost:${result.data.PORT}`,
   };
 }
+
+// AUTH_MODE=none makes every request the admin "local"; fine for local dev,
+// but on a public production server it means no login at all, so index.ts
+// logs this at startup.
+export function authModeWarning(env: ServerEnv): string | null {
+  if (env.NODE_ENV === 'production' && env.AUTH_MODE === 'none') {
+    return 'AUTH_MODE=none in production: every request runs as the admin user "local"; set AUTH_MODE=header behind the login proxy.';
+  }
+  return null;
+}

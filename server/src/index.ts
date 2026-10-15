@@ -1,7 +1,7 @@
 import { access, constants, mkdir } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
-import { loadServerEnv } from './env.js';
+import { authModeWarning, loadServerEnv } from './env.js';
 import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
@@ -77,6 +77,11 @@ const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
       recipeStorageDir: recipeStorageDir(env),
     }),
   );
+
+  const authWarning = authModeWarning(env);
+  if (authWarning) {
+    console.warn(JSON.stringify({ level: 'warn', message: authWarning }));
+  }
 });
 
 // On restart/kill signals: stop accepting connections, close the recipe store

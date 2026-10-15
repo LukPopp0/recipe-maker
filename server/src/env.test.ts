@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadServerEnv } from './env.js';
+import { authModeWarning, loadServerEnv } from './env.js';
 
 describe('loadServerEnv', () => {
   it('defaults RECIPE_STORE to json and resolves RECIPE_DB_PATH', () => {
@@ -106,5 +106,21 @@ describe('loadServerEnv', () => {
 
   it('throws on an unknown AUTH_MODE', () => {
     expect(() => loadServerEnv({ AUTH_MODE: 'basic' })).toThrow(/AUTH_MODE/);
+  });
+});
+
+describe('authModeWarning', () => {
+  it('warns when production runs with AUTH_MODE=none', () => {
+    const msg = authModeWarning(loadServerEnv({ NODE_ENV: 'production', AUTH_MODE: 'none' }));
+
+    expect(msg).toMatch(/AUTH_MODE=none/);
+  });
+
+  it('is silent for production with header auth', () => {
+    expect(authModeWarning(loadServerEnv({ NODE_ENV: 'production', AUTH_MODE: 'header' }))).toBeNull();
+  });
+
+  it('is silent for development with AUTH_MODE=none', () => {
+    expect(authModeWarning(loadServerEnv({ NODE_ENV: 'development', AUTH_MODE: 'none' }))).toBeNull();
   });
 });

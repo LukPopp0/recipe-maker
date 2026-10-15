@@ -49,6 +49,8 @@ Tooling: Vitest for unit/integration tests; React Testing Library for UI/compone
 | `AUTH_MODE` | `none` | `none`: every request is admin user `local`. `header`: trust the `Remote-User` header from the reverse proxy; 401 `UNAUTHENTICATED` without it (`/api/health` exempt). |
 | `ADMIN_USERS` | empty | Comma-separated usernames (trimmed, lowercased) treated as admins in header mode. Empty means nobody is admin. |
 
+With `NODE_ENV=production` and `AUTH_MODE=none` the server logs a startup warning (every request would run as admin `local`).
+
 ## Storage Settings
 | Variable | Default | Meaning |
 |---|---|---|
