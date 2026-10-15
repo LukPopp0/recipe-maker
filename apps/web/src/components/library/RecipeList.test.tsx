@@ -6,13 +6,13 @@ import { RecipeList } from './RecipeList.tsx';
 import { tagColorClass } from '../../lib/tag-palette.ts';
 
 const SUMMARIES: RecipeSummary[] = [
-  { id: 'id-1', title: 'Soup', tags: ['dinner'], main_image: '/images/soup.png', createdAt: '2026-01-02T00:00:00.000Z', time: 30, source_type: 'manual' },
-  { id: 'id-2', title: 'Cake', tags: [], main_image: '/images/cake.png', createdAt: '2026-01-01T00:00:00.000Z', time: 60, source_type: 'url' },
+  { id: 'id-1', title: 'Soup', tags: ['dinner'], main_image: '/images/soup.png', createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z', owner: 'local', time: 30, source_type: 'manual' },
+  { id: 'id-2', title: 'Cake', tags: [], main_image: '/images/cake.png', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', owner: 'local', time: 60, source_type: 'url' },
 ];
 
 describe('RecipeList', () => {
   it('renders title, thumbnail, and tags per recipe', () => {
-    render(<RecipeList recipes={SUMMARIES} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Soup')).toBeInTheDocument();
     expect(screen.getByText('dinner')).toBeInTheDocument();
     expect(screen.getByText('dinner')).toHaveClass(tagColorClass('dinner'));
@@ -20,7 +20,7 @@ describe('RecipeList', () => {
   });
 
   it('renders an empty state when there are no recipes', () => {
-    render(<RecipeList recipes={[]} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={[]} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/no saved recipes yet/i)).toBeInTheDocument();
   });
 
@@ -28,7 +28,7 @@ describe('RecipeList', () => {
     const user = userEvent.setup();
     const onView = vi.fn();
     const onDelete = vi.fn();
-    render(<RecipeList recipes={SUMMARIES} onView={onView} onDelete={onDelete} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={onView} onDelete={onDelete} />);
 
     await user.click(screen.getByRole('button', { name: 'View Soup' }));
     expect(onView).toHaveBeenCalledWith('id-1');
@@ -38,14 +38,29 @@ describe('RecipeList', () => {
   });
 
   it('links Download to the server download endpoint', () => {
-    render(<RecipeList recipes={SUMMARIES} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByRole('link', { name: 'Download Soup' })).toHaveAttribute('href', '/api/recipe/download/id-1');
   });
 
   it('hides a thumbnail that fails to load instead of showing a broken image', () => {
-    render(<RecipeList recipes={SUMMARIES} onView={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeList recipes={SUMMARIES} showOwner={false} canDelete={() => true} onView={vi.fn()} onDelete={vi.fn()} />);
     const img = screen.getByRole('img', { name: 'Soup' });
     fireEvent.error(img);
     expect(img).not.toBeVisible();
+  });
+
+  it('shows the owner when showOwner is set and hides Delete when not allowed', () => {
+    render(
+      <RecipeList
+        recipes={[{ ...SUMMARIES[0], owner: 'bob' }]}
+        showOwner
+        canDelete={() => false}
+        onView={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('by bob')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
   });
 });

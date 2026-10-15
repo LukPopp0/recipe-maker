@@ -22,7 +22,7 @@ const RECIPE: CanonicalRecipe = {
   metadata: { source_type: 'url', language: 'en', warnings: [] },
 };
 
-const META = { id: 'id-1', owner: 'alice', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
+const META = { id: 'id-1', owner: 'bob', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
 
 describe('RecipeDetail', () => {
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe('RecipeDetail', () => {
 
   it('fetches by id and renders the recipe read-only with no Save button', async () => {
     mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
-    render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeDetail id="id-1" currentUser={{ username: 'alice', isAdmin: true }} onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
 
     expect(await screen.findByText('Saved Soup')).toBeInTheDocument();
     expect(mockedGetRecipe).toHaveBeenCalledWith('id-1');
@@ -43,7 +43,7 @@ describe('RecipeDetail', () => {
     const user = userEvent.setup();
     const onOpenInCreate = vi.fn();
     mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
-    render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={onOpenInCreate} onDelete={vi.fn()} />);
+    render(<RecipeDetail id="id-1" currentUser={{ username: 'alice', isAdmin: true }} onBack={vi.fn()} onOpenInCreate={onOpenInCreate} onDelete={vi.fn()} />);
 
     await user.click(await screen.findByRole('button', { name: /open in create/i }));
     expect(onOpenInCreate).toHaveBeenCalledWith(RECIPE, 'id-1');
@@ -54,7 +54,7 @@ describe('RecipeDetail', () => {
     const onDelete = vi.fn();
     const onBack = vi.fn();
     mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
-    render(<RecipeDetail id="id-1" onBack={onBack} onOpenInCreate={vi.fn()} onDelete={onDelete} />);
+    render(<RecipeDetail id="id-1" currentUser={{ username: 'alice', isAdmin: true }} onBack={onBack} onOpenInCreate={vi.fn()} onDelete={onDelete} />);
 
     await user.click(await screen.findByRole('button', { name: /delete/i }));
     expect(onDelete).toHaveBeenCalledWith('id-1');
@@ -68,10 +68,22 @@ describe('RecipeDetail', () => {
       ok: false,
       error: { code: 'RECIPE_NOT_FOUND', message: 'No recipe exists with id "id-9".' },
     });
-    render(<RecipeDetail id="id-9" onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeDetail id="id-9" currentUser={{ username: 'alice', isAdmin: true }} onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
 
     expect(await screen.findByText(/no recipe exists/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /back to library/i })).toBeInTheDocument();
+  });
+});
+
+describe('delete permission', () => {
+  it('hides Delete for a non-owner non-admin and shows who saved it', async () => {
+    mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
+    render(
+      <RecipeDetail id="id-1" currentUser={{ username: 'alice', isAdmin: false }} onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(await screen.findByText('Saved by bob')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 });
 
@@ -79,7 +91,7 @@ describe('View as Card', () => {
   it('replaces the detail view with the card and returns via Back', async () => {
     const user = userEvent.setup();
     mockedGetRecipe.mockResolvedValueOnce({ ok: true, value: { recipe: RECIPE, meta: META } });
-    render(<RecipeDetail id="id-1" onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
+    render(<RecipeDetail id="id-1" currentUser={{ username: 'alice', isAdmin: true }} onBack={vi.fn()} onOpenInCreate={vi.fn()} onDelete={vi.fn()} />);
 
     await user.click(await screen.findByRole('button', { name: /view as card/i }));
     expect(screen.getByLabelText('Recipe card page 1')).toBeInTheDocument();

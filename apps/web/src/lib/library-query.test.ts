@@ -9,6 +9,8 @@ function summary(overrides: Partial<RecipeSummary>): RecipeSummary {
     tags: [],
     main_image: '/x.png',
     createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: overrides.createdAt ?? '2026-01-01T00:00:00.000Z',
+    owner: 'local',
     time: 30,
     source_type: 'manual',
     ...overrides,

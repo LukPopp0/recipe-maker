@@ -258,7 +258,7 @@ function App() {
       {view === 'library' ? (
         <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">
           <h2 id="library-panel-heading">Library</h2>
-          <LibraryPanel onOpenInCreate={handleOpenInCreate} />
+          <LibraryPanel currentUser={currentUser} onOpenInCreate={handleOpenInCreate} />
         </section>
       ) : null}
 

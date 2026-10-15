@@ -4,8 +4,9 @@
 // the Create workspace for editing (Save changes updates it in place, Save as
 // new makes a copy).
 import { useCallback, useEffect, useState } from 'react';
-import type { CanonicalRecipe } from 'shared';
+import type { CanonicalRecipe, CurrentUser, RecipeMeta } from 'shared';
 import { getRecipe, type ApiFailure } from '../../api/client.ts';
+import { canDeleteRecipe } from '../../lib/permissions.ts';
 import { ReviewPanel } from '../review/ReviewPanel.tsx';
 import { JsonPanel } from '../json/JsonPanel.tsx';
 import { ErrorBanner } from '../ErrorBanner.tsx';
@@ -14,15 +15,17 @@ import { CardView } from '../card/CardView.tsx';
 type DetailStatus =
   | { phase: 'loading' }
   | { phase: 'error'; error: ApiFailure }
-  | { phase: 'loaded'; recipe: CanonicalRecipe };
+  | { phase: 'loaded'; recipe: CanonicalRecipe; meta: RecipeMeta };
 
 export function RecipeDetail({
   id,
+  currentUser,
   onBack,
   onOpenInCreate,
   onDelete,
 }: {
   id: string
+  currentUser: CurrentUser | null
   onBack: () => void
   onOpenInCreate: (recipe: CanonicalRecipe, sourceId: string) => void
   onDelete: (id: string) => void
@@ -34,7 +37,7 @@ export function RecipeDetail({
     setStatus({ phase: 'loading' });
     const result = await getRecipe(id);
     if (result.ok) {
-      setStatus({ phase: 'loaded', recipe: result.value.recipe });
+      setStatus({ phase: 'loaded', recipe: result.value.recipe, meta: result.value.meta });
     } else {
       setStatus({ phase: 'error', error: result.error });
     }
@@ -65,9 +68,12 @@ export function RecipeDetail({
             <a className="btn btn-ghost" href={`/api/recipe/download/${encodeURIComponent(id)}`} download>
               Download
             </a>
-            <button type="button" className="btn btn-danger" onClick={() => onDelete(id)}>
-              Delete
-            </button>
+            {canDeleteRecipe(currentUser, status.meta.owner) ? (
+              <button type="button" className="btn btn-danger" onClick={() => onDelete(id)}>
+                Delete
+              </button>
+            ) : null}
+            <small className="recipe-detail-owner">Saved by {status.meta.owner}</small>
           </>
         ) : null}
       </div>

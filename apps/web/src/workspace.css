@@ -964,6 +964,24 @@
   font-size: var(--font-size-sm);
 }
 
+.library-scope {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.library-scope [aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.recipe-list-owner,
+.recipe-detail-owner {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .recipe-list-date {
   margin: 0;
   font-size: var(--font-size-sm);
