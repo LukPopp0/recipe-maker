@@ -1,18 +1,23 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import App from './App.tsx';
-import { ingestUrl, listRecipes } from './api/client.ts';
+import { getMe, ingestUrl, listRecipes } from './api/client.ts';
 
 vi.mock('./api/client.ts', () => ({
   ingestUrl: vi.fn(),
   listRecipes: vi.fn(),
   getRecipe: vi.fn(),
   deleteRecipe: vi.fn(),
+  getMe: vi.fn(),
 }));
 
 const mockedIngestUrl = vi.mocked(ingestUrl);
+
+beforeEach(() => {
+  vi.mocked(getMe).mockResolvedValue({ ok: true, value: { user: { username: 'alice', isAdmin: false } } });
+});
 
 const RECIPE: CanonicalRecipe = {
   title: 'Test Recipe',
@@ -26,6 +31,12 @@ const RECIPE: CanonicalRecipe = {
 };
 
 describe('App', () => {
+  it('shows the logged-in username in the header', async () => {
+    render(<App />);
+
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+  });
+
   it('renders the app title and the workspace shell region', () => {
     render(<App />);
 

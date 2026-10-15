@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import type { CanonicalRecipe } from 'shared';
-import type { IngestDiagnostics } from './api/client.ts';
+import { useCallback, useEffect, useState } from 'react';
+import type { CanonicalRecipe, CurrentUser } from 'shared';
+import { getMe, type IngestDiagnostics } from './api/client.ts';
 import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-types.ts';
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
@@ -55,6 +55,15 @@ function App() {
   const [inputCollapsed, setInputCollapsed] = useState(false);
   const [jsonOpen, setJsonOpen] = useState(false);
   const [theme, toggleTheme] = useTheme();
+  // Who is logged in (always "local" without AUTH_MODE=header). Library uses
+  // it for owner/admin actions; a failed lookup just hides the name.
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    void getMe().then((result) => {
+      if (result.ok) setCurrentUser(result.value.user);
+    });
+  }, []);
 
   // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any
   // unsaved edits, so confirm first when the current state is dirty (plan
@@ -145,6 +154,7 @@ function App() {
         <span className={`workspace-status workspace-status--${statusVariant(recipeState)}`}>
           {statusLabel(recipeState)}
         </span>
+        {currentUser ? <span className="workspace-user">{currentUser.username}</span> : null}
         <button
           type="button"
           className="btn btn-ghost btn-sm"

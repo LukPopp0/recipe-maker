@@ -64,6 +64,11 @@
   font-size: var(--font-size-xs);
 }
 
+.workspace-user {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 /* Status chip: coral tint while dirty, green tint when saved */
 .workspace-status {
   margin-left: auto;

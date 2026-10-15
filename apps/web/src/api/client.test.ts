@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -21,6 +21,19 @@ describe('api/client', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  describe('getMe', () => {
+    it('gets /api/me and unwraps the user', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ ok: true, requestId: 'r', user: { username: 'alice', isAdmin: false } }),
+      );
+
+      const result = await getMe();
+
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/me');
+      expect(result).toEqual({ ok: true, value: { user: { username: 'alice', isAdmin: false } } });
+    });
   });
 
   describe('ingestUrl', () => {
