@@ -12,6 +12,7 @@ import { createIngestApp } from './routes/ingest.js';
 import { createHealthApp } from './routes/health.js';
 import { createMeApp } from './routes/me.js';
 import { createRecipeApp } from './routes/recipe.js';
+import { mountWebApp } from './routes/web-app.js';
 import type { GeminiConfig } from './services/ai/config.js';
 import type { GeminiClient } from './services/ai/gemini-client.js';
 import type { RecipeRepository } from './services/recipes/recipe-repository.js';
@@ -95,6 +96,10 @@ export function createApp(deps: AppDeps): App {
       rewriteRequestPath: (path) => path.replace(/^\/ingredient-images/, ''),
     }),
   );
+
+  if (deps.env.WEB_DIST_DIR) {
+    mountWebApp(app, deps.env.WEB_DIST_DIR);
+  }
 
   app.onError(errorHandler);
   app.notFound(notFoundHandler);
