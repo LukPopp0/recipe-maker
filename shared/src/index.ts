@@ -17,6 +17,7 @@ export { ERROR_CODES } from './contracts/envelope.js';
 export type { ErrorCode, ApiError, ApiSuccessEnvelope, ApiErrorEnvelope, ApiResponse } from './contracts/envelope.js';
 
 export type { RecipeSummary } from './contracts/recipe-repository.js';
+export type { CurrentUser } from './contracts/user.js';
 
 export { amountContainsUnit, formatIngredientAmount } from './lib/ingredient-amount.js';
 
