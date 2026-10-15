@@ -35,11 +35,117 @@ describe('recipe routes', () => {
     await rm(dataDir, { recursive: true, force: true });
   });
 
-  function makeApp() {
-    const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir });
+  function makeApp(raw: Record<string, string> = {}) {
+    const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir, ...raw });
     const recipeRepository = new LocalJsonFileRecipeRepository(dataDir);
     return createApp({ env, checkStorageReady: () => true, recipeRepository, ...makeIngestDeps() });
   }
+
+  const HEADER_AUTH = { AUTH_MODE: 'header', ADMIN_USERS: 'admin' };
+
+  function as(user: string, init: RequestInit = {}): RequestInit {
+    return { ...init, headers: { ...(init.headers as Record<string, string>), 'Remote-User': user } };
+  }
+
+  async function saveAs(app: ReturnType<typeof makeApp>, user: string, recipe = makeRecipe()) {
+    const res = await app.request(
+      '/api/recipe/save',
+      as(user, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(recipe) }),
+    );
+    return ((await res.json()) as { id: string }).id;
+  }
+
+  describe('ownership', () => {
+    it('stores the caller as owner and returns meta from GET /api/recipe/:id', async () => {
+      const app = makeApp(HEADER_AUTH);
+      const id = await saveAs(app, 'alice');
+
+      const res = await app.request(`/api/recipe/${id}`, as('bob'));
+      const body = (await res.json()) as { recipe: CanonicalRecipe; meta: Record<string, string> };
+
+      expect(res.status).toBe(200);
+      expect(body.recipe.title).toBe('Round Trip Recipe');
+      expect(body.meta).toMatchObject({ id, owner: 'alice' });
+    });
+
+    it('PUT lets any user update in place and keeps the owner', async () => {
+      const app = makeApp(HEADER_AUTH);
+      const id = await saveAs(app, 'alice');
+
+      const res = await app.request(
+        `/api/recipe/${id}`,
+        as('bob', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(makeRecipe({ title: 'Edited' })) }),
+      );
+      const fetched = (await (await app.request(`/api/recipe/${id}`, as('bob'))).json()) as { recipe: CanonicalRecipe; meta: { owner: string } };
+
+      expect(res.status).toBe(200);
+      expect(fetched.recipe.title).toBe('Edited');
+      expect(fetched.meta.owner).toBe('alice');
+    });
+
+    it('PUT on an unknown id is 404 RECIPE_NOT_FOUND', async () => {
+      const app = makeApp();
+      const res = await app.request(`/api/recipe/${randomUUID()}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(makeRecipe()),
+      });
+
+      expect(res.status).toBe(404);
+      expect(((await res.json()) as ApiErrorEnvelope).error.code).toBe('RECIPE_NOT_FOUND');
+    });
+
+    it('PUT with an invalid body is 422 SCHEMA_VALIDATION_FAILED', async () => {
+      const app = makeApp();
+      const id = await saveAs(app, 'local');
+      const res = await app.request(`/api/recipe/${id}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: '' }),
+      });
+
+      expect(res.status).toBe(422);
+    });
+
+    it('GET /api/recipes filters by scope', async () => {
+      const app = makeApp(HEADER_AUTH);
+      const a = await saveAs(app, 'alice');
+      const b = await saveAs(app, 'bob');
+
+      const list = async (query: string) =>
+        ((await (await app.request(`/api/recipes${query}`, as('alice'))).json()) as { recipes: { id: string }[] }).recipes.map((r) => r.id).sort();
+
+      expect(await list('?scope=mine')).toEqual([a]);
+      expect(await list('?scope=all')).toEqual([a, b].sort());
+      expect(await list('')).toEqual([a, b].sort());
+    });
+
+    it('GET /api/recipes rejects an unknown scope with 400 INVALID_INPUT', async () => {
+      const res = await makeApp().request('/api/recipes?scope=bogus');
+
+      expect(res.status).toBe(400);
+    });
+
+    it('DELETE by a non-owner non-admin is 403 and keeps the recipe', async () => {
+      const app = makeApp(HEADER_AUTH);
+      const id = await saveAs(app, 'alice');
+
+      const res = await app.request(`/api/recipe/${id}`, as('bob', { method: 'DELETE' }));
+
+      expect(res.status).toBe(403);
+      expect(((await res.json()) as ApiErrorEnvelope).error.code).toBe('FORBIDDEN');
+      expect((await app.request(`/api/recipe/${id}`, as('bob'))).status).toBe(200);
+    });
+
+    it('DELETE by the owner or an admin succeeds', async () => {
+      const app = makeApp(HEADER_AUTH);
+      const mine = await saveAs(app, 'alice');
+      const other = await saveAs(app, 'bob');
+
+      expect((await app.request(`/api/recipe/${mine}`, as('alice', { method: 'DELETE' }))).status).toBe(200);
+      expect((await app.request(`/api/recipe/${other}`, as('admin', { method: 'DELETE' }))).status).toBe(200);
+    });
+  });
 
   describe('POST /api/recipe/validate', () => {
     it('returns 200 with valid:true and the parsed recipe for a valid candidate', async () => {

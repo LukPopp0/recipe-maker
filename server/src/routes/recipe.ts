@@ -1,10 +1,13 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { CanonicalRecipeSchema, RecipeIdSchema, SaveRecipeRequestSchema } from 'shared';
 import { AppError } from '../lib/errors.js';
 import { ok } from '../lib/response.js';
 import type { AppVariables } from '../middleware/request-id.js';
 import { parseJson } from '../middleware/validate.js';
 import type { RecipeRepository } from '../services/recipes/recipe-repository.js';
+
+const ScopeSchema = z.enum(['mine', 'all']).default('all');
 
 export type RecipeDeps = {
   recipeRepository: RecipeRepository
@@ -85,14 +88,42 @@ export function createRecipeApp(deps: RecipeDeps) {
       });
     }
 
-    const { id } = await recipeRepository.save(result.data);
+    const { id } = await recipeRepository.save(result.data, c.get('user').username);
+
+    return c.json(ok(requestId, { id }));
+  });
+
+  // PUT /recipe/:id: "Save changes" for a recipe opened from the Library.
+  // Any logged-in user may edit any recipe; the owner stays the original
+  // saver (deployment spec section 4).
+  app.put('/recipe/:id', async (c) => {
+    const requestId = c.get('requestId');
+    const id = parseRecipeId(c.req.param('id'));
+    const body = await parseJson(c);
+    const result = SaveRecipeRequestSchema.safeParse(body);
+
+    if (!result.success) {
+      throw new AppError('SCHEMA_VALIDATION_FAILED', 'The recipe payload failed schema validation.', {
+        issues: result.error.flatten(),
+      });
+    }
+
+    if (!(await recipeRepository.update(id, result.data))) {
+      throw new AppError('RECIPE_NOT_FOUND', `No recipe exists with id "${id}".`, { id });
+    }
 
     return c.json(ok(requestId, { id }));
   });
 
   app.get('/recipes', async (c) => {
     const requestId = c.get('requestId');
-    const recipes = await recipeRepository.list();
+    const scope = ScopeSchema.safeParse(c.req.query('scope'));
+    if (!scope.success) {
+      throw new AppError('INVALID_INPUT', 'scope must be "mine" or "all".');
+    }
+    const recipes = await recipeRepository.list(
+      scope.data === 'mine' ? { owner: c.get('user').username } : {},
+    );
 
     return c.json(ok(requestId, { recipes }));
   });
@@ -101,37 +132,47 @@ export function createRecipeApp(deps: RecipeDeps) {
   // that "download" is not matched as an :id value.
   app.get('/recipe/download/:id', async (c) => {
     const id = parseRecipeId(c.req.param('id'));
-    const recipe = await recipeRepository.get(id);
+    const stored = await recipeRepository.get(id);
 
-    if (!recipe) {
+    if (!stored) {
       throw new AppError('RECIPE_NOT_FOUND', `No recipe exists with id "${id}".`, { id });
     }
 
-    const filename = `${slugifyTitle(recipe.title)}.json`;
+    const filename = `${slugifyTitle(stored.recipe.title)}.json`;
 
     c.header('Content-Disposition', `attachment; filename="${filename}"`);
-    return c.json(recipe);
+    return c.json(stored.recipe);
   });
 
   app.get('/recipe/:id', async (c) => {
     const requestId = c.get('requestId');
     const id = parseRecipeId(c.req.param('id'));
-    const recipe = await recipeRepository.get(id);
+    const stored = await recipeRepository.get(id);
 
-    if (!recipe) {
+    if (!stored) {
       throw new AppError('RECIPE_NOT_FOUND', `No recipe exists with id "${id}".`, { id });
     }
 
-    return c.json(ok(requestId, { recipe }));
+    return c.json(
+      ok(requestId, {
+        recipe: stored.recipe,
+        meta: { id: stored.id, owner: stored.owner, createdAt: stored.createdAt, updatedAt: stored.updatedAt },
+      }),
+    );
   });
 
   app.delete('/recipe/:id', async (c) => {
     const requestId = c.get('requestId');
     const id = parseRecipeId(c.req.param('id'));
-    const recipe = await recipeRepository.get(id);
+    const stored = await recipeRepository.get(id);
 
-    if (!recipe) {
+    if (!stored) {
       throw new AppError('RECIPE_NOT_FOUND', `No recipe exists with id "${id}".`, { id });
+    }
+
+    const user = c.get('user');
+    if (stored.owner !== user.username && !user.isAdmin) {
+      throw new AppError('FORBIDDEN', 'Only the recipe owner or an admin can delete this recipe.', { id });
     }
 
     await recipeRepository.delete(id);
