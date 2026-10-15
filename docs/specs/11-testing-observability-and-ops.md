@@ -43,6 +43,12 @@ Tooling: Vitest for unit/integration tests; React Testing Library for UI/compone
   `RATE_LIMITED` error code.
 - Input size limits for text and files.
 
+## Authentication Settings
+| Variable | Default | Meaning |
+|---|---|---|
+| `AUTH_MODE` | `none` | `none`: every request is admin user `local`. `header`: trust the `Remote-User` header from the reverse proxy; 401 `UNAUTHENTICATED` without it (`/api/health` exempt). |
+| `ADMIN_USERS` | empty | Comma-separated usernames (trimmed, lowercased) treated as admins in header mode. Empty means nobody is admin. |
+
 ## Gemini Usage Controls
 - Configurable model selection.
 - Token budget controls per request.

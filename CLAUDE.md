@@ -38,6 +38,8 @@ Deployment and multi-user work (phases D1-D7) is planned in
 `private/plans/deployment/` (start at `00-overview.md`; spec
 `private/specs/deployment-and-multi-user.md`). Outstanding items that are not
 in any plan: `private/plans/backlog.md`.
+Deployment D1 (auth and users) is done: `AUTH_MODE`/`ADMIN_USERS` middleware on
+`/api/*`, `GET /api/me`, UNAUTHENTICATED/FORBIDDEN errors, username in the header.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read

@@ -7,8 +7,26 @@ Define backend APIs for ingestion, upload, and export.
 - Prefix: /api
 - Content-Type: application/json for JSON routes.
 - Multipart: for manual upload route.
+- Auth: when `AUTH_MODE=header`, every `/api/*` route except `GET /api/health`
+  requires a non-empty `Remote-User` header (set by the reverse proxy); a missing
+  or blank header returns 401 `UNAUTHENTICATED`. With `AUTH_MODE=none` (default)
+  every request runs as admin user `local`. Non-API paths (`/images/*`,
+  `/ingredient-images/*`) are not gated by the app.
 
 ## Endpoints
+
+### GET /api/me
+Returns the caller resolved by the auth middleware.
+Response:
+```json
+{
+  "ok": true,
+  "requestId": "...",
+  "user": { "username": "alice", "isAdmin": false }
+}
+```
+Username is trimmed and lowercased; `isAdmin` is true when it appears in
+`ADMIN_USERS` (always true for `local` in `AUTH_MODE=none`).
 
 ### POST /api/ingest/url
 Request:
@@ -108,6 +126,8 @@ Response:
 - SCHEMA_VALIDATION_FAILED
 - IMAGE_DOWNLOAD_FAILED
 - RECIPE_NOT_FOUND
+- UNAUTHENTICATED (401, missing `Remote-User` in header mode)
+- FORBIDDEN (403, caller lacks permission for the action)
 - INTERNAL_ERROR
 
 ## Non-Functional Rules
