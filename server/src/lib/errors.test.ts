@@ -17,6 +17,7 @@ describe('ERROR_STATUS_MAP', () => {
     expect(ERROR_STATUS_MAP.RATE_LIMITED).toBe(429);
     expect(ERROR_STATUS_MAP.UNAUTHENTICATED).toBe(401);
     expect(ERROR_STATUS_MAP.FORBIDDEN).toBe(403);
+    expect(ERROR_STATUS_MAP.AI_QUOTA_EXCEEDED).toBe(429);
   });
 });
 

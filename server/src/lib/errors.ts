@@ -18,6 +18,7 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   RATE_LIMITED: 429,
   UNAUTHENTICATED: 401,
   FORBIDDEN: 403,
+  AI_QUOTA_EXCEEDED: 429,
 };
 
 // Default user-safe message per error code, used when a caller does not
@@ -39,6 +40,7 @@ export const ERROR_DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   RATE_LIMITED: 'Too many ingestion requests. Wait a moment and try again.',
   UNAUTHENTICATED: 'You are not logged in.',
   FORBIDDEN: 'You are not allowed to do this.',
+  AI_QUOTA_EXCEEDED: 'Gemini daily quota reached. It resets at midnight Pacific time.',
 };
 
 // Application-level error carrying a standardized error code and optional

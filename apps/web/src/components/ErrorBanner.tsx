@@ -9,6 +9,7 @@ const RECOVERY_HINTS: Record<string, string> = {
   NETWORK_ERROR: 'Could not reach the server - is the backend running on port 8787?',
   UNAUTHENTICATED: 'Your login may have expired. Reload the page to log in again.',
   FORBIDDEN: 'Only the recipe owner or an admin can do this.',
+  AI_QUOTA_EXCEEDED: 'Try again after the quota resets, or paste the recipe later.',
 };
 
 const GENERIC_RECOVERY_HINT = 'Try again, or check the console for details.';

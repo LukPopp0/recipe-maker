@@ -8,6 +8,7 @@
 // is recipe-specific and semantically wrong for an unmatched-route 404.
 // UNAUTHENTICATED / FORBIDDEN are used when AUTH_MODE=header (deployment
 // spec): no Remote-User header, or the user may not perform the action.
+// AI_QUOTA_EXCEEDED: Gemini answered 429 / RESOURCE_EXHAUSTED (deployment spec section 6).
 export const ERROR_CODES = [
   'INVALID_INPUT',
   'INVALID_URL',
@@ -25,6 +26,7 @@ export const ERROR_CODES = [
   'RATE_LIMITED',
   'UNAUTHENTICATED',
   'FORBIDDEN',
+  'AI_QUOTA_EXCEEDED',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

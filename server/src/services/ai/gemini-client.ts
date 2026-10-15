@@ -31,6 +31,25 @@ function extractCause(message: string): string {
   }
 }
 
+export const QUOTA_MESSAGE = 'Gemini daily quota reached. It resets at midnight Pacific time.';
+
+// Gemini reports an exhausted quota as HTTP 429 with status
+// RESOURCE_EXHAUSTED. The SDK error carries it as a numeric `status` and/or
+// as the JSON error body in `message`; only those structured fields count,
+// never a "429" somewhere in free text.
+export function isQuotaError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  if ((err as { status?: unknown }).status === 429) return true;
+  const message = (err as { message?: unknown }).message;
+  if (typeof message !== 'string') return false;
+  try {
+    const parsed = JSON.parse(message) as { error?: { code?: unknown; status?: unknown } };
+    return parsed.error?.code === 429 || parsed.error?.status === 'RESOURCE_EXHAUSTED';
+  } catch {
+    return false;
+  }
+}
+
 // Wraps the @google/genai SDK for the one call this app needs: send a prompt,
 // get back parsed JSON. Deterministic generationConfig (temperature/topP/topK)
 // comes from GeminiConfig so callers never need to think about it per-call.
@@ -78,6 +97,12 @@ export class GeminiClient {
       ]);
     } catch (err) {
       if (err instanceof AppError) throw err;
+      if (isQuotaError(err)) {
+        throw new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE, {
+          model,
+          cause: err instanceof Error ? extractCause(err.message) : String(err),
+        });
+      }
       // Covers non-2xx responses (SDK throws ApiError) and any other transport failure.
       throw new AppError('AI_NORMALIZATION_FAILED', 'Gemini request failed.', {
         model,
