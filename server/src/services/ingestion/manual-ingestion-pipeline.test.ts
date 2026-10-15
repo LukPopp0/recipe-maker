@@ -2,7 +2,8 @@ import dns from 'node:dns';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadGeminiConfig } from '../ai/config.js';
 import { MANUAL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
-import type { GeminiClient } from '../ai/gemini-client.js';
+import { AppError } from '../../lib/errors.js';
+import { QUOTA_MESSAGE, type GeminiClient } from '../ai/gemini-client.js';
 import type { ManualImageInput, ParsedManualUpload } from '../manual-ingestion/manual-upload-parser.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 import { runManualIngestionPipeline } from './manual-ingestion-pipeline.js';
@@ -343,6 +344,22 @@ describe('runManualIngestionPipeline', () => {
     expect(first.warnings).toEqual(second.warnings);
     expect(first.diagnostics.extractor).toEqual(second.diagnostics.extractor);
     expect(first.diagnostics.model).toEqual(second.diagnostics.model);
+  });
+
+  it('passes AI_QUOTA_EXCEEDED through unchanged', async () => {
+    const geminiClient = fakeGeminiClient(vi.fn().mockRejectedValue(new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE)));
+
+    await expect(
+      runManualIngestionPipeline({
+        parsed: makeParsed(),
+        geminiClient,
+        geminiConfig: makeGeminiConfig(),
+        storageAdapter: makeStorageAdapter(),
+        recipeId: 'recipe-1',
+        maxImageBytes: 1024,
+        requestId: 'req-quota',
+      }),
+    ).rejects.toMatchObject({ code: 'AI_QUOTA_EXCEEDED' });
   });
 
   describe('stage logging', () => {

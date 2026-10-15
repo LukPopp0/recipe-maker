@@ -4,7 +4,7 @@ import { AppError } from '../../lib/errors.js';
 import { loadServerEnv } from '../../env.js';
 import { loadGeminiConfig } from '../ai/config.js';
 import { URL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
-import type { GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
+import { QUOTA_MESSAGE, type GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { GeminiCanonicalRecipeGenerator } from './url-ingestion-pipeline.js';
 import { describeExtractionFailure, runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
 
@@ -349,6 +349,41 @@ describe('runUrlIngestionPipeline', () => {
     ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
 
     expect(generateCanonicalRecipe).not.toHaveBeenCalled();
+  });
+
+  describe('Gemini quota', () => {
+    const quota = () => new AppError('AI_QUOTA_EXCEEDED', QUOTA_MESSAGE, { model: 'x' });
+
+    function run(generateCanonicalRecipe: (params: GenerateCanonicalRecipeParams) => Promise<unknown>) {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(RECIPE_HTML));
+      return runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient: fakeGeminiClient(generateCanonicalRecipe),
+        geminiConfig: makeGeminiConfig(),
+        env: STATIC_ENV,
+        requestId: 'req-quota',
+      });
+    }
+
+    it('reports AI_QUOTA_EXCEEDED when both attempts hit the quota', async () => {
+      const generate = vi.fn().mockRejectedValueOnce(quota()).mockRejectedValueOnce(quota());
+
+      await expect(run(generate)).rejects.toMatchObject({ code: 'AI_QUOTA_EXCEEDED' });
+    });
+
+    it('uses the retry result when only the primary model hit the quota', async () => {
+      const generate = vi.fn().mockRejectedValueOnce(quota()).mockResolvedValueOnce(VALID_CANDIDATE);
+
+      const result = await run(generate);
+
+      expect(result.diagnostics.extractor).toBe('gemini-retry');
+    });
+
+    it('keeps URL_EXTRACTION_FAILED when the retry fails for a non-quota reason', async () => {
+      const generate = vi.fn().mockRejectedValueOnce(quota()).mockResolvedValueOnce(GARBAGE_CANDIDATE);
+
+      await expect(run(generate)).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
+    });
   });
 
   describe('stage logging', () => {
