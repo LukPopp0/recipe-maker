@@ -38,11 +38,16 @@ export interface CreateIngredientImageMatcherParams {
 
 // Builds the degraded fallback result: every input ingredient is kept as-is
 // except its image is forced to the not-found placeholder, plus a single
-// warning summarizing the degradation.
-function degradedResult(ingredients: RawIngredient[]): IngredientImageMatchResult {
+// warning summarizing the degradation. The warning names the Gemini quota
+// when that was the cause (deployment spec section 6).
+function degradedResult(ingredients: RawIngredient[], quotaExceeded: boolean): IngredientImageMatchResult {
   return {
     ingredients: ingredients.map((ingredient) => ({ ...ingredient, image: INGREDIENT_NOT_FOUND_IMAGE })),
-    warnings: ['Ingredient image matching failed after retry; all ingredients set to INGREDIENT_NOT_FOUND.png.'],
+    warnings: [
+      quotaExceeded
+        ? 'Ingredient image matching skipped: Gemini daily quota reached. All ingredients set to INGREDIENT_NOT_FOUND.png.'
+        : 'Ingredient image matching failed after retry; all ingredients set to INGREDIENT_NOT_FOUND.png.',
+    ],
   };
 }
 
@@ -75,6 +80,17 @@ type MatchEntry = z.infer<typeof matchEntrySchema>;
 interface AlignedMatch {
   aligned: (MatchEntry | undefined)[]
   unmatched: number
+}
+
+// An attempt that failed outright; quotaExceeded marks a Gemini quota error
+// (quotas are per model, so the caller decides how to combine attempts).
+interface AttemptFailure {
+  failed: true
+  quotaExceeded: boolean
+}
+
+function isFailure(outcome: AlignedMatch | AttemptFailure): outcome is AttemptFailure {
+  return 'failed' in outcome;
 }
 
 // Lowercase, punctuation collapsed to single spaces, so "Red Onions" and
@@ -149,7 +165,7 @@ function alignByName(ingredients: RawIngredient[], entries: MatchEntry[]): (numb
 }
 
 // Runs one matching attempt against a given model. Returns the entries
-// aligned to the input list, or null if the attempt failed outright
+// aligned to the input list, or an AttemptFailure if the attempt failed outright
 // (transport/timeout errors from the client, or a schema mismatch in the
 // response). A length mismatch is salvaged by name alignment rather than
 // discarded. Never throws. Logs one diagnostic line per attempt (ok, the
@@ -162,7 +178,7 @@ async function attemptMatch(
   prompt: string,
   ingredients: RawIngredient[],
   responseJsonSchema: Record<string, unknown>,
-): Promise<AlignedMatch | null> {
+): Promise<AlignedMatch | AttemptFailure> {
   const expectedLength = ingredients.length;
   let raw: unknown;
   try {
@@ -175,7 +191,7 @@ async function attemptMatch(
       errorCode: err instanceof AppError ? err.code : err instanceof Error ? err.name : 'unknown',
       expectedLength,
     });
-    return null;
+    return { failed: true, quotaExceeded: err instanceof AppError && err.code === 'AI_QUOTA_EXCEEDED' };
   }
 
   const parseResult = matchResponseSchema.safeParse(raw);
@@ -190,7 +206,7 @@ async function attemptMatch(
       rawLength: rawStr.length,
       rawSnippet: rawStr.slice(0, RAW_SNIPPET_MAX),
     });
-    return null;
+    return { failed: true, quotaExceeded: false };
   }
 
   const parsed = parseResult.data;
@@ -243,9 +259,11 @@ export function createIngredientImageMatcher(
       );
 
       // A fully aligned primary is used as-is. Otherwise retry, and keep
-      // whichever attempt left fewer inputs unaligned (primary on a tie).
-      let matched = primary;
-      if (!primary || primary.unmatched > 0) {
+      // whichever attempt left fewer inputs unaligned (primary on a tie). The
+      // degraded warning names the quota only when every attempt hit it.
+      let matched: AlignedMatch | null = isFailure(primary) ? null : primary;
+      let quotaExceeded = isFailure(primary) && primary.quotaExceeded;
+      if (!matched || matched.unmatched > 0) {
         const retry = await attemptMatch(
           geminiClient,
           geminiConfig.retryModel,
@@ -254,13 +272,15 @@ export function createIngredientImageMatcher(
           ingredients,
           responseJsonSchema,
         );
-        if (retry && (!primary || retry.unmatched < primary.unmatched)) {
+        if (isFailure(retry)) {
+          quotaExceeded = quotaExceeded && retry.quotaExceeded;
+        } else if (!matched || retry.unmatched < matched.unmatched) {
           matched = retry;
         }
       }
 
       if (!matched) {
-        return degradedResult(ingredients);
+        return degradedResult(ingredients, quotaExceeded);
       }
 
       const warnings: string[] = [];
