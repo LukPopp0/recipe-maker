@@ -1,7 +1,7 @@
-import { access, constants, mkdir } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 import { authModeWarning, loadServerEnv } from './env.js';
+import { ensureWritableDirs } from './lib/writable-dirs.js';
 import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
@@ -22,21 +22,21 @@ const defaultMainImageUrl = env.DEFAULT_MAIN_IMAGE_URL ?? '/images/placeholder-r
 // and is writable before we start accepting traffic. Fail fast (exit 1)
 // rather than serving requests that will fail on first save.
 async function checkStorageReady(): Promise<boolean> {
-  try {
-    await mkdir(recipeStorageDir(env), { recursive: true });
-    await access(recipeStorageDir(env), constants.W_OK);
-    return true;
-  } catch (err) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        message: 'Recipe storage directory is not writable',
-        recipeStorageDir: recipeStorageDir(env),
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
-    return false;
-  }
+  const result = await ensureWritableDirs({
+    recipeStorageDir: recipeStorageDir(env),
+    imageDataDir: env.IMAGE_DATA_DIR,
+  });
+  if (result.ok) return true;
+
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      message: 'Storage directory is not writable',
+      [result.name]: result.dir,
+      error: result.error,
+    }),
+  );
+  return false;
 }
 
 const storageReady = await checkStorageReady();

@@ -57,6 +57,8 @@ With `NODE_ENV=production` and `AUTH_MODE=none` the server logs a startup warnin
 | `RECIPE_STORE` | `json` | `json`: one file per recipe under `RECIPE_DATA_DIR`. `sqlite`: single SQLite database (spec 13). |
 | `RECIPE_DB_PATH` | `./data/db/recipes.db` | SQLite database file, resolved to an absolute path. Only used when `RECIPE_STORE=sqlite`. The readiness check (`/api/health`) uses the selected store's directory. |
 
+Startup (and `/api/health`) creates and checks both the recipe storage directory and `IMAGE_DATA_DIR` for write access; the error log names the failing one.
+
 ## Gemini Usage Controls
 - Configurable model selection.
 - Token budget controls per request.
