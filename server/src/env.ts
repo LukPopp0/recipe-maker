@@ -12,6 +12,13 @@ const ServerEnvSchema = z.object({
     .string()
     .default('./data/recipes')
     .transform((value) => path.resolve(value)),
+  // json: one file per recipe under RECIPE_DATA_DIR (local default).
+  // sqlite: a single database file at RECIPE_DB_PATH (production).
+  RECIPE_STORE: z.enum(['json', 'sqlite']).default('json'),
+  RECIPE_DB_PATH: z
+    .string()
+    .default('./data/db/recipes.db')
+    .transform((value) => path.resolve(value)),
   DEFAULT_MAIN_IMAGE_URL: z
     .string()
     .optional()

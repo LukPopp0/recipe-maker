@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { loadServerEnv } from './env.js';
 
 describe('loadServerEnv', () => {
+  it('defaults RECIPE_STORE to json and resolves RECIPE_DB_PATH', () => {
+    const env = loadServerEnv({});
+
+    expect(env.RECIPE_STORE).toBe('json');
+    expect(env.RECIPE_DB_PATH).toBe(path.resolve('./data/db/recipes.db'));
+  });
+
   it('applies defaults when no env vars are set', () => {
     const env = loadServerEnv({});
 

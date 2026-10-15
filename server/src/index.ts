@@ -6,7 +6,7 @@ import { loadGeminiConfig } from './services/ai/config.js';
 import { GeminiClient } from './services/ai/gemini-client.js';
 import { checkIngredientCatalogReady } from './services/ingredient-matching/catalog.js';
 import { closeBrowser } from './services/url-ingestion/browser-fetcher.js';
-import { LocalJsonFileRecipeRepository } from './services/recipes/local-json-file-recipe-repository.js';
+import { createRecipeRepository, recipeStorageDir } from './services/recipes/create-recipe-repository.js';
 import { LocalDiskStorageAdapter } from './services/storage/local-disk-storage-adapter.js';
 
 const env = loadServerEnv(process.env);
@@ -22,15 +22,15 @@ const defaultMainImageUrl = env.DEFAULT_MAIN_IMAGE_URL ?? '/images/placeholder-r
 // rather than serving requests that will fail on first save.
 async function checkStorageReady(): Promise<boolean> {
   try {
-    await mkdir(env.RECIPE_DATA_DIR, { recursive: true });
-    await access(env.RECIPE_DATA_DIR, constants.W_OK);
+    await mkdir(recipeStorageDir(env), { recursive: true });
+    await access(recipeStorageDir(env), constants.W_OK);
     return true;
   } catch (err) {
     console.error(
       JSON.stringify({
         level: 'error',
         message: 'Recipe data directory is not writable',
-        recipeDataDir: env.RECIPE_DATA_DIR,
+        recipeStorageDir: recipeStorageDir(env),
         error: err instanceof Error ? err.message : String(err),
       }),
     );
@@ -50,7 +50,7 @@ if (!checkIngredientCatalogReady()) {
   process.exit(1);
 }
 
-const recipeRepository = new LocalJsonFileRecipeRepository(env.RECIPE_DATA_DIR);
+const recipeRepository = createRecipeRepository(env);
 const geminiClient = new GeminiClient(geminiConfig);
 const storageAdapter = new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL);
 
@@ -71,6 +71,7 @@ const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
       message: 'Server listening',
       port: info.port,
       nodeEnv: env.NODE_ENV,
+      recipeStore: env.RECIPE_STORE,
       recipeDataDir: env.RECIPE_DATA_DIR,
     }),
   );
