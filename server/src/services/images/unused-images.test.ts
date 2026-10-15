@@ -27,4 +27,19 @@ describe('findUnusedImages', () => {
 
     expect(unused.map((o) => o.key)).toEqual(['recipes/b/main-0.jpg']);
   });
+
+  it('keeps images referenced through another origin out of the unused list', () => {
+    const objects = [{ key: 'recipes/b/main-0.jpg', sizeBytes: 1, modifiedAt: OLD }];
+    const recipes = [
+      {
+        id: '1',
+        owner: 'alice',
+        createdAt: '',
+        updatedAt: '',
+        recipe: { main_image: 'http://old-host.example.com/images/recipes/b/main-0.jpg', steps: [] },
+      },
+    ] as never;
+
+    expect(findUnusedImages({ objects, recipes, publicBaseUrl: BASE, now: NOW })).toEqual([]);
+  });
 });

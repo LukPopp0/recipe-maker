@@ -80,7 +80,14 @@ export class LocalDiskStorageAdapter implements StorageAdapter {
     const objects: StoredObject[] = [];
     for (const entry of entries) {
       const filePath = path.join(root, entry);
-      const info = await stat(filePath);
+      let info;
+      try {
+        info = await stat(filePath);
+      } catch (err) {
+        // Deleted between readdir and stat (e.g. a concurrent recipe delete).
+        if (isNodeError(err, 'ENOENT')) continue;
+        throw err;
+      }
       if (!info.isFile()) continue;
       const key = path.relative(path.resolve(this.dataDir), filePath).split(path.sep).join('/');
       objects.push({ key, sizeBytes: info.size, modifiedAt: info.mtime });

@@ -47,13 +47,20 @@ generic image-download error result.
 - Deleting a recipe deletes the local images it references that no other saved
   recipe references. Failures (including failing to list the remaining recipes)
   are logged and never fail the delete.
+- Which keys are still *used* (by remaining recipes on delete, by all recipes in
+  the admin cleanup) is decided from the URL path only, ignoring origin and
+  query string, so images saved under an older `PUBLIC_BASE_URL` are not treated
+  as unused. Which keys a delete may remove stays strict (own origin or
+  root-relative only).
 - Images of unsaved ingests stay on disk until an admin cleans them up.
 - Admin "Unused images" cleanup (Library scope bar, admin only): lists stored
   images under `recipes/` that no saved recipe references and that are older than
   24 hours (so a fresh, not-yet-saved ingest is never offered), with a total, and
   "Delete all" (after confirmation). The server re-derives the unused set on
-  delete, so referenced or foreign keys sent by a client are ignored. See spec 03
-  for the endpoints.
+  delete, so referenced or foreign keys sent by a client are ignored. The
+  server accepts at most 500 keys per delete request; the UI sends "Delete all"
+  in sequential batches of 500 and stops at the first failure. See spec 03 for
+  the endpoints.
 
 ## Metadata Rules
 - Keep source image URL in diagnostics metadata for Option A.
@@ -65,6 +72,8 @@ generic image-download error result.
 
 ## Acceptance Criteria
 - Hosted URLs are stable across sessions.
+- Inputs above 50 million decoded pixels are rejected as undecodable (guards
+  against decompression bombs).
 - Stored images are at most 1600 px on the longest side, JPEG, without metadata.
 - Card renderer consumes hosted URLs only.
 - Missing images do not break recipe output.

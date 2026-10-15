@@ -38,6 +38,17 @@ describe('deleteUnsharedRecipeImages', () => {
     expect(storageAdapter.delete).toHaveBeenCalledWith('recipes/a/step-0.jpg');
   });
 
+  it('keeps a key a remaining recipe references through another origin', async () => {
+    const storageAdapter = { put: vi.fn(), get: vi.fn(), list: vi.fn(), delete: vi.fn(async () => {}) };
+    const deleted = recipeWith(`${BASE}/images/recipes/a/main-0.jpg`);
+    const remaining = [stored(recipeWith('http://old-host.example.com/images/recipes/a/main-0.jpg'))];
+
+    const keys = await deleteUnsharedRecipeImages({ deleted, remaining, storageAdapter, publicBaseUrl: BASE, requestId: 'r' });
+
+    expect(keys).toEqual([]);
+    expect(storageAdapter.delete).not.toHaveBeenCalled();
+  });
+
   it('never deletes the placeholder and never throws when a delete fails', async () => {
     const storageAdapter = {
       put: vi.fn(),

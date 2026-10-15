@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -91,6 +91,18 @@ describe('LocalDiskStorageAdapter', () => {
     ]);
     expect(objects[0].modifiedAt).toBeInstanceOf(Date);
     expect(await adapter.list('nothing-here/')).toEqual([]);
+  });
+
+  it('list skips an entry that cannot be stat-ed (vanished after readdir)', async () => {
+    const adapter = new LocalDiskStorageAdapter(dataDir, 'http://localhost:8787');
+    await adapter.put(Buffer.from('abc'), 'recipes/r1/main-0.jpg', 'image/jpeg');
+    // A dangling symlink is listed by readdir but stat fails with ENOENT,
+    // the same outcome as a file deleted between the two calls.
+    await symlink(path.join(dataDir, 'gone'), path.join(dataDir, 'recipes/r1/dangling.jpg'));
+
+    const objects = await adapter.list('recipes/');
+
+    expect(objects.map((o) => o.key)).toEqual(['recipes/r1/main-0.jpg']);
   });
 
   it('list rejects a prefix that escapes the data dir', async () => {

@@ -17,10 +17,39 @@ export function localImageKey(url: string, publicBaseUrl: string): string | null
   return RECIPE_KEY_PATTERN.test(key) && !key.split('/').includes('..') ? key : null;
 }
 
+// Liberal counterpart for deciding what is still *used* (deployment spec
+// section 8): only the path counts, so images saved under an older
+// PUBLIC_BASE_URL (or with a ?v= query) are never mistaken for unused.
+// Never use this to pick what to delete; localImageKey stays strict for that.
+export function referencedImageKey(url: string, publicBaseUrl: string): string | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url, publicBaseUrl).pathname;
+  } catch {
+    return null;
+  }
+  const prefix = '/images/';
+  if (!pathname.startsWith(prefix)) return null;
+
+  const key = pathname.slice(prefix.length);
+  return RECIPE_KEY_PATTERN.test(key) && !key.split('/').includes('..') ? key : null;
+}
+
+function recipeImageUrls(recipe: CanonicalRecipe): string[] {
+  return [recipe.main_image, ...recipe.steps.map((step) => step.image ?? '')];
+}
+
+// Unique keys a recipe may still display, matched origin-insensitively.
+export function referencedImageKeys(recipe: CanonicalRecipe, publicBaseUrl: string): string[] {
+  const keys = recipeImageUrls(recipe)
+    .map((url) => referencedImageKey(url, publicBaseUrl))
+    .filter((key): key is string => key !== null);
+  return [...new Set(keys)];
+}
+
 // Unique local image keys a recipe references (main image + step images).
 export function recipeImageKeys(recipe: CanonicalRecipe, publicBaseUrl: string): string[] {
-  const urls = [recipe.main_image, ...recipe.steps.map((step) => step.image ?? '')];
-  const keys = urls
+  const keys = recipeImageUrls(recipe)
     .map((url) => localImageKey(url, publicBaseUrl))
     .filter((key): key is string => key !== null);
   return [...new Set(keys)];

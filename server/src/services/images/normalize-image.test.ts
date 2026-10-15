@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { ImageDecodeError, normalizeImage } from './normalize-image.js';
+import { ImageDecodeError, MAX_INPUT_PIXELS, normalizeImage } from './normalize-image.js';
 
 async function makePng(width: number, height: number, alpha = 1): Promise<Buffer> {
   return sharp({ create: { width, height, channels: 4, background: { r: 200, g: 0, b: 0, alpha } } }).png().toBuffer();
@@ -48,5 +48,14 @@ describe('normalizeImage', () => {
 
   it('throws ImageDecodeError for bytes that are not an image', async () => {
     await expect(normalizeImage(Buffer.from('definitely not an image'))).rejects.toBeInstanceOf(ImageDecodeError);
+  });
+
+  it('rejects an image above the input pixel cap as ImageDecodeError', async () => {
+    const side = Math.ceil(Math.sqrt(MAX_INPUT_PIXELS)) + 1;
+    const huge = await sharp({ create: { width: side, height: side, channels: 3, background: '#fff' } })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+
+    await expect(normalizeImage(huge)).rejects.toBeInstanceOf(ImageDecodeError);
   });
 });
