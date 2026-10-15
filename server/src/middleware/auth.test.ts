@@ -50,6 +50,28 @@ describe('auth middleware', () => {
     expect((await me(app, { 'Remote-User': 'bob' })).body.user).toEqual({ username: 'bob', isAdmin: false });
   });
 
+  it('AUTH_MODE=header gates data routes too (GET /api/recipes without Remote-User is 401)', async () => {
+    const res = await makeApp({ AUTH_MODE: 'header' }).request('/api/recipes');
+    const body = (await res.json()) as Record<string, any>;
+
+    expect(res.status).toBe(401);
+    expect(body.error.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('does not count a 401 against the ingest rate limit (auth runs before the limiter)', async () => {
+    const app = makeApp({ AUTH_MODE: 'header', RATE_LIMIT_MAX: '1' });
+    const post = (headers: Record<string, string> = {}) =>
+      app.request('/api/ingest/url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: '{}'
+      });
+
+    expect((await post()).status).toBe(401);
+    expect((await post()).status).toBe(401);
+    expect((await post({ 'Remote-User': 'alice' })).status).not.toBe(429);
+  });
+
   it('keeps both health endpoints open in header mode', async () => {
     const app = makeApp({ AUTH_MODE: 'header' });
 
