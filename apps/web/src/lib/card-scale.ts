@@ -1,4 +1,4 @@
-// Preview scaling for the fixed letter-size card pages (specs/10): the pages
+// Preview scaling for the fixed letter-size card pages (docs/specs/10): the pages
 // themselves never reflow, only this scale changes. Side-by-side preview is
 // used while each scaled page stays at least ~45% size (readable); below
 // that the pages stack vertically.

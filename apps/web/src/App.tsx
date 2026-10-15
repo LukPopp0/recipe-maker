@@ -94,7 +94,7 @@ function App() {
     setInputCollapsed(false);
   }, []);
 
-  // Open in Create copies a saved recipe into the workspace (specs/13):
+  // Open in Create copies a saved recipe into the workspace (docs/specs/13):
   // saving it again creates a new id, the library original is untouched.
   const handleOpenInCreate = useCallback(
     (recipe: CanonicalRecipe) => {

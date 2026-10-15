@@ -1,8 +1,8 @@
 // One editable block per step: step_header input, step_description textarea
 // (600 maxlength + live character count), the step image (thumbnail when set)
-// with an upload-only file control (specs/14 - add or replace a step image
+// with an upload-only file control (docs/specs/14 - add or replace a step image
 // after ingestion; no URL input, no removal), and a remove button (disabled
-// at the 1-step floor). "Add step" is disabled at the 6-step cap (specs/02
+// at the 1-step floor). "Add step" is disabled at the 6-step cap (docs/specs/02
 // rule 9) with an explanatory hint. All updates are immutable - every
 // callback builds a fresh array/object.
 import { useState, type ChangeEvent } from 'react';

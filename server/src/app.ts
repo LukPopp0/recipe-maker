@@ -57,7 +57,7 @@ export function createApp(deps: AppDeps): App {
   app.route('/api', ingestApp);
   app.route('/api', imageApp);
 
-  // Serves re-hosted recipe images (specs/06) from IMAGE_DATA_DIR. Rehosted
+  // Serves re-hosted recipe images (docs/specs/06) from IMAGE_DATA_DIR. Rehosted
   // URLs are built as `${PUBLIC_BASE_URL}/images/${key}` (see
   // LocalDiskStorageAdapter.put), so the mount path here must match.
   app.use(
@@ -68,7 +68,7 @@ export function createApp(deps: AppDeps): App {
     }),
   );
 
-  // Serves the shared ingredient catalog images (specs/12) from
+  // Serves the shared ingredient catalog images (docs/specs/12) from
   // INGREDIENT_ASSET_DIR so the frontend can display ingredient thumbnails.
   // Fulfills Phase 4 decision 2 ("static serving deferred to Phase 5").
   app.use(

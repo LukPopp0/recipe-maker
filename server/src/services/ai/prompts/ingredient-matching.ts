@@ -1,6 +1,6 @@
 import type { RawIngredient } from '../../post-processing/index.js';
 
-// Compact description of the output shape (specs/08). A JSON array, same
+// Compact description of the output shape (docs/specs/08). A JSON array, same
 // length and order as the input ingredient list. Only i + name + image are
 // requested: amounts/units are preserved from extraction, not re-emitted here.
 // "i" echoes the input's index so the matcher can align entries exactly even

@@ -1,4 +1,4 @@
-// Error codes per specs/03 minimum set, plus two additions:
+// Error codes per docs/specs/03 minimum set, plus two additions:
 // NOT_IMPLEMENTED is not in the spec's literal list. It is needed because Phase 1
 // registers the /api/ingest/url and /api/ingest/manual routes before their real
 // implementations land in Phase 2/3, and those stub handlers need a standard
@@ -31,13 +31,13 @@ export type ApiError = {
   details?: unknown
 }
 
-// Success envelope per specs/03: { ok: true, requestId, ...restOfPayload }.
+// Success envelope per docs/specs/03: { ok: true, requestId, ...restOfPayload }.
 export type ApiSuccessEnvelope<T extends object = Record<string, never>> = {
   ok: true
   requestId: string
 } & T
 
-// Error envelope per specs/03: { ok: false, requestId, error: { code, message, details? } }.
+// Error envelope per docs/specs/03: { ok: false, requestId, error: { code, message, details? } }.
 export type ApiErrorEnvelope = {
   ok: false
   requestId: string

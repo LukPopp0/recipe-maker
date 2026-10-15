@@ -14,7 +14,7 @@ function isNodeError(err: unknown, code: string): boolean {
   return typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === code;
 }
 
-// Milestone 1 default RecipeRepository implementation per specs/13: one JSON file
+// Milestone 1 default RecipeRepository implementation per docs/specs/13: one JSON file
 // per recipe under {dataDir}, named {id}.json, storing an envelope of
 // {id, createdAt, recipe} so list() can read summary fields without parsing the
 // full canonical recipe body separately.

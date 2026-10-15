@@ -20,7 +20,7 @@ const StepImageFieldsSchema = z.object({
   stepIndex: z.coerce.number().int().min(0).max(5),
 });
 
-// Standalone image upload for the review panel (specs/14): lets the user add
+// Standalone image upload for the review panel (docs/specs/14): lets the user add
 // or replace a single step image after ingestion, before Save. Reuses the
 // manual-ingestion hosting path (same MIME/size validation, same
 // recipes/{id}/step-{i} key scheme), so a re-upload for the same step

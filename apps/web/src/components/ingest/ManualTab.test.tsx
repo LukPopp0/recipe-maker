@@ -108,7 +108,7 @@ describe('ManualTab', () => {
     await user.upload(screen.getByLabelText(/step images/i), [stepOne, stepTwo]);
 
     // File list is displayed sorted by filename (mirrors server-side
-    // sorted-filename step assignment from specs/05).
+    // sorted-filename step assignment from docs/specs/05).
     const listItems = screen.getAllByRole('listitem');
     const listText = listItems.map((item) => item.textContent ?? '').join(' | ');
     expect(listText.indexOf('step-a.png')).toBeLessThan(listText.indexOf('step-b.png'));

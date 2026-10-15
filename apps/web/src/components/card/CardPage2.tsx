@@ -1,4 +1,4 @@
-// Card page 2 (specs/10): pantry banner on top, then a 3x2 step grid
+// Card page 2 (docs/specs/10): pantry banner on top, then a 3x2 step grid
 // (fill order 1,2,3 / 4,5,6). Steps without an image - including images
 // that fail to load - use the text-only variant: title bar at the top,
 // description takes the full column.

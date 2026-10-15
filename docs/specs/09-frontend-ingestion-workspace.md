@@ -6,7 +6,7 @@ Provide a single-page workflow to run both ingestion options, review results, an
 ## Layout (phase 8.5 item 11, "Fresh Market" -
 docs/superpowers/specs/2026-07-10-ui-overhaul-design.md)
 - Sticky top bar: app title, segmented Create/Library navigation
-  (specs/13-recipe-persistence-and-library.md), and status chip
+  (docs/specs/13-recipe-persistence-and-library.md), and status chip
   (coral tint dirty, green tint saved, neutral idle).
 - Create is a centered wizard column with numbered stages:
   1. Input: tabs (URL, Manual, Load JSON); collapses to a slim row after a

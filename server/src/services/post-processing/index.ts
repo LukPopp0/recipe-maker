@@ -35,7 +35,7 @@ export interface ApplyPostProcessingOptions {
 }
 
 /**
- * Deterministic canonical post-processing pipeline (specs/04 step 6 ordering):
+ * Deterministic canonical post-processing pipeline (docs/specs/04 step 6 ordering):
  *   1. pantry classification       (route staples out of ingredients)
  *   2. ingredient dedupe           (merge near-duplicates before matching)
  *   3. tag normalization           (vocabulary casing, dedupe, cap at 5)

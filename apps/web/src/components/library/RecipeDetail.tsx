@@ -1,7 +1,7 @@
 // Read-only detail view for one saved recipe. Fetches its own copy by id;
 // LibraryPanel owns the list, selection, and the delete confirm/API flow.
 // Open in Create hands the loaded recipe up so App can copy it into the
-// Create workspace (a copy - saving there creates a new id, per specs/13).
+// Create workspace (a copy - saving there creates a new id, per docs/specs/13).
 import { useCallback, useEffect, useState } from 'react';
 import type { CanonicalRecipe } from 'shared';
 import { getRecipe, type ApiFailure } from '../../api/client.ts';

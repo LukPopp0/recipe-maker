@@ -14,7 +14,7 @@ import type { GeminiClient } from '../services/ai/gemini-client.js';
 import { LocalDiskStorageAdapter } from '../services/storage/local-disk-storage-adapter.js';
 import { LocalJsonFileRecipeRepository } from '../services/recipes/local-json-file-recipe-repository.js';
 
-// Golden-fixture integration tests for POST /api/ingest/url (specs/04). Reuses
+// Golden-fixture integration tests for POST /api/ingest/url (docs/specs/04). Reuses
 // ingest.test.ts's exact harness patterns (mkdtemp dirs, dns spy, makeApp,
 // fakeGeminiSequence, mocked fetch) against fixture files instead of inline
 // literals, so the full pipeline (fetch -> JSON-LD/text extraction -> Gemini
@@ -290,7 +290,7 @@ describe('POST /api/ingest/url golden fixtures', () => {
   });
 });
 
-// Golden-fixture integration tests for POST /api/ingest/manual (specs/05).
+// Golden-fixture integration tests for POST /api/ingest/manual (docs/specs/05).
 // Reuses ingest.test.ts's exact harness patterns (mkdtemp dirs, makeApp,
 // fakeGeminiSequence, makeImageFile/validFormData) against fixture files
 // instead of inline literals, so the full pipeline (host uploaded images ->

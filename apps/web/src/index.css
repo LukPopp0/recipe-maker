@@ -161,7 +161,7 @@ h1, h2, h3 {
   }
 }
 
-/* Print baseline - full card print rules land in Milestone 2 (specs/10) */
+/* Print baseline - full card print rules land in Milestone 2 (docs/specs/10) */
 @media print {
   body {
     background: #fff;

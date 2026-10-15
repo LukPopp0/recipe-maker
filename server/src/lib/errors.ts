@@ -1,6 +1,6 @@
 import type { ApiError, ErrorCode } from 'shared';
 
-// HTTP status per error code, per specs/03.
+// HTTP status per error code, per docs/specs/03.
 export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   INVALID_INPUT: 400,
   INVALID_URL: 400,

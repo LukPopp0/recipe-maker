@@ -6,7 +6,7 @@ Define the concrete architecture for a secure, maintainable recipe ingestion and
 ## Technology Choices
 - Backend framework: Hono.
 - Test framework: Vitest (unit/integration), React Testing Library (UI/component tests).
-- Recipe persistence: flat JSON files on disk, one per recipe, behind a pluggable RecipeRepository interface (see specs/13-recipe-persistence-and-library.md).
+- Recipe persistence: flat JSON files on disk, one per recipe, behind a pluggable RecipeRepository interface (see docs/specs/13-recipe-persistence-and-library.md).
 
 ## Repository Structure
 
@@ -46,7 +46,7 @@ This is a pnpm workspace with three sibling packages: `/apps/web` (package `web`
 ## Shared structure
 - /shared/src/contracts: request/response types.
 - /shared/src/schema: runtime validators.
-- /shared/src/constants: tag vocabulary, pantry defaults, limits (see specs/12-shared-constants.md for exact values).
+- /shared/src/constants: tag vocabulary, pantry defaults, limits (see docs/specs/12-shared-constants.md for exact values).
 - /shared/assets/ingredients: image files used for ingredient matching and rendering.
 
 ## Runtime Architecture

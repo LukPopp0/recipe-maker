@@ -53,7 +53,7 @@ export interface RunUrlIngestionPipelineResult {
 
 // Below this many characters of cleaned visible text, a page is treated as
 // not containing a recognizable recipe - not worth spending a Gemini call on.
-// Heuristic per specs/04's "missing minimum required content" failure
+// Heuristic per docs/specs/04's "missing minimum required content" failure
 // condition, not a precise measurement.
 const MIN_CONTENT_CHARS = 40;
 
@@ -153,7 +153,7 @@ async function tryExtract(fn: () => Promise<unknown>): Promise<unknown | null> {
   }
 }
 
-// Orchestrates Option A (URL) ingestion per specs/04 with a tiered fetch
+// Orchestrates Option A (URL) ingestion per docs/specs/04 with a tiered fetch
 // strategy:
 //   1. Static fetch under SSRF guardrails (fast path).
 //   2. If the page embeds schema.org Recipe JSON-LD, extraction proceeds on

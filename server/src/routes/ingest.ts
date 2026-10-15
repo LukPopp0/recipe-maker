@@ -27,7 +27,7 @@ export type IngestDeps = {
   defaultMainImageUrl: string
 }
 
-// Ingestion routes per specs/03. Both URL ingestion (Option A, Phase 2) and
+// Ingestion routes per docs/specs/03. Both URL ingestion (Option A, Phase 2) and
 // manual text+images ingestion (Option B, Phase 3) are wired to their real
 // pipelines here.
 export function createIngestApp(deps: IngestDeps) {
@@ -43,7 +43,7 @@ export function createIngestApp(deps: IngestDeps) {
     const requestId = c.get('requestId');
     const { url } = await parseJsonBody(c, IngestUrlRequestSchema);
 
-    // 1. Validate + fetch + Gemini-extract a raw recipe candidate (specs/04).
+    // 1. Validate + fetch + Gemini-extract a raw recipe candidate (docs/specs/04).
     const { recipeCandidate, diagnostics } = await runUrlIngestionPipeline({
       url,
       geminiClient,
@@ -123,7 +123,7 @@ export function createIngestApp(deps: IngestDeps) {
     const recipeId = randomUUID();
 
     // 3. Host uploaded images, run the single Gemini normalization call, and
-    //    assign hosted step images onto the returned steps (specs/05).
+    //    assign hosted step images onto the returned steps (docs/specs/05).
     const { recipeCandidate, diagnostics, warnings: pipelineWarnings } = await runManualIngestionPipeline({
       parsed,
       geminiClient,

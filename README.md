@@ -50,7 +50,7 @@ This is a pnpm workspace with three sibling packages:
 - `apps/web/` - frontend (React + TypeScript + Vite), package `web`.
 - `server/` - backend API (Hono), package `server`. Boots via `pnpm --filter server run dev`, validates env/config and storage readiness on startup, exposes `/health` and `/api/*` routes.
 - `shared/` - types, Zod schema validators, constants, and `assets/ingredients` (ingredient image library used by both frontend and backend), package `shared`.
-- `specs/` - per-feature specs; read before changing scope.
+- `docs/specs/` - per-feature specs; read before changing scope.
 
 ## Scripts
 
@@ -67,7 +67,7 @@ This is a pnpm workspace with three sibling packages:
 
 - English-only input for Milestone 1.
 - Recipes are capped at 6 cooking steps (compaction runs automatically above that).
-- Pantry allowlist and tag vocabulary are fixed lists, see `specs/12-shared-constants.md`.
+- Pantry allowlist and tag vocabulary are fixed lists, see `docs/specs/12-shared-constants.md`.
 - Recipe persistence is flat JSON files on disk (`server/data/recipes/`), not a database.
 - Re-hosted recipe images are stored locally on disk (`server/data/images/`), not a cloud adapter.
 - Single-user, no authentication (local-first).
@@ -90,4 +90,4 @@ This is a pnpm workspace with three sibling packages:
 - [ ] Phase 9: server-side PDF generation (deferred - browser print dialog is sufficient for now)
 - [ ] Phase 11: automatic step image generation (deferred new feature - needs spec and cost decision)
 
-See `specs/` for per-feature specs.
+See `docs/specs/` for per-feature specs.

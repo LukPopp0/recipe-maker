@@ -1,4 +1,4 @@
-// Pluggable object-storage interface per specs/06, mirroring the RecipeRepository
+// Pluggable object-storage interface per docs/specs/06, mirroring the RecipeRepository
 // pattern so a cloud-backed implementation can replace LocalDiskStorageAdapter
 // later without touching callers.
 export interface StorageAdapter {

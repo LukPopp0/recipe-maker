@@ -18,7 +18,7 @@ export interface HostUploadedImageOptions {
 // Hosts an already-in-memory uploaded image buffer (Option B manual
 // ingestion). Never throws: any validation failure (unsupported MIME,
 // oversized buffer) returns a { warning } result instead, mirroring
-// rehostRecipeImages's non-critical-failure contract from specs/06.
+// rehostRecipeImages's non-critical-failure contract from docs/specs/06.
 export async function hostUploadedImage(
   file: UploadedFile,
   options: HostUploadedImageOptions,

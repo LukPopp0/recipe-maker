@@ -2,7 +2,7 @@ import type { CanonicalRecipe } from 'shared';
 import { fetchAndStoreRemoteImage, type FetchAndStoreRemoteImageResult } from './remote-image-fetcher.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 
-// MIME types permitted for re-hosted images per specs/06.
+// MIME types permitted for re-hosted images per docs/specs/06.
 export const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -58,7 +58,7 @@ function describeRehostFailure(
 
 // Downloads recipe.main_image (when it's a remote http(s) URL that isn't
 // already the configured default) plus any remote steps[].image URLs and
-// re-hosts them via storageAdapter, per specs/06's re-hosting rules. Never
+// re-hosts them via storageAdapter, per docs/specs/06's re-hosting rules. Never
 // throws: a main-image failure leaves main_image untouched (finalSanitize's
 // default-fallback takes over downstream); a step-image failure drops that
 // step's image (the card falls back to its text-only variant). Every failure

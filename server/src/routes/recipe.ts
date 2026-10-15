@@ -37,7 +37,7 @@ function parseRecipeId(id: string): string {
   return result.data;
 }
 
-// Recipe CRUD + validate/download routes per specs/03 and specs/13, backed
+// Recipe CRUD + validate/download routes per docs/specs/03 and docs/specs/13, backed
 // by the injected RecipeRepository.
 export function createRecipeApp(deps: RecipeDeps) {
   const app = new Hono<{ Variables: AppVariables }>();

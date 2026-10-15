@@ -1,4 +1,4 @@
-// Card page 1 (specs/10): header logo/wordmark, title, time, tag pills,
+// Card page 1 (docs/specs/10): header logo/wordmark, title, time, tag pills,
 // main image left, 2-column ingredient grid right. Pure render from
 // CanonicalRecipe - no fetching, no state beyond image-error fallbacks.
 import { useState } from 'react';
@@ -8,7 +8,7 @@ import { ingredientImageUrl, INGREDIENT_NOT_FOUND_IMAGE } from '../../lib/ingred
 import { tagColorClass } from '../../lib/tag-palette.ts';
 import pinaLogo from '../../assets/pina-logo.png';
 
-// Density buckets keep any ingredient count on page 1 (specs/10: shrink,
+// Density buckets keep any ingredient count on page 1 (docs/specs/10: shrink,
 // never a third column, never a cap). Thresholds match the 2x6 template grid.
 function ingredientDensity(count: number): 'regular' | 'compact' | 'tight' {
   if (count > 18) return 'tight';

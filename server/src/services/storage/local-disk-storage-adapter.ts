@@ -7,7 +7,7 @@ function isNodeError(err: unknown, code: string): boolean {
   return typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === code;
 }
 
-// Milestone-1 default StorageAdapter per specs/06: stores objects as files under
+// Milestone-1 default StorageAdapter per docs/specs/06: stores objects as files under
 // dataDir, keyed by the caller-supplied storage key (namespaced
 // `recipes/{recipeId}/{kind}-{index}.{ext}`), and serves them back out via Hono's
 // static middleware mounted at /images/* in app.ts (not via this class's get(),

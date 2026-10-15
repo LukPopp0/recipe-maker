@@ -7,7 +7,7 @@ const MAX_STEP_DESCRIPTION_LENGTH = 600;
 // durations). We flag it for review but never clamp - time stays user-editable.
 const IMPLAUSIBLE_TIME_MINUTES = 240;
 
-// Trim + collapse internal whitespace (specs/02 normalization rules).
+// Trim + collapse internal whitespace (docs/specs/02 normalization rules).
 function clean(value: string): string {
   return (value ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -27,7 +27,7 @@ function dedupeCaseInsensitive(items: string[]): string[] {
 }
 
 /**
- * Final safety net before a recipe is considered canonical (specs/04 step 6):
+ * Final safety net before a recipe is considered canonical (docs/specs/04 step 6):
  * - trims all strings and collapses multi-spaces,
  * - hard-clamps each step_description to 600 chars, recording a metadata.warnings entry
  *   whenever a description was actually truncated (content may have been lost),

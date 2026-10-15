@@ -12,7 +12,7 @@ export interface RawIngredient {
 
 /**
  * Routes pantry-staple ingredients out of the ingredients list and into a
- * deduplicated pantry_items list (specs/02 conflict rule + normalization rule
+ * deduplicated pantry_items list (docs/specs/02 conflict rule + normalization rule
  * "lowercase matching keys but preserve display form").
  *
  * - Matching uses `pantryCanonicalName` (shared): type variants count as their

@@ -19,7 +19,7 @@ export interface ParsedManualUpload {
 }
 
 // Trims leading/trailing whitespace and normalizes CRLF/CR newlines to LF, per
-// specs/05's manual-ingestion text-field normalization rule.
+// docs/specs/05's manual-ingestion text-field normalization rule.
 function normalizeText(value: string): string {
   return value.trim().replace(/\r\n?/g, '\n');
 }

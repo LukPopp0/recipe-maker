@@ -104,14 +104,14 @@ function passesStructuralPreCheck(candidate: unknown): candidate is RawRecipeCan
   return hasTitle && hasIngredient && hasStep;
 }
 
-// Orchestrates Option B (manual text + images) ingestion per specs/05: host
+// Orchestrates Option B (manual text + images) ingestion per docs/specs/05: host
 // the user's uploaded main/step images, run a single Gemini normalization
 // call over the raw ingredients/steps text, structurally validate the
 // response, then deterministically assign the hosted step images onto the
 // returned steps by index. Unlike Option A there is no retry - a failed
 // structural pre-check throws AI_NORMALIZATION_FAILED immediately (Scope
 // Decision 2). Image hosting failures are non-critical: they degrade to a
-// warning rather than aborting the pipeline (specs/06).
+// warning rather than aborting the pipeline (docs/specs/06).
 export async function runManualIngestionPipeline({
   parsed,
   geminiClient,

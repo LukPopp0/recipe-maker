@@ -1,7 +1,7 @@
 @import '../../assets/fonts/fonts.css';
 
 /* Card geometry uses real-world units: pages are exactly letter size and
-   type is in pt (specs/10 typography table), so the scaled screen preview
+   type is in pt (docs/specs/10 typography table), so the scaled screen preview
    and the printed page share one layout. 1in = 96px in CSS. */
 
 .card-page {
@@ -249,7 +249,7 @@
   overflow: hidden;
 }
 
-/* Landscape variant (specs/10 Landscape Variant): same DOM, different
+/* Landscape variant (docs/specs/10 Landscape Variant): same DOM, different
    geometry. Page is 11in x 8.5in; page 1 keeps image-left/rail-right but
    the rail may widen to 3 columns (never in portrait); page 2 keeps the
    3x2 step grid on the wider, shorter page. */

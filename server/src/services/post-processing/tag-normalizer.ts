@@ -9,7 +9,7 @@ const VOCABULARY_BY_KEY = new Map<string, string>(
 );
 
 /**
- * Normalizes raw tags per specs/02 rule 2 + normalization rules:
+ * Normalizes raw tags per docs/specs/02 rule 2 + normalization rules:
  * - Controlled-vocabulary matches (case-insensitive) adopt the canonical casing.
  * - Unmatched tags are kept as custom (trimmed, 1-40 chars).
  * - Deduplicated case-insensitively (first-seen display form wins).

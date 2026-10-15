@@ -60,7 +60,7 @@ function mergeGroup(group: RawStep[]): RawStep {
 }
 
 /**
- * Deterministic step compaction per specs/07:
+ * Deterministic step compaction per docs/specs/07:
  * - No-op when there are <= 6 steps.
  * - Otherwise merges adjacent steps into exactly 6 groups, always merging the
  *   shortest adjacent pair first (leftmost wins ties). Order is never changed

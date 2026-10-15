@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { CanonicalRecipeSchema } from './canonical-recipe.js';
 
-// POST /api/ingest/url request body per specs/03.
+// POST /api/ingest/url request body per docs/specs/03.
 export const IngestUrlRequestSchema = z.object({
   url: z.string().trim().url(),
 });
 
 export type IngestUrlRequest = z.infer<typeof IngestUrlRequestSchema>
 
-// POST /api/recipe/save request body per specs/03: a canonical recipe candidate.
+// POST /api/recipe/save request body per docs/specs/03: a canonical recipe candidate.
 export const SaveRecipeRequestSchema = CanonicalRecipeSchema;
 
 export type SaveRecipeRequest = z.infer<typeof SaveRecipeRequestSchema>

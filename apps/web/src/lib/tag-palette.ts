@@ -1,4 +1,4 @@
-// Deterministic tag pill color assignment (specs/10). Preset tags (matched
+// Deterministic tag pill color assignment (docs/specs/10). Preset tags (matched
 // case-insensitively against TAG_VOCABULARY) get a fixed per-tag class;
 // custom tags hash into a small fallback palette so the same tag gets the
 // same color on every recipe. Colors live in tag-colors.css.

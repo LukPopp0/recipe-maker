@@ -11,7 +11,7 @@ import type { GeminiClient } from '../services/ai/gemini-client.js';
 import { LocalDiskStorageAdapter } from '../services/storage/local-disk-storage-adapter.js';
 import { LocalJsonFileRecipeRepository } from '../services/recipes/local-json-file-recipe-repository.js';
 
-// Integration tests for POST /api/image/step (specs/14): the review panel's
+// Integration tests for POST /api/image/step (docs/specs/14): the review panel's
 // standalone step-image upload. Gemini is never involved - the client stub
 // throws if called.
 

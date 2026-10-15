@@ -14,9 +14,9 @@ Library UI (list/view read-only, download, delete, Open in Create), and
 Milestone 2 card rendering (printable two-page letter-size recipe card, print/
 save-PDF via `window.print`, Library "View as Card" and Create "Preview Card").
 Phase 5.5 hardened URL ingestion: JSON-LD extraction, Playwright browser fallback,
-explicit URL_FETCH_BLOCKED/URL_FETCH_FAILED errors (see plan addendum + specs/04).
+explicit URL_FETCH_BLOCKED/URL_FETCH_FAILED errors (see plan addendum + docs/specs/04).
 Phase 7.5 added the landscape (default) card orientation with a portrait
-toggle and self-hosted Inter/D-DIN fonts (specs/10 Landscape Variant).
+toggle and self-hosted Inter/D-DIN fonts (docs/specs/10 Landscape Variant).
 Phase 8 (quality/testing/hardening) is done: RATE_LIMITED (429) in-memory
 fixed-window rate limiter on `/api/ingest/*` only (`RATE_LIMIT_MAX`,
 `RATE_LIMIT_WINDOW_MS`); per-stage structured logs via `logStage`
@@ -28,7 +28,7 @@ single retry via `GEMINI_RETRY_MODEL`; CI (`.github/workflows/ci.yml`) runs
 install/typecheck/test with Playwright mocked.
 Phase 8.5 fix backlog from end-to-end testing:
 `private/plans/mvp/phase-8.5-fixes-and-improvements.md` (check items off as fixed).
-Phase 10 (specs/14) is done: URL ingestion extracts step images (JSON-LD
+Phase 10 (docs/specs/14) is done: URL ingestion extracts step images (JSON-LD
 HowToStep.image overlay + Gemini candidate mapping, prompt v4, re-hosted like
 main_image), ingest responses return `imageNamespaceId`, `POST /api/image/step`
 uploads a step image from the review panel (upload-only, per-step thumbnail),
@@ -42,9 +42,9 @@ strict phase order.
 
 ## Key docs
 - `private/plans/mvp/recipe-maker-implementation-plan.md` - phases, order, definition of done, risks
-- `specs/01` through `specs/14` - one spec per concern, referenced by phase in the plan
-- `specs/12-shared-constants.md` - pantry allowlist + tag vocabulary (actual values)
-- `specs/13-recipe-persistence-and-library.md` - RecipeRepository, save/library flow
+- `docs/specs/01` through `docs/specs/14` - one spec per concern, referenced by phase in the plan
+- `docs/specs/12-shared-constants.md` - pantry allowlist + tag vocabulary (actual values)
+- `docs/specs/13-recipe-persistence-and-library.md` - RecipeRepository, save/library flow
 
 ## Tech decisions (do not relitigate without asking)
 - Backend: Hono
@@ -56,15 +56,15 @@ strict phase order.
 - Single-user, no auth for now; access gate only if/when deployed
 - Deployment: local-first, keep adapters pluggable for future hosting
 
-## Repo layout (pnpm workspace, per specs/01)
+## Repo layout (pnpm workspace, per docs/specs/01)
 - `/apps/web` - frontend (React + TS + Vite), package `web`
 - `/server` - backend API, package `server` (not yet created)
 - `/shared` - shared types, schema, constants, `assets/ingredients` (215 images, already
   in place); package `shared` (not yet an installable package - added in a later Phase 1 task)
-- `/specs` - public per-feature specs; `/private` (gitignored) - plans (`private/plans/<area>/`) and private specs
+- `/docs/specs` - public per-feature specs; `/private` (gitignored) - plans (`private/plans/<area>/`) and private specs
 
 ## Conventions
-- Follow `private/plans/*` and `specs/*` (plus `private/specs/*`) as source of truth; update both together if scope changes
+- Follow `private/plans/*` and `docs/specs/*` (plus `private/specs/*`) as source of truth; update both together if scope changes
 - Ask before making architecture decisions not already covered above
 - Prefer targeted, minimal edits over broad refactors
 - No emojis, ASCII only in responses and comments

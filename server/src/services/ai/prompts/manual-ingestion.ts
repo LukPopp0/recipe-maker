@@ -1,6 +1,6 @@
 import { buildSharedRules, CLOSING_REMINDER } from './shared-rules.js';
 
-// Compact description of the CanonicalRecipe shape (specs/02), not the full Zod
+// Compact description of the CanonicalRecipe shape (docs/specs/02), not the full Zod
 // schema. Field names must be reproduced exactly since the pipeline feeds the
 // model's raw JSON straight into CanonicalRecipeSchema.parse. Unlike the URL
 // ingestion prompt, "main_image" is intentionally omitted here - the backend

@@ -1,6 +1,6 @@
 import type { CanonicalRecipe, RecipeSummary } from 'shared';
 
-// Pluggable persistence interface per specs/13, mirroring the StorageAdapter pattern
+// Pluggable persistence interface per docs/specs/13, mirroring the StorageAdapter pattern
 // (spec 06) so a database-backed implementation can replace the local JSON file
 // implementation later without touching callers. Server-only: unlike RecipeSummary,
 // this interface is not part of the shared wire contract.

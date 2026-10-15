@@ -48,7 +48,7 @@ export function ManualTab({
   const [errors, setErrors] = useState<string[]>([]);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
 
-  // Step-image display order mirrors the server assignment (specs/05): file
+  // Step-image display order mirrors the server assignment (docs/specs/05): file
   // uploads are sorted by filename (the user controls those names), then URL
   // images follow in add order because their server-side stored name is not
   // user-controllable, so a filename sort would be meaningless for them.

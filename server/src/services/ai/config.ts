@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Schema for environment variables, with defaults and validation per specs/11.
+// Schema for environment variables, with defaults and validation per docs/specs/11.
 // Deterministic generationConfig ensures reproducible outputs.
 const geminiConfigSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),

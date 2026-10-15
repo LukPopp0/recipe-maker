@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Per specs/02, rule 5-6: ingredient name is required/trimmed, amount_text is free text
+// Per docs/specs/02, rule 5-6: ingredient name is required/trimmed, amount_text is free text
 // (supports fractions, e.g. "1 1/2 cups") but may be empty when the source has no
 // amount at all (e.g. "cilantro" as garnish) - Gemini emits null in that case.
 export const IngredientSchema = z.object({
@@ -11,7 +11,7 @@ export const IngredientSchema = z.object({
   image: z.string().optional(),
 });
 
-// Per specs/02, rule 10-11: step_header/step_description required non-empty,
+// Per docs/specs/02, rule 10-11: step_header/step_description required non-empty,
 // step_description max 600 chars.
 export const StepSchema = z.object({
   step_header: z.string().trim().min(1),
@@ -19,7 +19,7 @@ export const StepSchema = z.object({
   image: z.string().optional(),
 });
 
-// Per specs/02, rule 12: metadata.warnings always present (possibly empty).
+// Per docs/specs/02, rule 12: metadata.warnings always present (possibly empty).
 export const MetadataSchema = z.object({
   source_type: z.enum(['url', 'manual']),
   source_url: z.string().optional(),
@@ -27,7 +27,7 @@ export const MetadataSchema = z.object({
   warnings: z.array(z.string()).default([]),
 });
 
-// Canonical recipe schema per specs/02. Validation rules implemented exactly:
+// Canonical recipe schema per docs/specs/02. Validation rules implemented exactly:
 // 1. title required/trimmed/1-140 chars.
 // 2. tags required array, max 5 entries, each 1-40 chars.
 // 3. time nullable; if present, integer minutes 0-1440.
@@ -53,7 +53,7 @@ export type Metadata = z.infer<typeof MetadataSchema>
 export type CanonicalRecipe = z.infer<typeof CanonicalRecipeSchema>
 
 /**
- * Applies specs/02 rule 8: main_image is required by the schema, so callers must
+ * Applies docs/specs/02 rule 8: main_image is required by the schema, so callers must
  * resolve a fallback BEFORE validation when no valid image was found during ingestion.
  * The schema itself only enforces "non-empty string"; it does not know about defaults.
  */

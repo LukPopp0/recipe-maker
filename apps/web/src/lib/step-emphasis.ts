@@ -1,4 +1,4 @@
-// Render-time bolding of ingredient mentions in step descriptions (specs/10).
+// Render-time bolding of ingredient mentions in step descriptions (docs/specs/10).
 // The schema stores plain text; this only affects display. Whole-word,
 // case-insensitive, longest name first so "olive oil" wins over "oil", with
 // a cheap s/es plural suffix. Misses are acceptable - this is decoration.
