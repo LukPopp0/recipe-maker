@@ -85,10 +85,10 @@ describe('loadServerEnv', () => {
   });
 
   it('parses ADMIN_USERS as a trimmed, lowercased list without empty entries', () => {
-    const env = loadServerEnv({ AUTH_MODE: 'header', ADMIN_USERS: ' Lukas , bob,, ' });
+    const env = loadServerEnv({ AUTH_MODE: 'header', ADMIN_USERS: ' Alice , bob,, ' });
 
     expect(env.AUTH_MODE).toBe('header');
-    expect(env.ADMIN_USERS).toEqual(['lukas', 'bob']);
+    expect(env.ADMIN_USERS).toEqual(['alice', 'bob']);
   });
 
   it('throws on an unknown AUTH_MODE', () => {
