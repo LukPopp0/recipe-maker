@@ -1,7 +1,7 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { AppError } from '../../lib/errors.js';
-import type { StorageAdapter } from './storage-adapter.js';
+import type { StorageAdapter, StoredObject } from './storage-adapter.js';
 
 function isNodeError(err: unknown, code: string): boolean {
   return typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === code;
@@ -63,5 +63,28 @@ export class LocalDiskStorageAdapter implements StorageAdapter {
       }
       throw err;
     }
+  }
+
+  async list(prefix: string): Promise<StoredObject[]> {
+    const root = this.resolvePath(prefix);
+    let entries: string[];
+    try {
+      entries = await readdir(root, { recursive: true });
+    } catch (err) {
+      if (isNodeError(err, 'ENOENT')) {
+        return [];
+      }
+      throw err;
+    }
+
+    const objects: StoredObject[] = [];
+    for (const entry of entries) {
+      const filePath = path.join(root, entry);
+      const info = await stat(filePath);
+      if (!info.isFile()) continue;
+      const key = path.relative(path.resolve(this.dataDir), filePath).split(path.sep).join('/');
+      objects.push({ key, sizeBytes: info.size, modifiedAt: info.mtime });
+    }
+    return objects;
   }
 }

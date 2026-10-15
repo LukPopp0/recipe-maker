@@ -14,6 +14,7 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
   return {
     put: vi.fn().mockImplementation(async (_buffer: Buffer, key: string) => `http://localhost:8787/images/${key}`),
     get: vi.fn(),
+    list: vi.fn(),
     delete: vi.fn(),
   };
 }

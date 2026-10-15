@@ -9,6 +9,7 @@ function fakeInner(): StorageAdapter & { put: ReturnType<typeof vi.fn> } {
     put: vi.fn(async (_buf: Buffer, key: string) => `http://localhost:8787/images/${key}`),
     get: vi.fn(),
     delete: vi.fn(),
+    list: vi.fn(),
   } as never;
 }
 
@@ -40,5 +41,16 @@ describe('ResizingStorageAdapter', () => {
 
     await expect(new ResizingStorageAdapter(inner).put(Buffer.from('nope'), 'recipes/a/main-0.jpg', 'image/jpeg')).rejects.toBeInstanceOf(ImageDecodeError);
     expect(inner.put).not.toHaveBeenCalled();
+  });
+});
+
+describe('ResizingStorageAdapter.list', () => {
+  it('passes list through to the inner adapter', async () => {
+    const inner = fakeInner();
+    const objects = [{ key: 'recipes/a/main-0.jpg', sizeBytes: 1, modifiedAt: new Date() }];
+    (inner as unknown as { list: ReturnType<typeof vi.fn> }).list.mockResolvedValue(objects);
+
+    expect(await new ResizingStorageAdapter(inner).list('recipes/')).toBe(objects);
+    expect((inner as unknown as { list: ReturnType<typeof vi.fn> }).list).toHaveBeenCalledWith('recipes/');
   });
 });

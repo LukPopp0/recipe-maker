@@ -15,6 +15,7 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
       return `http://localhost:8787/images/${key}?v=${counter}`;
     }),
     get: vi.fn(),
+    list: vi.fn(),
     delete: vi.fn(),
   };
 }

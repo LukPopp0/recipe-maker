@@ -1,5 +1,5 @@
 import { normalizeImage } from '../images/normalize-image.js';
-import type { StorageAdapter } from './storage-adapter.js';
+import type { StorageAdapter, StoredObject } from './storage-adapter.js';
 
 // "recipes/x/main-0.png" -> "recipes/x/main-0.jpg": stored images are always
 // JPEG after normalization, so the key's extension must say so (static
@@ -31,5 +31,9 @@ export class ResizingStorageAdapter implements StorageAdapter {
 
   delete(key: string): Promise<void> {
     return this.inner.delete(key);
+  }
+
+  list(prefix: string): Promise<StoredObject[]> {
+    return this.inner.list(prefix);
   }
 }

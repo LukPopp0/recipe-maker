@@ -77,4 +77,24 @@ describe('LocalDiskStorageAdapter', () => {
       code: 'INTERNAL_ERROR',
     });
   });
+
+  it('lists stored objects under a prefix with size and mtime, [] for a missing prefix', async () => {
+    const adapter = new LocalDiskStorageAdapter(dataDir, 'http://localhost:8787');
+    await adapter.put(Buffer.from('abc'), 'recipes/r1/main-0.jpg', 'image/jpeg');
+    await adapter.put(Buffer.from('defg'), 'recipes/r2/step-1.jpg', 'image/jpeg');
+
+    const objects = (await adapter.list('recipes/')).sort((a, b) => a.key.localeCompare(b.key));
+
+    expect(objects.map((o) => [o.key, o.sizeBytes])).toEqual([
+      ['recipes/r1/main-0.jpg', 3],
+      ['recipes/r2/step-1.jpg', 4],
+    ]);
+    expect(objects[0].modifiedAt).toBeInstanceOf(Date);
+    expect(await adapter.list('nothing-here/')).toEqual([]);
+  });
+
+  it('list rejects a prefix that escapes the data dir', async () => {
+    const adapter = new LocalDiskStorageAdapter(dataDir, 'http://localhost:8787');
+    await expect(adapter.list('../')).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+  });
 });

@@ -7,6 +7,7 @@ function makeStorageAdapter(): StorageAdapter & { put: ReturnType<typeof vi.fn> 
   return {
     put: vi.fn().mockResolvedValue('http://localhost:8787/images/recipes/recipe-1/main-0.jpg'),
     get: vi.fn(),
+    list: vi.fn(),
     delete: vi.fn(),
   };
 }

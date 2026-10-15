@@ -19,6 +19,7 @@ export function makeIngestDeps(): {
       throw new Error('storageAdapter.get should not be called in this test');
     },
     delete: async () => {},
+    list: async () => [],
   };
 
   const geminiClient = {
