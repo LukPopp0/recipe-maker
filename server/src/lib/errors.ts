@@ -16,6 +16,8 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   NOT_IMPLEMENTED: 501,
   ROUTE_NOT_FOUND: 404,
   RATE_LIMITED: 429,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
 };
 
 // Default user-safe message per error code, used when a caller does not
@@ -35,6 +37,8 @@ export const ERROR_DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   NOT_IMPLEMENTED: 'This feature is not implemented yet.',
   ROUTE_NOT_FOUND: 'The requested route does not exist.',
   RATE_LIMITED: 'Too many ingestion requests. Wait a moment and try again.',
+  UNAUTHENTICATED: 'You are not logged in.',
+  FORBIDDEN: 'You are not allowed to do this.',
 };
 
 // Application-level error carrying a standardized error code and optional

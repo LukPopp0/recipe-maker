@@ -7,6 +7,8 @@ const RECOVERY_HINTS: Record<string, string> = {
   URL_EXTRACTION_FAILED: 'Check the URL or use the Manual tab instead.',
   URL_FETCH_TIMEOUT: 'The page took too long to load. Try again or use the Manual tab.',
   NETWORK_ERROR: 'Could not reach the server - is the backend running on port 8787?',
+  UNAUTHENTICATED: 'Your login may have expired. Reload the page to log in again.',
+  FORBIDDEN: 'Only the recipe owner or an admin can do this.',
 };
 
 const GENERIC_RECOVERY_HINT = 'Try again, or check the console for details.';

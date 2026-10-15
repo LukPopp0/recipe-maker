@@ -83,6 +83,17 @@ describe('ErrorBanner', () => {
     expect(screen.getByText(/backend running on port 8787/i)).toBeInTheDocument();
   });
 
+  it('shows a log-in-again hint for UNAUTHENTICATED', () => {
+    render(
+      <ErrorBanner
+        error={{ code: 'UNAUTHENTICATED', message: 'You are not logged in.' }}
+        onRetry={() => {}}
+        onDismiss={() => {}}
+      />,
+    );
+    expect(screen.getByText(/reload the page to log in again/i)).toBeInTheDocument();
+  });
+
   it('shows a generic recovery hint for unknown codes', () => {
     render(
       <ErrorBanner

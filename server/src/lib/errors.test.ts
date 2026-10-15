@@ -15,6 +15,8 @@ describe('ERROR_STATUS_MAP', () => {
     expect(ERROR_STATUS_MAP.NOT_IMPLEMENTED).toBe(501);
     expect(ERROR_STATUS_MAP.ROUTE_NOT_FOUND).toBe(404);
     expect(ERROR_STATUS_MAP.RATE_LIMITED).toBe(429);
+    expect(ERROR_STATUS_MAP.UNAUTHENTICATED).toBe(401);
+    expect(ERROR_STATUS_MAP.FORBIDDEN).toBe(403);
   });
 });
 

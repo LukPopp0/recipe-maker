@@ -6,6 +6,8 @@
 // ROUTE_NOT_FOUND is also not in the spec's literal list. It is needed because
 // spec 03 does not define a generic "no route matched" code, and RECIPE_NOT_FOUND
 // is recipe-specific and semantically wrong for an unmatched-route 404.
+// UNAUTHENTICATED / FORBIDDEN are used when AUTH_MODE=header (deployment
+// spec): no Remote-User header, or the user may not perform the action.
 export const ERROR_CODES = [
   'INVALID_INPUT',
   'INVALID_URL',
@@ -21,6 +23,8 @@ export const ERROR_CODES = [
   'NOT_IMPLEMENTED',
   'ROUTE_NOT_FOUND',
   'RATE_LIMITED',
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number]
