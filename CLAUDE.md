@@ -54,6 +54,8 @@ the default recipe placeholder is shipped and served at `/images/placeholder-rec
 `Dockerfile` (Playwright base, arm64) and `docker-compose.example.yml` exist, and the CI `image`
 job (push to `main` only) builds the image, runs `scripts/docker-smoke-test.sh`, and publishes
 `ghcr.io/<owner>/recipe-maker` (`latest` + `sha-<7>`, last 10 versions kept).
+Deployment D6 (server setup) is done: production runs the GHCR image behind tinyauth;
+server notes (compose, nginx sites, backup, update/restore) in `private/deploy/`.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read
