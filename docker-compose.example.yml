@@ -4,7 +4,17 @@ services:
   recipes:
     image: ghcr.io/OWNER/recipe-maker:latest
     restart: unless-stopped
-    env_file: .env
+    # Reaps orphaned Chromium processes from the URL browser fallback.
+    init: true
+    # Lets an in-flight ingest (browser fetch plus Gemini) finish on stop.
+    stop_grace_period: 45s
+    # Only the app's settings, so tinyauth's user hashes in .env never reach
+    # this container. Add other server settings (docs/specs/11) here.
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      AUTH_MODE: ${AUTH_MODE:-header}
+      ADMIN_USERS: ${ADMIN_USERS}
     ports:
       - "127.0.0.1:8787:8787"
     # Host dirs must exist and be writable by uid 1001: mkdir -p data/db data/images && sudo chown -R 1001:1001 data
