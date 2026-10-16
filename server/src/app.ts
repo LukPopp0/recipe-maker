@@ -76,8 +76,8 @@ export function createApp(deps: AppDeps): App {
     }),
   );
 
-  // Must come before the /images/* mount below so the bundled default image
-  // never depends on the images volume.
+  // Must come before the /images/* mount below so a same-named file in
+  // IMAGE_DATA_DIR can never shadow the bundled default image.
   mountPlaceholderImage(app);
 
   // Serves re-hosted recipe images (docs/specs/06) from IMAGE_DATA_DIR. Rehosted

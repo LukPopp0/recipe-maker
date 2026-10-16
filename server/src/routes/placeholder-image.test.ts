@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -30,6 +30,15 @@ describe('default recipe placeholder image', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('image/png');
     expect(Array.from(bytes.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
+  });
+
+  it('serves the bundled PNG even when the images volume has a file with the same name', async () => {
+    await writeFile(path.join(imageDir, 'placeholder-recipe.png'), 'not the bundled image');
+    const bundled = await readFile(new URL('../../assets/placeholder-recipe.png', import.meta.url));
+
+    const res = await makeApp().request('/images/placeholder-recipe.png');
+
+    expect(Buffer.from(await res.arrayBuffer()).equals(bundled)).toBe(true);
   });
 
   it('still returns 404 for other missing images', async () => {
