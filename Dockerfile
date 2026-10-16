@@ -7,8 +7,9 @@ ARG PLAYWRIGHT_VERSION=1.61.1
 FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-# better-sqlite3's install script always runs node-gyp, which needs make even
-# when the bundled prebuild is used and nothing is compiled.
+# better-sqlite3 ships a binding.gyp, so installing it runs an implicit
+# `node-gyp rebuild`; that needs make even though the bundled prebuild is used
+# and nothing is compiled.
 RUN apt-get update && apt-get install -y --no-install-recommends make \
   && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
@@ -35,13 +36,17 @@ COPY --from=build /app/server/assets server/assets
 COPY --from=build /app/server/tsconfig.json server/
 COPY --from=build /app/apps/web/dist apps/web/dist
 
-# pnpm --ignore-scripts skips native builds; rebuild the two native modules.
+# --ignore-scripts skipped the native modules' install steps; run them. Both
+# load bundled prebuilt binaries, so this normally compiles nothing.
 RUN pnpm --filter server rebuild better-sqlite3 sharp
 
 RUN mkdir -p /app/data/db /app/data/images && chown -R pwuser:pwuser /app/data
 USER pwuser
 
+# AUTH_MODE=header: the image is meant to run behind the login proxy, so a
+# missing setting must not make every visitor the admin user "local".
 ENV PORT=8787 \
+    AUTH_MODE=header \
     RECIPE_STORE=sqlite \
     RECIPE_DB_PATH=/app/data/db/recipes.db \
     IMAGE_DATA_DIR=/app/data/images \
@@ -50,8 +55,11 @@ ENV PORT=8787 \
 EXPOSE 8787
 VOLUME ["/app/data/db", "/app/data/images"]
 
+# /api/health answers 200 even when storage is unwritable (it reports
+# "storage":"unavailable" in the body), so check the body, and print the
+# reason so `docker inspect` shows why a probe failed.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 8787) + '/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 8787) + '/api/health').then(async (r) => { const b = await r.json(); if (r.ok && b.storage === 'ready') process.exit(0); console.error('health: HTTP ' + r.status + ', storage ' + b.storage); process.exit(1); }).catch((e) => { console.error('health: ' + e.message); process.exit(1); })"
 
 WORKDIR /app/server
 CMD ["node", "--import", "tsx", "src/index.ts"]

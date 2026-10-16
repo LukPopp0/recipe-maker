@@ -44,7 +44,7 @@ describe('web app serving', () => {
     expect((await app.request('/')).headers.get('Cache-Control')).toBe('no-cache');
     expect((await app.request('/index.html')).headers.get('Cache-Control')).toBe('no-cache');
     expect((await app.request('/library/x')).headers.get('Cache-Control')).toBe('no-cache');
-    expect((await app.request('/assets/app.js')).headers.get('Cache-Control')).not.toBe('no-cache');
+    expect((await app.request('/assets/app.js')).headers.get('Cache-Control')).toBeNull();
   });
 
   it('falls back to index.html for unknown non-API paths', async () => {
@@ -60,6 +60,61 @@ describe('web app serving', () => {
 
     expect(res.status).toBe(404);
     expect(body.error.code).toBe('ROUTE_NOT_FOUND');
+  });
+
+  it('returns a JSON 404, not index.html, for missing files and assets', async () => {
+    const app = makeApp({ WEB_DIST_DIR: distDir });
+
+    for (const missing of ['/assets/index-oldhash.js', '/assets/fonts/x', '/favicon.ico', '/library/x.json']) {
+      const res = await app.request(missing);
+      const body = (await res.json()) as { error: { code: string } };
+
+      expect(res.status, missing).toBe(404);
+      expect(body.error.code, missing).toBe('ROUTE_NOT_FOUND');
+    }
+  });
+
+  it('keeps misses under the API, image and health paths a JSON 404', async () => {
+    const app = makeApp({ WEB_DIST_DIR: distDir });
+
+    for (const missing of [
+      '/api',
+      '/images',
+      '/images/recipes/x/missing',
+      '/ingredient-images',
+      '/ingredient-images/missing',
+      '/health/x',
+    ]) {
+      const res = await app.request(missing);
+      const body = (await res.json()) as { error: { code: string } };
+
+      expect(res.status, missing).toBe(404);
+      expect(body.error.code, missing).toBe('ROUTE_NOT_FOUND');
+    }
+  });
+
+  it('still answers /health with the health JSON', async () => {
+    const res = await makeApp({ WEB_DIST_DIR: distDir }).request('/health');
+    const body = (await res.json()) as { status: string };
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe('ok');
+  });
+
+  it('serves the web app without a user in AUTH_MODE=header but keeps the API gated', async () => {
+    const app = makeApp({ WEB_DIST_DIR: distDir, AUTH_MODE: 'header' });
+
+    expect((await app.request('/')).status).toBe(200);
+    expect((await app.request('/library/x')).status).toBe(200);
+    expect((await app.request('/assets/app.js')).status).toBe(200);
+    expect((await app.request('/api/health')).status).toBe(200);
+    expect((await app.request('/api/does-not-exist')).status).toBe(401);
+  });
+
+  it('fails at startup when WEB_DIST_DIR has no index.html', async () => {
+    await rm(path.join(distDir, 'index.html'));
+
+    expect(() => makeApp({ WEB_DIST_DIR: distDir })).toThrow(/index\.html/);
   });
 
   it('serves nothing extra when WEB_DIST_DIR is not set', async () => {

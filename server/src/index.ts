@@ -77,6 +77,7 @@ const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
       authMode: env.AUTH_MODE,
       recipeStore: env.RECIPE_STORE,
       recipeStorageDir: recipeStorageDir(env),
+      webDistDir: env.WEB_DIST_DIR ?? null,
     }),
   );
 

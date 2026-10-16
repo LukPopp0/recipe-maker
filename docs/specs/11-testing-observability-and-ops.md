@@ -62,16 +62,16 @@ Startup (and `/api/health`) creates and checks both the recipe storage directory
 ## Web App Serving and Docker
 | Variable | Default | Meaning |
 |---|---|---|
-| `WEB_DIST_DIR` | unset | Directory of the built web app. When set, the server serves its files and falls back to `index.html` for other GETs (never under `/api/`, `/images/`, `/ingredient-images/`, `/health`). Unset in local dev. The Docker image sets it to `/app/apps/web/dist`. |
+| `WEB_DIST_DIR` | unset | Directory of the built web app. When set, the server serves its files and falls back to `index.html` for other GETs. Misses stay a JSON 404 for `/api`, `/images`, `/ingredient-images`, `/health` (the path or anything below it), `/assets/*`, and any path whose last segment has a file extension. Unset in local dev. The Docker image sets it to `/app/apps/web/dist`. |
 
 The default recipe placeholder (`server/assets/placeholder-recipe.png`) is served at `/images/placeholder-recipe.png` and is the main-image default when `DEFAULT_MAIN_IMAGE_URL` is unset.
 
-The Docker image defaults to `RECIPE_STORE=sqlite`, `RECIPE_DB_PATH=/app/data/db/recipes.db` and `IMAGE_DATA_DIR=/app/data/images`; mounted host directories must be writable by uid 1001 (`pwuser`). The base image tag must match the installed `playwright` version (`PLAYWRIGHT_VERSION` build arg). `docker-compose.example.yml` and `docker.env.example` show a deployment behind tinyauth.
+The Docker image defaults to `AUTH_MODE=header`, `RECIPE_STORE=sqlite`, `RECIPE_DB_PATH=/app/data/db/recipes.db` and `IMAGE_DATA_DIR=/app/data/images`; mounted host directories must be writable by uid 1001 (`pwuser`). The base image tag must match the installed `playwright` version (`PLAYWRIGHT_VERSION` build arg); `server/src/docker-playwright-version.test.ts` fails when they differ. The `HEALTHCHECK` is healthy only when `/api/health` reports `"storage":"ready"` (the route answers 200 either way) and prints the reason when a probe fails. `docker-compose.example.yml` and `docker.env.example` show a deployment behind tinyauth: the app gets an explicit `environment:` list (tinyauth's user hashes stay out of it), `init: true` and `stop_grace_period: 45s`.
 
-`scripts/docker-smoke-test.sh <image>` starts the image with empty volumes and `AUTH_MODE=header` and checks `/api/health`, the web app at `/`, `/api/me` returning 401 without a header, admin identity via `Remote-User`, and an empty recipe list.
+`scripts/docker-smoke-test.sh <image>` starts the image with empty volumes and the image's default `AUTH_MODE`, waits for Docker's own `HEALTHCHECK` to report healthy, and checks `"storage":"ready"` from `/api/health`, the web app at `/` and a JS bundle it references, `/api/me` returning 401 without a header, admin identity via `Remote-User`, and an empty recipe list. Every curl has a 10 s timeout and a failing check prints its name and the response body.
 
 ## CI Image Job
-The `image` job in `.github/workflows/ci.yml` needs the `test` job and runs only on push to `main`, on `ubuntu-24.04-arm`. It builds `linux/arm64`, runs the smoke test against the built image, then pushes `ghcr.io/<owner>/recipe-maker:latest` and `:sha-<short>` with provenance disabled (one push is one GHCR version) and prunes the package to the last 10 versions. Tests themselves run on Node 22; the image ships Node 24.
+The `image` job in `.github/workflows/ci.yml` needs the `test` job and runs only on push to `main`, on `ubuntu-24.04-arm`. It builds `linux/arm64` into the local daemon (provenance disabled, so one push is one GHCR version), runs the smoke test against that image, pushes that same image as `ghcr.io/<owner>/recipe-maker:latest` and `:sha-<short>` with `docker push`, and prunes the package to the last 10 versions. The job has a 30-minute timeout and a concurrency group so publishes run one at a time. The workflow token is read-only except for the image job's `packages: write`; actions are pinned to commit SHAs and `.github/dependabot.yml` keeps them current. Tests themselves run on Node 22; the image ships Node 24.
 
 ## Gemini Usage Controls
 - Configurable model selection.
