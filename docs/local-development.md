@@ -49,7 +49,8 @@ This regenerates the manifest and starts both dev servers:
 - Web (Vite): http://localhost:5173/ (Vite prints the actual URL; it picks
   the next free port if 5173 is taken).
 - API (Hono): port 8787 (`PORT`), for example
-  `curl http://127.0.0.1:8787/api/health`.
+  `curl http://127.0.0.1:8787/api/health`. `apps/web/vite.config.ts` proxies
+  to a fixed `localhost:8787`, so keep `PORT=8787` for `pnpm dev`.
 
 Vite proxies `/api`, `/images` and `/ingredient-images` to the API, so there
 is no CORS setup; open the Vite URL only. To run one half, use

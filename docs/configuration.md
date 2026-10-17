@@ -10,7 +10,11 @@ Where to set them:
 - In Docker: in the `environment:` list of the `recipes` service in your
   compose file (see `docker-compose.example.yml`). Only variables listed there
   reach the container; putting a value in the compose `.env` file is not
-  enough unless the `environment:` list references it (`NAME: ${NAME}`).
+  enough unless the `environment:` list references it (`NAME: ${NAME}`). A
+  listed variable that is missing from `.env` reaches the app as an empty
+  string, not unset (numeric ones then fail at startup, an empty
+  `WEB_DIST_DIR` turns the web app off), so set it in `.env` too or write the
+  value directly in the compose file.
 
 The "Docker image" column shows what the published image presets. A dash
 means the image sets nothing and the default applies. Relative paths resolve

@@ -57,7 +57,9 @@ install directory. Replace them with your own values.
 - About 5 GB of free disk per image version (the image is about 4 GB because
   it includes Chromium).
 - The published image is `linux/arm64` only. On an x86 server, build the
-  image yourself (see [Building the image yourself](#building-the-image-yourself)).
+  image yourself first (see
+  [Building the image yourself](#building-the-image-yourself)), before
+  Data directories and Start.
 
 The commands below assume a user who can run `docker` (member of the
 `docker` group) and `sudo`.
@@ -93,7 +95,11 @@ all later `docker compose` commands from `/opt/recipes`.
   interpolated from `.env` (`NAME: ${NAME}`), so tinyauth's password hashes in
   the same `.env` never reach the app container. Any other setting from
   [configuration.md](configuration.md) must be added to this list too; putting
-  it only into `.env` has no effect on the app.
+  it only into `.env` has no effect on the app. A variable that is listed
+  here but missing from `.env` reaches the app as an empty string, not unset:
+  numeric ones then fail at startup and an empty `WEB_DIST_DIR` turns the web
+  app off. So set it in `.env` too, or write the value directly in the
+  compose file.
 - **`init: true`** runs a small init process in the container that reaps the
   Chromium processes left behind by the URL browser fallback.
 - **`stop_grace_period: 45s`** lets an ingest that is in progress (browser
@@ -190,7 +196,9 @@ stores as recipe owner, so pick it once and keep it. Usernames: lowercase, no
    ```
 
 5. Test in a private browser window: open `https://recipes.example.com`, log
-   in as the new user; the header shows the username.
+   in as the new user; the header shows the username. On a first install
+   this test comes after [nginx and HTTPS](#nginx-and-https), because the
+   site is not reachable before that.
 
 ### Make a user admin
 
@@ -200,6 +208,7 @@ Admins can delete any recipe and use "Unused images". Add the username to
 
 ```bash
 docker compose up -d recipes
+# wait until `docker compose ps` shows the app healthy, then:
 curl -s -H 'Remote-User: bob' http://127.0.0.1:8787/api/me
 # {"ok":true,"requestId":"...","user":{"username":"bob","isAdmin":true}}
 ```
@@ -421,8 +430,9 @@ PUBLIC_BASE_URL=http://192.168.1.10:8787
 ```
 
 (use your server's LAN address). In `docker-compose.yml`, change the app's
-port to `"8787:8787"` so other machines on the network can reach it, and
-start only the app (or delete the `tinyauth` service from the file):
+port to your server's LAN address, e.g. `"192.168.1.10:8787:8787"`, so other
+machines on the network can reach it (plain `"8787:8787"` publishes on all
+interfaces and bypasses ufw), and start only the app (or delete the `tinyauth` service from the file):
 
 ```bash
 docker compose up -d recipes
@@ -659,3 +669,6 @@ version; see [local-development.md](local-development.md#playwright-version-coup
       ssl_reject_handshake on;
   }
   ```
+
+  `ssl_reject_handshake` needs nginx 1.19.4 or newer (Ubuntu 22.04 and
+  Debian 11 ship 1.18).

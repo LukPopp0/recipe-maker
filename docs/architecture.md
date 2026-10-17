@@ -139,8 +139,8 @@ every `/api/*` request:
 (`ADMIN_USERS`). Rules ([spec 13](specs/13-recipe-persistence-and-library.md)):
 
 - Every recipe has an owner (the user who first saved it).
-- Everyone can view and edit every recipe (Save changes or Save as new; the
-  owner stays the original one).
+- Everyone can view and edit every recipe (Save changes keeps the original
+  owner; Save as new creates a copy owned by the user who saves it).
 - Only the owner or an admin can delete a recipe (otherwise `FORBIDDEN`, 403).
 - Only admins can use the image cleanup.
 

@@ -56,7 +56,9 @@ job (push to `main` only, skipped when only docs change) builds the image, runs 
 `ghcr.io/<owner>/recipe-maker` (`latest` + `sha-<7>`, last 10 versions kept).
 Deployment D6 (server setup) is done: production runs the GHCR image behind tinyauth;
 server notes (compose, nginx sites, backup, update/restore) in `private/deploy/`.
-Deployment D7 (documentation) is done: short README, `docs/local-development.md`, `docs/self-hosting.md`, `docs/configuration.md`, `docs/architecture.md`; deployment phases D1-D7 done.
+Deployment D7 (documentation) is done: short README, `docs/local-development.md`,
+`docs/self-hosting.md`, `docs/configuration.md`, `docs/architecture.md`; deployment
+phases D1-D7 done.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read

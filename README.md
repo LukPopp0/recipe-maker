@@ -30,10 +30,11 @@ You need Node.js 22 or newer and a Gemini API key (free tier works).
 corepack enable
 pnpm install
 pnpm --filter server exec playwright install chromium
-cp server/.env.example server/.env   # then set GEMINI_API_KEY in server/.env
+cp server/.env.example server/.env
 pnpm dev
 ```
 
+Edit `server/.env` and set `GEMINI_API_KEY` before ingesting a recipe.
 Open the URL Vite prints (usually http://localhost:5173/). The Chromium
 download is optional; details, tests and troubleshooting are in
 [docs/local-development.md](docs/local-development.md).
@@ -59,7 +60,7 @@ both: [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Status
 
-MVP phases 0-10 are done: both ingestion pipelines, ingredient image
+MVP phases 0-8 and 10 are done: both ingestion pipelines, ingredient image
 matching, library, printable cards, hardening and step images. Deployment
 phases D1-D7 are done: auth and users, SQLite storage and ownership, image
 normalization, Gemini quota handling, Docker image and CI, server setup and
