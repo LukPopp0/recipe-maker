@@ -32,8 +32,8 @@ in `server/.env`; URL ingestion then uses static fetching only.
 cp server/.env.example server/.env
 ```
 
-Edit `server/.env` and set `GEMINI_API_KEY=<your key>`. The server loads this
-file itself. Without a key everything except `POST /api/ingest/url` and
+Edit `server/.env` and set `GEMINI_API_KEY=<your key>`. Only the dev scripts
+(`pnpm dev` and `pnpm --filter server run dev`) read this file. Without a key everything except `POST /api/ingest/url` and
 `POST /api/ingest/manual` works, and the test suite runs fully because tests
 mock Gemini and the network. All other settings have working defaults; see
 [configuration.md](configuration.md).
@@ -53,8 +53,9 @@ This regenerates the manifest and starts both dev servers:
 
 Vite proxies `/api`, `/images` and `/ingredient-images` to the API, so there
 is no CORS setup; open the Vite URL only. To run one half, use
-`pnpm --filter web run dev` or `pnpm --filter server run dev` (watch mode;
-`pnpm --filter server run start` runs once).
+`pnpm --filter web run dev` or `pnpm --filter server run dev` (watch mode, reads
+`server/.env`). `pnpm --filter server run start` runs once but does not read
+`server/.env`; export the variables in your shell first.
 
 ## Tests
 
