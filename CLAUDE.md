@@ -56,6 +56,7 @@ job (push to `main` only, skipped when only docs change) builds the image, runs 
 `ghcr.io/<owner>/recipe-maker` (`latest` + `sha-<7>`, last 10 versions kept).
 Deployment D6 (server setup) is done: production runs the GHCR image behind tinyauth;
 server notes (compose, nginx sites, backup, update/restore) in `private/deploy/`.
+Deployment D7 (documentation) is done: short README, `docs/local-development.md`, `docs/self-hosting.md`, `docs/configuration.md`, `docs/architecture.md`; deployment phases D1-D7 done.
 Phase 9 (server-side PDF) is deferred: the browser print dialog is sufficient
 for now; revisit later. Phase 11 (automatic step image generation) is a
 deferred new feature: needs brainstorming/spec and a cost decision first. Read
@@ -65,7 +66,12 @@ strict phase order.
 ## Key docs
 - `private/plans/backlog.md` - outstanding work not yet in a plan; add items here
 - `private/plans/deployment/00-overview.md` - deployment/multi-user phases D1-D7
+- `private/specs/deployment-and-multi-user.md` - deployment/multi-user spec
 - `private/plans/mvp/recipe-maker-implementation-plan.md` - phases, order, definition of done, risks
+- `docs/local-development.md` - dev setup
+- `docs/self-hosting.md` - Docker + nginx + tinyauth self-hosting guide
+- `docs/configuration.md` - environment variables and defaults
+- `docs/architecture.md` - architecture overview
 - `docs/specs/01` through `docs/specs/14` - one spec per concern, referenced by phase in the plan
 - `docs/specs/12-shared-constants.md` - pantry allowlist + tag vocabulary (actual values)
 - `docs/specs/13-recipe-persistence-and-library.md` - RecipeRepository, save/library flow
@@ -88,9 +94,8 @@ strict phase order.
 
 ## Repo layout (pnpm workspace, per docs/specs/01)
 - `/apps/web` - frontend (React + TS + Vite), package `web`
-- `/server` - backend API, package `server` (not yet created)
-- `/shared` - shared types, schema, constants, `assets/ingredients` (215 images, already
-  in place); package `shared` (not yet an installable package - added in a later Phase 1 task)
+- `/server` - backend API (Hono), package `server`
+- `/shared` - shared types, schema, constants, `assets/ingredients` (215 images); workspace package `shared`
 - `/docs/specs` - public per-feature specs; `/private` (gitignored) - plans (`private/plans/<area>/`) and private specs
 
 ## Conventions
