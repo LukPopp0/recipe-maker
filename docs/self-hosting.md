@@ -42,9 +42,12 @@ install directory. Replace them with your own values.
 
 - A Linux server with Docker and the Docker Compose plugin
   (`docker compose version` works).
-- A domain with two DNS records (A and/or AAAA) pointing at the server:
+- A domain with two DNS A records (IPv4) pointing at the server:
   `recipes.example.com` and `auth.recipes.example.com`. The login host must
   be a subdomain of the app host (see [Troubleshooting](#troubleshooting)).
+  The nginx sites below listen on IPv4 only; an AAAA record (IPv6) also needs
+  `listen [::]:80;` in both sites, otherwise certbot's challenge fails over
+  IPv6 (not covered by the setup tested for this guide).
 - nginx and certbot on the host for HTTPS (on Debian/Ubuntu:
   `sudo apt install nginx certbot python3-certbot-nginx`). Other reverse
   proxies work too, as long as they do what the nginx config below does; only
