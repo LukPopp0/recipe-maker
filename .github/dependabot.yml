@@ -4,4 +4,10 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    # One PR for all action updates, so a batch costs one image build
+    # (each merge to main publishes a new GHCR version).
+    groups:
+      github-actions:
+        patterns:
+          - "*"

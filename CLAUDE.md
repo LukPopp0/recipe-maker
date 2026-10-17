@@ -52,7 +52,7 @@ and image matching names the quota in its warning.
 Deployment D5 (Docker image and CI) is done: `WEB_DIST_DIR` makes Hono serve the built web app,
 the default recipe placeholder is shipped and served at `/images/placeholder-recipe.png`, the
 `Dockerfile` (Playwright base, arm64) and `docker-compose.example.yml` exist, and the CI `image`
-job (push to `main` only) builds the image, runs `scripts/docker-smoke-test.sh`, and publishes
+job (push to `main` only, skipped when only docs change) builds the image, runs `scripts/docker-smoke-test.sh`, and publishes
 `ghcr.io/<owner>/recipe-maker` (`latest` + `sha-<7>`, last 10 versions kept).
 Deployment D6 (server setup) is done: production runs the GHCR image behind tinyauth;
 server notes (compose, nginx sites, backup, update/restore) in `private/deploy/`.
