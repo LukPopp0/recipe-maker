@@ -2,6 +2,9 @@
 # behind a reverse proxy (see docs/self-hosting.md for the nginx config).
 services:
   recipes:
+    # GHCR names are lowercase. The published image is linux/arm64 only; on
+    # x86 build it yourself (docker build -t recipe-maker .) and use
+    # image: recipe-maker. Pin a sha-<7> tag instead of latest to control updates.
     image: ghcr.io/OWNER/recipe-maker:latest
     restart: unless-stopped
     # Reaps orphaned Chromium processes from the URL browser fallback.
@@ -9,7 +12,7 @@ services:
     # Lets an in-flight ingest (browser fetch plus Gemini) finish on stop.
     stop_grace_period: 45s
     # Only the app's settings, so tinyauth's user hashes in .env never reach
-    # this container. Add other server settings (docs/specs/11) here.
+    # this container. Add other server settings (docs/configuration.md) here.
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
@@ -23,12 +26,22 @@ services:
       - ./data/images:/app/data/images
 
   tinyauth:
-    # Pin a release tag from https://github.com/tinyauthapp/tinyauth/releases
-    image: ghcr.io/tinyauthapp/tinyauth:vX.Y.Z
+    # Verified with v5.2.0; check the release notes before moving to a newer tag
+    # (https://github.com/tinyauthapp/tinyauth/releases).
+    image: ghcr.io/tinyauthapp/tinyauth:v5.2.0
     restart: unless-stopped
     environment:
       TINYAUTH_APPURL: ${TINYAUTH_APPURL}
       TINYAUTH_AUTH_USERS: ${TINYAUTH_AUTH_USERS}
       TINYAUTH_AUTH_SECURECOOKIE: ${TINYAUTH_AUTH_SECURECOOKIE}
+      # No Docker socket mounted and no ACL labels used; the default (auto)
+      # probes for the socket and logs a warning.
+      TINYAUTH_LABELPROVIDER: none
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      # Sessions (tinyauth.db); named so `docker compose down` keeps logins.
+      - tinyauth-data:/data
+
+volumes:
+  tinyauth-data:
