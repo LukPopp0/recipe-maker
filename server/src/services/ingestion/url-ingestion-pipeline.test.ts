@@ -465,6 +465,25 @@ describe('runUrlIngestionPipeline', () => {
       expect(line).not.toHaveProperty('status');
     });
 
+    it('does not call the browser twice when the 403 fallback page is itself thin', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(SHELL_HTML);
+      const generate = vi.fn();
+
+      await expect(run403(fetcher, FALLBACK_ENV, generate)).rejects.toMatchObject({
+        code: 'URL_EXTRACTION_FAILED',
+      });
+
+      expect(fetchWithBrowser).toHaveBeenCalledTimes(1);
+      expect(generate).not.toHaveBeenCalled();
+      expect(stageLogLines(logSpy).find((l) => l.stage === 'fetch')).toMatchObject({
+        outcome: 'error',
+        errorCode: 'URL_EXTRACTION_FAILED',
+        fetchMode: 'browser',
+      });
+    });
+
     it('logs a fetch error line when the JS-shell browser fallback throws', async () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       globalThis.fetch = vi.fn().mockResolvedValue(new Response(SHELL_HTML));
@@ -659,6 +678,26 @@ describe('runUrlIngestionPipeline', () => {
         }),
       ]);
       expect(attempts[0]).not.toHaveProperty('errorCode');
+    });
+
+    it('times the retry attempt from its own start, not the extract stage start', async () => {
+      let now = 1_000_000;
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+      const generate = vi
+        .fn()
+        .mockImplementationOnce(async () => {
+          now += 1000;
+          throw new AppError('AI_NORMALIZATION_FAILED', 'first failed');
+        })
+        .mockImplementationOnce(async () => {
+          now += 200;
+          throw new AppError('AI_NORMALIZATION_FAILED', 'second failed');
+        });
+
+      const { lines } = await runLogged(generate);
+
+      const attempts = lines.filter((l) => l.stage === 'extract' && l.attempt);
+      expect(attempts.map((l) => l.durationMs)).toEqual([1000, 200]);
     });
 
     it('logs both failed attempts and the final stage line', async () => {

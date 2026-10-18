@@ -156,6 +156,9 @@ async function tryExtract(fn: () => Promise<unknown>): Promise<{ result: unknown
 // Orchestrates Option A (URL) ingestion per docs/specs/04 with a tiered fetch
 // strategy:
 //   1. Static fetch under SSRF guardrails (fast path).
+//      A static 401/403 is retried with the headless browser (when
+//      BROWSER_FALLBACK_ENABLED); only a 401/403 from the browser is
+//      reported as URL_FETCH_BLOCKED.
 //   2. If the page embeds schema.org Recipe JSON-LD, extraction proceeds on
 //      the static HTML immediately - JSON-LD is present in the initial HTML
 //      even on client-side-rendered sites and is the best extraction input.
@@ -405,6 +408,7 @@ export async function runUrlIngestionPipeline({
     previousFailure: describeExtractionFailure(primaryResult) ?? 'unknown failure',
   });
 
+  const retryStart = Date.now();
   const retry = await tryExtract(() =>
     geminiClient.generateCanonicalRecipe({
       model: geminiConfig.retryModel,
@@ -415,7 +419,7 @@ export async function runUrlIngestionPipeline({
   );
 
   const retryResult = retry.result;
-  if (!passesStructuralPreCheck(retryResult)) logAttemptFailure('retry', retry, extractStart);
+  if (!passesStructuralPreCheck(retryResult)) logAttemptFailure('retry', retry, retryStart);
 
   if (passesStructuralPreCheck(retryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
