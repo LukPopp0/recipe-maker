@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 import { ALLOWED_CONTENT_TYPES, rehostRecipeImages } from './image-rehoster.js';
 
+const DEFAULT_URL = '/images/placeholder-recipe.png';
+
 // source.example.com is a fake hostname used throughout these tests; stub DNS
 // resolution to a public address so resolveAndCheckHost's guard (exercised as
 // part of rehostRecipeImages now) doesn't attempt a real network lookup.
@@ -69,6 +71,7 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
@@ -77,7 +80,7 @@ describe('rehostRecipeImages', () => {
     expect(storageAdapter.put).toHaveBeenCalledWith(Buffer.from(bytes), 'recipes/recipe-1/main-0.jpg', 'image/jpeg');
   });
 
-  it('leaves main_image untouched and warns on an unsupported MIME type', async () => {
+  it('sets main_image to the placeholder and lists it as unhosted on an unsupported MIME type', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(new Uint8Array([1]), { status: 200, headers: { 'content-type': 'image/gif' } }),
     );
@@ -87,16 +90,18 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
-    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.recipe.main_image).toBe(DEFAULT_URL);
+    expect(result.unhosted).toEqual([{ slot: 'main', url: recipe.main_image, warning: result.warnings[0] }]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/unsupported content type/i);
     expect(storageAdapter.put).not.toHaveBeenCalled();
   });
 
-  it('leaves main_image untouched and warns when the image exceeds maxBytes', async () => {
+  it('sets main_image to the placeholder and lists it as unhosted when the image exceeds maxBytes', async () => {
     const bytes = new Uint8Array(10);
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(bytes, { status: 200, headers: { 'content-type': 'image/png' } }),
@@ -107,16 +112,18 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 5,
     });
 
-    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.recipe.main_image).toBe(DEFAULT_URL);
+    expect(result.unhosted).toEqual([{ slot: 'main', url: recipe.main_image, warning: result.warnings[0] }]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/exceeded/i);
     expect(storageAdapter.put).not.toHaveBeenCalled();
   });
 
-  it('leaves main_image untouched and warns on a fetch/network failure', async () => {
+  it('sets main_image to the placeholder and lists it as unhosted on a fetch/network failure', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
     const storageAdapter = makeStorageAdapter();
     const recipe = makeRecipe();
@@ -124,16 +131,18 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
-    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.recipe.main_image).toBe(DEFAULT_URL);
+    expect(result.unhosted).toEqual([{ slot: 'main', url: recipe.main_image, warning: result.warnings[0] }]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/failed to download/i);
     expect(storageAdapter.put).not.toHaveBeenCalled();
   });
 
-  it('leaves main_image untouched and warns on a non-ok HTTP response', async () => {
+  it('sets main_image to the placeholder and lists it as unhosted on a non-ok HTTP response', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
     const storageAdapter = makeStorageAdapter();
     const recipe = makeRecipe();
@@ -141,10 +150,12 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
-    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.recipe.main_image).toBe(DEFAULT_URL);
+    expect(result.unhosted).toEqual([{ slot: 'main', url: recipe.main_image, warning: result.warnings[0] }]);
     expect(result.warnings).toHaveLength(1);
     expect(storageAdapter.put).not.toHaveBeenCalled();
   });
@@ -168,7 +179,7 @@ describe('rehostRecipeImages', () => {
     expect(storageAdapter.put).not.toHaveBeenCalled();
   });
 
-  it('leaves main_image untouched and warns, without ever fetching, when the URL resolves to a blocked network address', async () => {
+  it('sets main_image to the placeholder and lists it as unhosted, without ever fetching, when the URL resolves to a blocked network address', async () => {
     globalThis.fetch = vi.fn();
     const storageAdapter = makeStorageAdapter();
     const recipe = makeRecipe({ main_image: 'http://169.254.169.254/image.jpg' });
@@ -176,17 +187,19 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
-    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.recipe.main_image).toBe(DEFAULT_URL);
+    expect(result.unhosted).toEqual([{ slot: 'main', url: recipe.main_image, warning: result.warnings[0] }]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/blocked or invalid/i);
     expect(globalThis.fetch).not.toHaveBeenCalled();
     expect(storageAdapter.put).not.toHaveBeenCalled();
   });
 
-  it('leaves main_image untouched and warns when the image download times out', async () => {
+  it('sets main_image to the placeholder and lists it as unhosted when the image download times out', async () => {
     globalThis.fetch = vi.fn().mockImplementation((_input: string | URL, init?: RequestInit) => {
       return new Promise((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => {
@@ -202,11 +215,13 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
       timeoutMs: 5,
     });
 
-    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.recipe.main_image).toBe(DEFAULT_URL);
+    expect(result.unhosted).toEqual([{ slot: 'main', url: recipe.main_image, warning: result.warnings[0] }]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/timed out/i);
     expect(storageAdapter.put).not.toHaveBeenCalled();
@@ -231,6 +246,7 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
@@ -262,6 +278,7 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
@@ -269,6 +286,28 @@ describe('rehostRecipeImages', () => {
     expect(result.recipe.steps[1].image).toBe('http://localhost:8787/images/recipes/recipe-1/step-1.jpg');
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/^Step 1 image was not re-hosted/);
+    expect(result.unhosted).toEqual([
+      { slot: 0, url: 'https://source.example.com/bad.jpg', warning: result.warnings[0] },
+    ]);
+  });
+
+  it('leaves main_image alone and does not fetch it when skipMainImage is set', async () => {
+    globalThis.fetch = vi.fn();
+    const storageAdapter = makeStorageAdapter();
+    const recipe = makeRecipe();
+
+    const result = await rehostRecipeImages(recipe, {
+      recipeId: 'recipe-1',
+      storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
+      maxBytes: 1_000_000,
+      skipMainImage: true,
+    });
+
+    expect(result.recipe.main_image).toBe(recipe.main_image);
+    expect(result.warnings).toEqual([]);
+    expect(result.unhosted).toEqual([]);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it('does not attempt to download non-http(s) step images (e.g. already local paths)', async () => {
@@ -285,6 +324,7 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 
@@ -301,6 +341,7 @@ describe('rehostRecipeImages', () => {
     const result = await rehostRecipeImages(recipe, {
       recipeId: 'recipe-1',
       storageAdapter,
+      defaultMainImageUrl: DEFAULT_URL,
       maxBytes: 1_000_000,
     });
 

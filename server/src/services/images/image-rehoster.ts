@@ -1,4 +1,4 @@
-import type { CanonicalRecipe } from 'shared';
+import type { CanonicalRecipe, UnhostedImage } from 'shared';
 import { fetchAndStoreRemoteImage, type FetchAndStoreRemoteImageResult } from './remote-image-fetcher.js';
 import type { StorageAdapter } from '../storage/storage-adapter.js';
 
@@ -13,10 +13,12 @@ export interface RehostRecipeImagesOptions {
   recipeId: string
   storageAdapter: StorageAdapter
   maxBytes: number
-  // main_image is skipped (left untouched, not re-downloaded) when it already
-  // equals the configured default image URL - it's already a hosted asset,
-  // not a candidate extracted from the source page.
-  defaultMainImageUrl?: string
+  // main_image is skipped (not re-downloaded) when it already equals this
+  // URL - it's already a hosted asset, not a candidate from the source page.
+  // A main image that cannot be hosted is replaced by this URL.
+  defaultMainImageUrl: string
+  // Leave main_image alone and do not fetch it (the caller supplies it).
+  skipMainImage?: boolean
   // Hard timeout (ms) for downloading each image. Defaults to
   // DEFAULT_IMAGE_FETCH_TIMEOUT_MS if not provided.
   timeoutMs?: number
@@ -25,6 +27,8 @@ export interface RehostRecipeImagesOptions {
 export interface RehostRecipeImagesResult {
   recipe: CanonicalRecipe
   warnings: string[]
+  // Remote images that could not be hosted (main image and dropped step images).
+  unhosted: UnhostedImage[]
 }
 
 function isRemoteHttpUrl(value: string): boolean {
@@ -34,7 +38,7 @@ function isRemoteHttpUrl(value: string): boolean {
 // Turns a failed fetchAndStoreRemoteImage result into a user-facing warning,
 // shared by the main-image and step-image paths so wording stays consistent.
 // `label` reads like "Main image" or "Step 3 image".
-function describeRehostFailure(
+export function describeRehostFailure(
   label: string,
   imageUrl: string,
   result: Extract<FetchAndStoreRemoteImageResult, { ok: false }>,
@@ -59,8 +63,7 @@ function describeRehostFailure(
 // Downloads recipe.main_image (when it's a remote http(s) URL that isn't
 // already the configured default) plus any remote steps[].image URLs and
 // re-hosts them via storageAdapter, per docs/specs/06's re-hosting rules. Never
-// throws: a main-image failure leaves main_image untouched (finalSanitize's
-// default-fallback takes over downstream); a step-image failure drops that
+// throws: a main-image failure sets main_image to defaultMainImageUrl; a step-image failure drops that
 // step's image (the card falls back to its text-only variant). Every failure
 // appends a warning string.
 //
@@ -74,13 +77,14 @@ export async function rehostRecipeImages(
   recipe: CanonicalRecipe,
   options: RehostRecipeImagesOptions,
 ): Promise<RehostRecipeImagesResult> {
-  const { recipeId, storageAdapter, maxBytes, defaultMainImageUrl, timeoutMs } = options;
+  const { recipeId, storageAdapter, maxBytes, defaultMainImageUrl, skipMainImage, timeoutMs } = options;
   const warnings: string[] = [];
+  const unhosted: UnhostedImage[] = [];
 
   let mainImage = recipe.main_image;
-  const isDefault = defaultMainImageUrl !== undefined && mainImage === defaultMainImageUrl;
+  const isDefault = mainImage === defaultMainImageUrl;
 
-  if (isRemoteHttpUrl(mainImage) && !isDefault) {
+  if (!skipMainImage && isRemoteHttpUrl(mainImage) && !isDefault) {
     const result = await fetchAndStoreRemoteImage(mainImage, {
       storageAdapter,
       maxBytes,
@@ -90,7 +94,10 @@ export async function rehostRecipeImages(
     if (result.ok) {
       mainImage = result.url;
     } else {
-      warnings.push(describeRehostFailure('Main image', mainImage, result, maxBytes));
+      const warning = describeRehostFailure('Main image', mainImage, result, maxBytes);
+      warnings.push(warning);
+      unhosted.push({ slot: 'main', url: mainImage, warning });
+      mainImage = defaultMainImageUrl;
     }
   }
 
@@ -111,11 +118,13 @@ export async function rehostRecipeImages(
     if (result.ok) {
       steps.push({ ...step, image: result.url });
     } else {
-      warnings.push(describeRehostFailure(`Step ${index + 1} image`, step.image, result, maxBytes));
+      const warning = describeRehostFailure(`Step ${index + 1} image`, step.image, result, maxBytes);
+      warnings.push(warning);
+      unhosted.push({ slot: index, url: step.image, warning });
       const { image: _dropped, ...rest } = step;
       steps.push(rest);
     }
   }
 
-  return { recipe: { ...recipe, main_image: mainImage, steps }, warnings };
+  return { recipe: { ...recipe, main_image: mainImage, steps }, warnings, unhosted };
 }

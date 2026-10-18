@@ -84,7 +84,7 @@ export function createIngestApp(deps: IngestDeps) {
       durationMs: Date.now() - imageRehostStart,
       outcome: 'ok',
       imageCount:
-        (recipe.main_image === canonical.main_image ? 0 : 1) +
+        (recipe.main_image === defaultMainImageUrl || recipe.main_image === canonical.main_image ? 0 : 1) +
         recipe.steps.filter((step) => step.image !== undefined).length,
     });
 

@@ -80,7 +80,9 @@ generic image-download error result.
 
 ## Failure Behavior
 - If non-critical image download fails, keep recipe and attach warning.
-- If main image required by design but missing, keep null and show warning.
+- On all ingest routes, a main image that cannot be hosted becomes the placeholder
+  (`DEFAULT_MAIN_IMAGE_URL` or `/images/placeholder-recipe.png`) with a warning.
+- A step image that cannot be hosted is dropped with a warning.
 
 ## Acceptance Criteria
 - Hosted URLs are stable across sessions.

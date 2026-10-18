@@ -274,6 +274,29 @@ describe('POST /api/ingest/url (Option A pipeline)', () => {
     expect(gemini.generateCanonicalRecipe).not.toHaveBeenCalled();
   });
 
+  it('returns the placeholder as main_image when the main image download fails', async () => {
+    globalThis.fetch = vi.fn(async (input: string | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('cdn.example.com')) return new Response(null, { status: 403 });
+      return new Response(RECIPE_HTML, { status: 200, headers: { 'content-type': 'text/html' } });
+    }) as unknown as typeof fetch;
+    const app = makeApp(fakeGeminiSequence(
+      () => Promise.resolve(VALID_CANDIDATE),
+      () => Promise.resolve(MATCH_RESPONSE),
+    ));
+
+    const res = await app.request('/api/ingest/url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/lasagna' }),
+    });
+    const body = (await res.json()) as IngestUrlSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.recipe.main_image).toBe('/images/placeholder-recipe.png');
+    expect(body.recipe.metadata.warnings.some((w) => w.startsWith('Main image was not re-hosted'))).toBe(true);
+  });
+
   it('emits post-process and image-rehost stage logs carrying the response requestId', async () => {
     mockFetch();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -453,6 +476,30 @@ describe('POST /api/ingest/manual (Option B pipeline)', () => {
       'meat-beef-ground.png',
       'broccoli.png',
     ]);
+  });
+
+  it('keeps the placeholder when the main image URL cannot be fetched', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address: '93.184.216.34', family: 4 }] as never);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 403 })) as unknown as typeof fetch;
+    try {
+      const app = makeApp(fakeGeminiSequence(
+        () => Promise.resolve(VALID_MANUAL_CANDIDATE),
+        () => Promise.resolve(MANUAL_MATCH_RESPONSE),
+      ));
+      const form = new FormData();
+      form.set('ingredientsText', '500g ground beef\n8 taco shells');
+      form.set('stepsText', 'Brown the ground beef.\nAssemble the tacos.');
+      form.set('mainImageUrl', 'https://cdn.example.com/main.jpg');
+
+      const res = await app.request('/api/ingest/manual', { method: 'POST', body: form });
+      const body = (await res.json()) as IngestManualSuccess;
+
+      expect(res.status).toBe(200);
+      expect(body.recipe.main_image).toBe('/images/placeholder-recipe.png');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it('degrades an invented matcher filename to INGREDIENT_NOT_FOUND.png with a warning', async () => {
