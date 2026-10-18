@@ -17,7 +17,7 @@ export interface GeminiCanonicalRecipeGenerator {
 }
 
 export type UrlIngestionExtractor = 'gemini-primary' | 'gemini-retry'
-export type UrlIngestionFetchMode = 'static' | 'browser'
+export type UrlIngestionFetchMode = 'static' | 'browser' | 'capture'
 
 export interface RunUrlIngestionPipelineParams {
   url: string
@@ -156,6 +156,9 @@ async function tryExtract(fn: () => Promise<unknown>): Promise<{ result: unknown
 // Orchestrates Option A (URL) ingestion per docs/specs/04 with a tiered fetch
 // strategy:
 //   1. Static fetch under SSRF guardrails (fast path).
+//      A static 401/403 is retried with the headless browser (when
+//      BROWSER_FALLBACK_ENABLED); only a 401/403 from the browser is
+//      reported as URL_FETCH_BLOCKED.
 //   2. If the page embeds schema.org Recipe JSON-LD, extraction proceeds on
 //      the static HTML immediately - JSON-LD is present in the initial HTML
 //      even on client-side-rendered sites and is the best extraction input.
@@ -177,58 +180,132 @@ export async function runUrlIngestionPipeline({
 }: RunUrlIngestionPipelineParams): Promise<RunUrlIngestionPipelineResult> {
   const resolvedEnv = env ?? loadServerEnv({});
 
-  // Fast-fail on obviously malformed input. fetchWithGuardrails re-validates
-  // and re-resolves internally (including on every redirect hop), so this
-  // call is a cheap early rejection, not the only guardrail.
-  const parsedUrl = validateUrlSyntax(url);
-
-  // Static fetch under SSRF/size/redirect guardrails. durationMs is wall
-  // clock from here.
   const pipelineStart = Date.now();
-  const staticFetch = await fetchWithGuardrails(parsedUrl, {
-    timeoutMs: resolvedEnv.URL_FETCH_TIMEOUT_MS,
-    maxRedirects: resolvedEnv.URL_MAX_REDIRECTS,
-    maxBytes: resolvedEnv.URL_MAX_RESPONSE_BYTES,
-  });
-
-  let activeHtml = staticFetch.html;
-  let effectiveUrl = staticFetch.effectiveUrl;
   let fetchMode: UrlIngestionFetchMode = 'static';
-  let cleaned = cleanHtmlForExtraction(activeHtml, geminiConfig.tokenBudget, effectiveUrl);
 
-  // Browser fallback triggers when the static HTML is a client-side-rendered
-  // shell (no JSON-LD and thin visible text) OR when JSON-LD is present but
-  // carries no ingredients - the amounts are then almost certainly rendered
-  // client-side and only a real browser will surface them. The isRicher guard
-  // below still keeps the static result unless the render is actually fuller,
-  // so a genuinely server-rendered ingredient-less page is not regressed.
-  const jsonLdMissingIngredients = cleaned.recipeJsonLd !== null && !jsonLdHasIngredients(cleaned.recipeJsonLd);
-  const looksLikeJsShell =
-    (!cleaned.recipeJsonLd && cleaned.cleanedText.trim().length < BROWSER_FALLBACK_MIN_CHARS) ||
-    jsonLdMissingIngredients;
-
-  if (looksLikeJsShell && resolvedEnv.BROWSER_FALLBACK_ENABLED) {
-    const rendered = await browserFetcher.fetchWithBrowser(parsedUrl, {
-      timeoutMs: resolvedEnv.BROWSER_FETCH_TIMEOUT_MS,
-      maxBytes: resolvedEnv.URL_MAX_RESPONSE_BYTES,
+  // Every exit from the fetch stage is logged once with the URL as submitted
+  // and the fetch mode in effect when it failed, then rethrown.
+  const logFetchError = (err: unknown): void => {
+    const details = err instanceof AppError ? err.details : undefined;
+    const status = (details as { status?: unknown } | undefined)?.status;
+    logStage({
+      requestId,
+      stage: 'fetch',
+      durationMs: Date.now() - pipelineStart,
+      outcome: 'error',
+      errorCode: err instanceof AppError ? err.code : 'INTERNAL_ERROR',
+      url,
+      fetchMode,
+      ...(typeof status === 'number' ? { status } : {}),
     });
-    const renderedCleaned = cleanHtmlForExtraction(
-      rendered.html,
-      geminiConfig.tokenBudget,
-      rendered.effectiveUrl,
-    );
+  };
 
-    // Take the rendered result only when it is actually richer: it surfaced
-    // JSON-LD, or it produced more visible text than the static shell.
-    const isRicher =
-      renderedCleaned.recipeJsonLd !== null ||
-      renderedCleaned.cleanedText.length > cleaned.cleanedText.length;
-    if (isRicher) {
-      activeHtml = rendered.html;
-      effectiveUrl = rendered.effectiveUrl;
-      cleaned = renderedCleaned;
-      fetchMode = 'browser';
+  // One error line per failed extraction attempt: the thrown error's code,
+  // message and string cause, or the pre-check's reason for a bad result.
+  const logAttemptFailure = (
+    attempt: 'primary' | 'retry',
+    outcome: { result: unknown; error: unknown },
+    startedAt: number,
+  ): void => {
+    const base = {
+      requestId,
+      stage: 'extract' as const,
+      durationMs: Date.now() - startedAt,
+      outcome: 'error' as const,
+      attempt,
+      url,
+    };
+    if (outcome.error !== null && outcome.error !== undefined) {
+      const err = outcome.error;
+      const cause = err instanceof AppError ? (err.details as { cause?: unknown } | undefined)?.cause : undefined;
+      logStage({
+        ...base,
+        errorCode: err instanceof AppError ? err.code : 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : String(err),
+        ...(typeof cause === 'string' ? { cause } : {}),
+      });
+      return;
     }
+    logStage({ ...base, reason: describeExtractionFailure(outcome.result) ?? 'unknown failure' });
+  };
+
+  const browserOpts = {
+    timeoutMs: resolvedEnv.BROWSER_FETCH_TIMEOUT_MS,
+    maxBytes: resolvedEnv.URL_MAX_RESPONSE_BYTES,
+  };
+
+  let activeHtml: string;
+  let effectiveUrl: string;
+  let cleaned: CleanedHtml;
+
+  try {
+    // Fast-fail on obviously malformed input. fetchWithGuardrails re-validates
+    // and re-resolves internally (including on every redirect hop), so this
+    // call is a cheap early rejection, not the only guardrail.
+    const parsedUrl = validateUrlSyntax(url);
+
+    // Static fetch under SSRF/size/redirect guardrails. durationMs is wall
+    // clock from pipelineStart. A 401/403 from the static fetch is retried
+    // once in the headless browser (no stealth measures); only a browser
+    // 401/403 surfaces as URL_FETCH_BLOCKED.
+    let fetched: { html: string; effectiveUrl: string };
+    let blockedFallback = false;
+    try {
+      fetched = await fetchWithGuardrails(parsedUrl, {
+        timeoutMs: resolvedEnv.URL_FETCH_TIMEOUT_MS,
+        maxRedirects: resolvedEnv.URL_MAX_REDIRECTS,
+        maxBytes: resolvedEnv.URL_MAX_RESPONSE_BYTES,
+      });
+    } catch (err) {
+      if (!(err instanceof AppError && err.code === 'URL_FETCH_BLOCKED' && resolvedEnv.BROWSER_FALLBACK_ENABLED)) {
+        throw err;
+      }
+      fetchMode = 'browser';
+      fetched = await browserFetcher.fetchWithBrowser(parsedUrl, browserOpts);
+      blockedFallback = true;
+    }
+
+    activeHtml = fetched.html;
+    effectiveUrl = fetched.effectiveUrl;
+    cleaned = cleanHtmlForExtraction(activeHtml, geminiConfig.tokenBudget, effectiveUrl);
+
+    // Browser fallback triggers when the static HTML is a client-side-rendered
+    // shell (no JSON-LD and thin visible text) OR when JSON-LD is present but
+    // carries no ingredients - the amounts are then almost certainly rendered
+    // client-side and only a real browser will surface them. The isRicher guard
+    // below still keeps the static result unless the render is actually fuller,
+    // so a genuinely server-rendered ingredient-less page is not regressed.
+    const jsonLdMissingIngredients = cleaned.recipeJsonLd !== null && !jsonLdHasIngredients(cleaned.recipeJsonLd);
+    const looksLikeJsShell =
+      (!cleaned.recipeJsonLd && cleaned.cleanedText.trim().length < BROWSER_FALLBACK_MIN_CHARS) ||
+      jsonLdMissingIngredients;
+
+    if (!blockedFallback && looksLikeJsShell && resolvedEnv.BROWSER_FALLBACK_ENABLED) {
+      // A failure of this attempt is logged with fetchMode 'browser'.
+      fetchMode = 'browser';
+      const rendered = await browserFetcher.fetchWithBrowser(parsedUrl, browserOpts);
+      const renderedCleaned = cleanHtmlForExtraction(
+        rendered.html,
+        geminiConfig.tokenBudget,
+        rendered.effectiveUrl,
+      );
+
+      // Take the rendered result only when it is actually richer: it surfaced
+      // JSON-LD, or it produced more visible text than the static shell.
+      const isRicher =
+        renderedCleaned.recipeJsonLd !== null ||
+        renderedCleaned.cleanedText.length > cleaned.cleanedText.length;
+      if (isRicher) {
+        activeHtml = rendered.html;
+        effectiveUrl = rendered.effectiveUrl;
+        cleaned = renderedCleaned;
+      } else {
+        fetchMode = 'static';
+      }
+    }
+  } catch (err) {
+    logFetchError(err);
+    throw err;
   }
 
   // Minimum-content pre-check, before any Gemini call. JSON-LD alone is
@@ -241,6 +318,8 @@ export async function runUrlIngestionPipeline({
       durationMs: Date.now() - pipelineStart,
       outcome: 'error',
       errorCode: 'URL_EXTRACTION_FAILED',
+      url,
+      fetchMode,
     });
     throw new AppError(
       'URL_EXTRACTION_FAILED',
@@ -256,6 +335,7 @@ export async function runUrlIngestionPipeline({
     stage: 'fetch',
     durationMs: Date.now() - pipelineStart,
     outcome: 'ok',
+    url,
     fetchMode,
     usedJsonLd,
   });
@@ -285,6 +365,7 @@ export async function runUrlIngestionPipeline({
   );
 
   const primaryResult = primary.result;
+  if (!passesStructuralPreCheck(primaryResult)) logAttemptFailure('primary', primary, extractStart);
 
   if (passesStructuralPreCheck(primaryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
@@ -296,6 +377,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
+      url,
       outcome: 'ok',
       extractor: 'gemini-primary',
       model: geminiConfig.primaryModel,
@@ -326,6 +408,7 @@ export async function runUrlIngestionPipeline({
     previousFailure: describeExtractionFailure(primaryResult) ?? 'unknown failure',
   });
 
+  const retryStart = Date.now();
   const retry = await tryExtract(() =>
     geminiClient.generateCanonicalRecipe({
       model: geminiConfig.retryModel,
@@ -336,6 +419,7 @@ export async function runUrlIngestionPipeline({
   );
 
   const retryResult = retry.result;
+  if (!passesStructuralPreCheck(retryResult)) logAttemptFailure('retry', retry, retryStart);
 
   if (passesStructuralPreCheck(retryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
@@ -347,6 +431,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
+      url,
       outcome: 'ok',
       extractor: 'gemini-retry',
       model: geminiConfig.retryModel,
@@ -372,6 +457,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
+      url,
       outcome: 'error',
       errorCode: 'AI_QUOTA_EXCEEDED',
     });
@@ -382,6 +468,7 @@ export async function runUrlIngestionPipeline({
     requestId,
     stage: 'extract',
     durationMs: Date.now() - extractStart,
+    url,
     outcome: 'error',
     errorCode: 'URL_EXTRACTION_FAILED',
   });

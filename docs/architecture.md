@@ -61,11 +61,14 @@ is no separate worker, queue or database server.
 1. **Fetch.** The URL is validated and fetched with SSRF guardrails (blocked
    address ranges, redirect limit, timeout, size cap; `services/url-ingestion/url-security.ts`).
    Blocked and failed fetches surface as explicit `URL_FETCH_BLOCKED` /
-   `URL_FETCH_FAILED` errors.
+   `URL_FETCH_FAILED` errors. A static 401/403 is retried with the headless
+   browser (see below); only a browser 401/403 becomes `URL_FETCH_BLOCKED`, whose
+   message points to the Send to Recipe Maker button.
 2. **Extract input.** The HTML is cleaned to visible text, candidate images and,
    if present, the schema.org `Recipe` JSON-LD, which is the best input.
-3. **Browser fallback.** If there is no JSON-LD and the page text is thin (a
-   client-side rendered shell), or the JSON-LD has no ingredients, the page is
+3. **Browser fallback.** If the plain fetch gets a 401/403, if there is no
+   JSON-LD and the page text is thin (a client-side rendered shell), or if the
+   JSON-LD has no ingredients, the page is
    re-fetched with a headless Chromium via Playwright (when
    `BROWSER_FALLBACK_ENABLED`). The richer result wins.
 4. **Gemini structured output.** The cleaned content goes to Gemini with a JSON

@@ -19,6 +19,19 @@ describe('ErrorBanner', () => {
     expect(screen.getByText(/req-123/)).toBeInTheDocument();
   });
 
+  it('shows the setup hint for URL_FETCH_BLOCKED', () => {
+    const error: ApiFailure = {
+      code: 'URL_FETCH_BLOCKED',
+      message: 'This site blocks our server.',
+    };
+
+    render(<ErrorBanner error={error} onRetry={() => {}} onDismiss={() => {}} />);
+
+    expect(
+      screen.getByText('Set up the Send to Recipe Maker button under Setup.'),
+    ).toBeInTheDocument();
+  });
+
   it('omits requestId when not present', () => {
     const error: ApiFailure = {
       code: 'INTERNAL_ERROR',
