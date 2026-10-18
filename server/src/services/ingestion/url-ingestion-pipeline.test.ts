@@ -593,13 +593,90 @@ describe('runUrlIngestionPipeline', () => {
       ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
 
       const lines = stageLogLines(logSpy);
-      const extractErrorLine = lines.find((l) => l.stage === 'extract' && l.outcome === 'error');
+      const extractErrorLine = lines.find((l) => l.stage === 'extract' && l.outcome === 'error' && !l.attempt);
 
       expect(extractErrorLine).toMatchObject({
         requestId: 'req-log-2',
         stage: 'extract',
         outcome: 'error',
         errorCode: 'URL_EXTRACTION_FAILED',
+      });
+    });
+
+    async function runLogged(generate: (params: GenerateCanonicalRecipeParams) => Promise<unknown>) {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(RECIPE_HTML));
+      const result = await runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient: fakeGeminiClient(generate),
+        geminiConfig: makeGeminiConfig(),
+        env: STATIC_ENV,
+        requestId: 'req-log-attempt',
+      }).then(
+        () => null,
+        (err: unknown) => err,
+      );
+      return { lines: stageLogLines(logSpy), result };
+    }
+
+    it('logs a thrown primary attempt with its code, message and cause', async () => {
+      const generate = vi
+        .fn()
+        .mockRejectedValueOnce(
+          new AppError('AI_NORMALIZATION_FAILED', 'Gemini request failed', { cause: 'socket hang up' }),
+        )
+        .mockResolvedValueOnce(VALID_CANDIDATE);
+
+      const { lines } = await runLogged(generate);
+
+      const attempts = lines.filter((l) => l.stage === 'extract' && l.attempt);
+      expect(attempts).toEqual([
+        expect.objectContaining({
+          outcome: 'error',
+          attempt: 'primary',
+          errorCode: 'AI_NORMALIZATION_FAILED',
+          message: 'Gemini request failed',
+          cause: 'socket hang up',
+          url: 'https://example.com/lasagna',
+        }),
+      ]);
+      const finalLine = lines.find((l) => l.stage === 'extract' && !l.attempt);
+      expect(finalLine).toMatchObject({ outcome: 'ok', url: 'https://example.com/lasagna' });
+    });
+
+    it('logs a pre-check failure with its reason', async () => {
+      const generate = vi.fn().mockResolvedValueOnce(GARBAGE_CANDIDATE).mockResolvedValueOnce(VALID_CANDIDATE);
+
+      const { lines } = await runLogged(generate);
+
+      const attempts = lines.filter((l) => l.stage === 'extract' && l.attempt);
+      expect(attempts).toEqual([
+        expect.objectContaining({
+          outcome: 'error',
+          attempt: 'primary',
+          reason: 'the response was missing a title, ingredients and steps',
+          url: 'https://example.com/lasagna',
+        }),
+      ]);
+      expect(attempts[0]).not.toHaveProperty('errorCode');
+    });
+
+    it('logs both failed attempts and the final stage line', async () => {
+      const generate = vi
+        .fn()
+        .mockRejectedValueOnce(new AppError('AI_NORMALIZATION_FAILED', 'first failed'))
+        .mockRejectedValueOnce(new AppError('AI_NORMALIZATION_FAILED', 'second failed'));
+
+      const { lines } = await runLogged(generate);
+
+      const attempts = lines.filter((l) => l.stage === 'extract' && l.attempt);
+      expect(attempts.map((l) => l.attempt)).toEqual(['primary', 'retry']);
+      expect(attempts[0]).not.toHaveProperty('cause');
+      const finalLine = lines.find((l) => l.stage === 'extract' && !l.attempt);
+      expect(finalLine).toMatchObject({
+        outcome: 'error',
+        errorCode: 'URL_EXTRACTION_FAILED',
+        url: 'https://example.com/lasagna',
       });
     });
 

@@ -197,6 +197,35 @@ export async function runUrlIngestionPipeline({
     });
   };
 
+  // One error line per failed extraction attempt: the thrown error's code,
+  // message and string cause, or the pre-check's reason for a bad result.
+  const logAttemptFailure = (
+    attempt: 'primary' | 'retry',
+    outcome: { result: unknown; error: unknown },
+    startedAt: number,
+  ): void => {
+    const base = {
+      requestId,
+      stage: 'extract' as const,
+      durationMs: Date.now() - startedAt,
+      outcome: 'error' as const,
+      attempt,
+      url,
+    };
+    if (outcome.error !== null && outcome.error !== undefined) {
+      const err = outcome.error;
+      const cause = err instanceof AppError ? (err.details as { cause?: unknown } | undefined)?.cause : undefined;
+      logStage({
+        ...base,
+        errorCode: err instanceof AppError ? err.code : 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : String(err),
+        ...(typeof cause === 'string' ? { cause } : {}),
+      });
+      return;
+    }
+    logStage({ ...base, reason: describeExtractionFailure(outcome.result) ?? 'unknown failure' });
+  };
+
   const browserOpts = {
     timeoutMs: resolvedEnv.BROWSER_FETCH_TIMEOUT_MS,
     maxBytes: resolvedEnv.URL_MAX_RESPONSE_BYTES,
@@ -333,6 +362,7 @@ export async function runUrlIngestionPipeline({
   );
 
   const primaryResult = primary.result;
+  if (!passesStructuralPreCheck(primaryResult)) logAttemptFailure('primary', primary, extractStart);
 
   if (passesStructuralPreCheck(primaryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
@@ -344,6 +374,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
+      url,
       outcome: 'ok',
       extractor: 'gemini-primary',
       model: geminiConfig.primaryModel,
@@ -384,6 +415,7 @@ export async function runUrlIngestionPipeline({
   );
 
   const retryResult = retry.result;
+  if (!passesStructuralPreCheck(retryResult)) logAttemptFailure('retry', retry, extractStart);
 
   if (passesStructuralPreCheck(retryResult)) {
     const stepImagesFromJsonLd = overlayJsonLdStepImages(
@@ -395,6 +427,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
+      url,
       outcome: 'ok',
       extractor: 'gemini-retry',
       model: geminiConfig.retryModel,
@@ -420,6 +453,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
+      url,
       outcome: 'error',
       errorCode: 'AI_QUOTA_EXCEEDED',
     });
@@ -430,6 +464,7 @@ export async function runUrlIngestionPipeline({
     requestId,
     stage: 'extract',
     durationMs: Date.now() - extractStart,
+    url,
     outcome: 'error',
     errorCode: 'URL_EXTRACTION_FAILED',
   });

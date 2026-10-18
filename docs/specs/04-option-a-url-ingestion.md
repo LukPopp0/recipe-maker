@@ -18,6 +18,11 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
    - Every fetch-stage exit logs a `"stage":"fetch"` line with `url` (as
      submitted) and `fetchMode`; error lines add `errorCode` and `status`
      (when the error carries an HTTP status).
+   - Every extract-stage line carries `url`. Each failed Gemini attempt also
+     logs a `"stage":"extract"` error line with `attempt` (`primary` or
+     `retry`): `errorCode`, `message` and `cause` (when a string) if the
+     attempt threw, or `reason` if it returned something failing the
+     structural pre-check. The final stage line has no `attempt`.
 4. Extract structured metadata and cleaned text from the HTML:
    - schema.org Recipe JSON-LD from `<script type="application/ld+json">`
      blocks is the highest-priority extraction input. It is present in the
