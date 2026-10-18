@@ -63,7 +63,7 @@ export function createApp(deps: AppDeps): App {
 
   app.route('/', healthApp);
   app.route('/api', healthApp);
-  app.route('/api', createMeApp());
+  app.route('/api', createMeApp({ placeholderImageUrl: deps.defaultMainImageUrl }));
   app.route('/api', recipeApp);
   app.route('/api', ingestApp);
   app.route('/api', imageApp);

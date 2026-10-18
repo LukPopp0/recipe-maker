@@ -35,6 +35,17 @@ describe('createApp', () => {
     });
   });
 
+  it('GET /api/me returns the user and the placeholder image URL', async () => {
+    const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() });
+
+    const res = await app.request('/api/me');
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(200);
+    expect(body.placeholderImageUrl).toBe('/images/placeholder-recipe.png');
+    expect(body.user).toBeDefined();
+  });
+
   it('GET /health (bare, for infra probes) returns the same shape as /api/health', async () => {
     const app = createApp({ env: makeEnv(), checkStorageReady: () => true, recipeRepository: makeRecipeRepository(), ...makeIngestDeps() });
 

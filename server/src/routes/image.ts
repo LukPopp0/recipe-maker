@@ -1,10 +1,15 @@
+import { randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { LinkImageRequestSchema, ImageSlotSchema, type ImageSlot } from 'shared';
 import { z } from 'zod';
 import type { ServerEnv } from '../env.js';
 import { AppError } from '../lib/errors.js';
 import { ok } from '../lib/response.js';
+import { parseJsonBody } from '../middleware/validate.js';
 import type { AppVariables } from '../middleware/request-id.js';
+import { describeRehostFailure } from '../services/images/image-rehoster.js';
+import { fetchAndStoreRemoteImage } from '../services/images/remote-image-fetcher.js';
 import { hostUploadedImage } from '../services/images/upload-image-hoster.js';
 import type { StorageAdapter } from '../services/storage/storage-adapter.js';
 
@@ -20,6 +25,15 @@ const StepImageFieldsSchema = z.object({
   stepIndex: z.coerce.number().int().min(0).max(5),
 });
 
+const UploadImageFieldsSchema = z.object({
+  namespaceId: z.string().uuid(),
+  slot: ImageSlotSchema,
+});
+
+// Multipart fields are strings and z.coerce.number() turns '' into 0, so only
+// 'main' or a plain non-negative integer string reaches the slot schema.
+const SLOT_FIELD_PATTERN = /^(main|\d+)$/;
+
 // Standalone image upload for the review panel (docs/specs/14): lets the user add
 // or replace a single step image after ingestion, before Save. Reuses the
 // manual-ingestion hosting path (same MIME/size validation, same
@@ -31,15 +45,37 @@ export function createImageApp(deps: ImageDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
   const { env, storageAdapter } = deps;
 
-  app.use(
-    '/image/step',
-    bodyLimit({
-      maxSize: env.MANUAL_REQUEST_MAX_BYTES,
-      onError: () => {
-        throw new AppError('INVALID_INPUT', 'The upload request exceeds the maximum allowed size.');
+  const uploadLimit = bodyLimit({
+    maxSize: env.MANUAL_REQUEST_MAX_BYTES,
+    onError: () => {
+      throw new AppError('INVALID_INPUT', 'The upload request exceeds the maximum allowed size.');
+    },
+  });
+  app.use('/image/step', uploadLimit);
+  app.use('/image/upload', uploadLimit);
+
+  // Hosts an uploaded file in a slot ('main' or a step index) under a fresh unique key.
+  async function hostSlotUpload(file: File, namespaceId: string, slot: ImageSlot): Promise<string> {
+    const result = await hostUploadedImage(
+      {
+        buffer: Buffer.from(await file.arrayBuffer()),
+        contentType: file.type,
+        filename: file.name,
       },
-    }),
-  );
+      {
+        recipeId: namespaceId,
+        storageAdapter,
+        maxBytes: env.IMAGE_MAX_BYTES,
+        kind: slot === 'main' ? 'main' : 'step',
+        index: slot === 'main' ? 0 : slot,
+      },
+    );
+
+    if ('warning' in result) {
+      throw new AppError('INVALID_INPUT', result.warning);
+    }
+    return result.url;
+  }
 
   app.post('/image/step', async (c) => {
     const requestId = c.get('requestId');
@@ -60,26 +96,61 @@ export function createImageApp(deps: ImageDeps) {
       throw new AppError('INVALID_INPUT', 'A "file" image upload is required.');
     }
 
-    const result = await hostUploadedImage(
-      {
-        buffer: Buffer.from(await file.arrayBuffer()),
-        contentType: file.type,
-        filename: file.name,
-      },
-      {
-        recipeId: parsed.data.namespaceId,
-        storageAdapter,
-        maxBytes: env.IMAGE_MAX_BYTES,
-        kind: 'step',
-        index: parsed.data.stepIndex,
-      },
-    );
+    const url = await hostSlotUpload(file, parsed.data.namespaceId, parsed.data.stepIndex);
 
-    if ('warning' in result) {
-      throw new AppError('INVALID_INPUT', result.warning);
+    return c.json(ok(requestId, { url }));
+  });
+
+  app.post('/image/upload', async (c) => {
+    const body = await c.req.parseBody();
+    const slotField = body.slot;
+    const parsed = UploadImageFieldsSchema.safeParse({
+      namespaceId: body.namespaceId,
+      slot: typeof slotField === 'string' && SLOT_FIELD_PATTERN.test(slotField) ? slotField : undefined,
+    });
+    if (!parsed.success) {
+      throw new AppError('INVALID_INPUT', 'namespaceId must be a UUID and slot "main" or an integer from 0 to 5.', {
+        issues: parsed.error.issues,
+      });
     }
 
-    return c.json(ok(requestId, { url: result.url }));
+    const file = body.file;
+    if (!(file instanceof File)) {
+      throw new AppError('INVALID_INPUT', 'A "file" image upload is required.');
+    }
+
+    const url = await hostSlotUpload(file, parsed.data.namespaceId, parsed.data.slot);
+    return c.json(ok(c.get('requestId'), { url }));
+  });
+
+  // Downloads an image from a user-supplied URL into a slot. Every call gets a
+  // fresh key suffix so a re-link never overwrites a file a saved recipe shows.
+  app.post('/image/link', async (c) => {
+    const { namespaceId, slot, url } = await parseJsonBody(c, LinkImageRequestSchema);
+    const label = slot === 'main' ? 'main-0' : `step-${slot}`;
+
+    const result = await fetchAndStoreRemoteImage(url, {
+      storageAdapter,
+      maxBytes: env.IMAGE_MAX_BYTES,
+      keyPrefix: `recipes/${namespaceId}/${label}-${randomBytes(4).toString('hex')}`,
+      timeoutMs: env.URL_FETCH_TIMEOUT_MS,
+    });
+
+    if (!result.ok) {
+      if (result.reason === 'blocked') {
+        throw new AppError('INVALID_URL', 'The image URL is invalid or points to a blocked address.');
+      }
+      if (result.reason === 'status' && (result.status === 401 || result.status === 403)) {
+        throw new AppError(
+          'IMAGE_DOWNLOAD_FAILED',
+          'This site blocks downloads, copy the image and paste it instead.',
+          { status: result.status },
+        );
+      }
+      throw new AppError('IMAGE_DOWNLOAD_FAILED', describeRehostFailure('The image', url, result, env.IMAGE_MAX_BYTES));
+    }
+
+    return c.json(ok(c.get('requestId'), { url: result.url }));
   });
 
   return app;

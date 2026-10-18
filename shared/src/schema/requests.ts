@@ -20,3 +20,17 @@ export type SaveRecipeRequest = z.infer<typeof SaveRecipeRequestSchema>
 export const RecipeIdSchema = z.string().uuid();
 
 export type RecipeId = z.infer<typeof RecipeIdSchema>
+
+// Image slot of a recipe: the main image or step index 0-5. Coerces numeric
+// strings (JSON or multipart); callers taking multipart input should reject
+// blank strings first since Number('') is 0.
+export const ImageSlotSchema = z.union([z.literal('main'), z.coerce.number().int().min(0).max(5)]);
+
+// POST /api/image/link request body per docs/specs/03.
+export const LinkImageRequestSchema = z.object({
+  namespaceId: z.string().uuid(),
+  slot: ImageSlotSchema,
+  url: z.string().trim().url(),
+});
+
+export type LinkImageRequest = z.infer<typeof LinkImageRequestSchema>

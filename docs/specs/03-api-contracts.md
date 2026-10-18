@@ -22,11 +22,30 @@ Response:
 {
   "ok": true,
   "requestId": "...",
-  "user": { "username": "alice", "isAdmin": false }
+  "user": { "username": "alice", "isAdmin": false },
+  "placeholderImageUrl": "/images/placeholder-recipe.png"
 }
 ```
 Username is trimmed and lowercased; `isAdmin` is true when it appears in
 `ADMIN_USERS` (always true for `local` in `AUTH_MODE=none`).
+`placeholderImageUrl` is the default recipe image the client compares against
+to tell whether the main image is unset.
+
+### POST /api/image/upload
+Multipart: `file` (jpeg/png/webp), `namespaceId` (UUID), `slot` (`main` or an
+integer `0`-`5`, as string). Response: `{ "ok": true, "requestId": "...", "url": "..." }`.
+Key `recipes/{namespaceId}/main-0-{hex8}.jpg` or `recipes/{namespaceId}/step-{i}-{hex8}.jpg`;
+every call gets a new key. Invalid fields, missing file, bad type or size -> 400
+`INVALID_INPUT`. Body-limited by `MANUAL_REQUEST_MAX_BYTES`; not rate limited.
+
+### POST /api/image/link
+Request: `{ "namespaceId": "<uuid>", "slot": "main" | 0-5, "url": "https://..." }`.
+Downloads the image (SSRF guarded, jpeg/png/webp only), stores it under a new
+key like `/api/image/upload` and returns `{ "ok": true, "requestId": "...", "url": "..." }`.
+Errors: blocked or invalid address -> 400 `INVALID_URL`; remote status 401/403 ->
+502 `IMAGE_DOWNLOAD_FAILED` ("This site blocks downloads, copy the image and
+paste it instead.", `details.status`); any other download failure (status, type,
+size, timeout) -> 502 `IMAGE_DOWNLOAD_FAILED`. Not rate limited.
 
 ### POST /api/ingest/url
 Request:
