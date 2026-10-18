@@ -20,7 +20,7 @@ vi.mock('./api/client.ts', () => ({
 const mockedIngestUrl = vi.mocked(ingestUrl);
 
 beforeEach(() => {
-  vi.mocked(getMe).mockResolvedValue({ ok: true, value: { user: { username: 'alice', isAdmin: false } } });
+  vi.mocked(getMe).mockResolvedValue({ ok: true, value: { user: { username: 'alice', isAdmin: false }, placeholderImageUrl: '/images/placeholder-recipe.png' } });
 });
 
 const RECIPE: CanonicalRecipe = {
