@@ -21,13 +21,16 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   AI_QUOTA_EXCEEDED: 429,
 };
 
+export const URL_FETCH_BLOCKED_MESSAGE =
+  'This site blocks our server. Open the recipe in your browser and use the Send to Recipe Maker button instead.';
+
 // Default user-safe message per error code, used when a caller does not
 // supply a more specific message.
 export const ERROR_DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   INVALID_INPUT: 'The request input is invalid.',
   INVALID_URL: 'The provided URL is invalid.',
   URL_FETCH_TIMEOUT: 'Timed out while fetching the URL.',
-  URL_FETCH_BLOCKED: 'This site blocks automated access. Copy the recipe into the Manual tab instead.',
+  URL_FETCH_BLOCKED: URL_FETCH_BLOCKED_MESSAGE,
   URL_FETCH_FAILED: 'The site returned an error while fetching the URL.',
   URL_EXTRACTION_FAILED: 'Failed to extract recipe content from the URL.',
   AI_NORMALIZATION_FAILED: 'Failed to normalize the recipe with AI.',

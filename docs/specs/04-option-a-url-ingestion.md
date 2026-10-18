@@ -14,7 +14,7 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
    - A static 401/403 tries the headless browser (step 5) when
      BROWSER_FALLBACK_ENABLED; only a browser 401/403 (or a 401/403 with the
      fallback disabled) is URL_FETCH_BLOCKED (bot protection; point the user
-     at manual input).
+     at the Send to Recipe Maker button).
    - Every fetch-stage exit logs a `"stage":"fetch"` line with `url` (as
      submitted) and `fetchMode`; error lines add `errorCode` and `status`
      (when the error carries an HTTP status).
@@ -125,13 +125,13 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 - Site blocks automated access (401/403 from both the static fetch and the
   headless-browser retry, or bot-protection challenge). No
   stealth/fingerprint-evasion measures are used; the user is directed to
-  manual input instead.
+  the Send to Recipe Maker button instead.
 - Gemini response fails schema validation after retry.
 
 ## User-Facing Error Messaging
 - Must include reason and suggested action.
 - Example: "This page does not contain a recognizable recipe. Try another URL or use manual input."
-- Example: "This site blocks automated access. Copy the recipe into the Manual tab instead."
+- Example: "This site blocks our server. Open the recipe in your browser and use the Send to Recipe Maker button instead."
 
 ## Acceptance Criteria
 - Works on common recipe domains and many arbitrary pages.

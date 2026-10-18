@@ -1,6 +1,6 @@
 import dns from 'node:dns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppError } from '../../lib/errors.js';
+import { AppError, URL_FETCH_BLOCKED_MESSAGE } from '../../lib/errors.js';
 import {
   fetchWithGuardrails,
   isBlockedAddress,
@@ -189,7 +189,11 @@ describe('fetchWithGuardrails', () => {
         maxRedirects: 3,
         maxBytes: 1_000_000,
       }),
-    ).rejects.toMatchObject({ code: 'URL_FETCH_BLOCKED' });
+    ).rejects.toMatchObject({
+      code: 'URL_FETCH_BLOCKED',
+      message: URL_FETCH_BLOCKED_MESSAGE,
+      details: { status: 403 },
+    });
   });
 
   it('throws URL_FETCH_BLOCKED on a 401 response', async () => {

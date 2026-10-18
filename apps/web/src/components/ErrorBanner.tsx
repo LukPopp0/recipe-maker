@@ -5,6 +5,7 @@ import type { ApiFailure } from '../api/client.ts';
 const RECOVERY_HINTS: Record<string, string> = {
   INVALID_URL: 'Check the URL or use the Manual tab instead.',
   URL_EXTRACTION_FAILED: 'Check the URL or use the Manual tab instead.',
+  URL_FETCH_BLOCKED: 'Set up the Send to Recipe Maker button under Setup.',
   URL_FETCH_TIMEOUT: 'The page took too long to load. Try again or use the Manual tab.',
   NETWORK_ERROR: 'Could not reach the server - is the backend running on port 8787?',
   UNAUTHENTICATED: 'Your login may have expired. Reload the page to log in again.',

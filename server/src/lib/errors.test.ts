@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { AppError, ERROR_DEFAULT_MESSAGE, ERROR_STATUS_MAP, serializeError } from './errors.js';
+import {
+  AppError,
+  ERROR_DEFAULT_MESSAGE,
+  ERROR_STATUS_MAP,
+  URL_FETCH_BLOCKED_MESSAGE,
+  serializeError,
+} from './errors.js';
+
+describe('URL_FETCH_BLOCKED_MESSAGE', () => {
+  it('points the user at the Send to Recipe Maker button and is the default message', () => {
+    expect(URL_FETCH_BLOCKED_MESSAGE).toBe(
+      'This site blocks our server. Open the recipe in your browser and use the Send to Recipe Maker button instead.',
+    );
+    expect(ERROR_DEFAULT_MESSAGE.URL_FETCH_BLOCKED).toBe(URL_FETCH_BLOCKED_MESSAGE);
+  });
+});
 
 describe('ERROR_STATUS_MAP', () => {
   it('maps every error code to its spec-defined HTTP status', () => {

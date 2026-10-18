@@ -1,5 +1,5 @@
 import { chromium, type Browser } from 'playwright';
-import { AppError } from '../../lib/errors.js';
+import { AppError, URL_FETCH_BLOCKED_MESSAGE } from '../../lib/errors.js';
 import { BROWSER_LIKE_HEADERS, resolveAndCheckHost } from './url-security.js';
 
 // After domcontentloaded, wait this long at most for the network to go idle
@@ -85,7 +85,7 @@ export async function fetchWithBrowser(url: URL, opts: BrowserFetchOptions): Pro
     if (response && (response.status() === 401 || response.status() === 403)) {
       throw new AppError(
         'URL_FETCH_BLOCKED',
-        'This site blocks automated access. Copy the recipe into the Manual tab instead.',
+        URL_FETCH_BLOCKED_MESSAGE,
         { status: response.status() },
       );
     }

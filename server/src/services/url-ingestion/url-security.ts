@@ -1,6 +1,6 @@
 import dns from 'node:dns';
 import net from 'node:net';
-import { AppError } from '../../lib/errors.js';
+import { AppError, URL_FETCH_BLOCKED_MESSAGE } from '../../lib/errors.js';
 
 // Parses and validates a raw URL string: must be well-formed and use the
 // http or https scheme. Any other scheme (ftp:, file:, data:, etc.) or
@@ -218,11 +218,11 @@ export async function fetchWithGuardrails(
       // Non-2xx final responses never contain the real page. 401/403 is
       // almost always bot protection serving a challenge page - feeding that
       // to the extractor produces a confusing failure, so fail explicitly
-      // and point the user at the Manual tab escape hatch instead.
+      // and point the user at the Send to Recipe Maker button instead.
       if (response.status === 401 || response.status === 403) {
         throw new AppError(
           'URL_FETCH_BLOCKED',
-          'This site blocks automated access. Copy the recipe into the Manual tab instead.',
+          URL_FETCH_BLOCKED_MESSAGE,
           { status: response.status },
         );
       }
