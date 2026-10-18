@@ -21,10 +21,15 @@ export const RecipeIdSchema = z.string().uuid();
 
 export type RecipeId = z.infer<typeof RecipeIdSchema>
 
-// Image slot of a recipe: the main image or step index 0-5. Coerces numeric
-// strings (JSON or multipart); callers taking multipart input should reject
-// blank strings first since Number('') is 0.
-export const ImageSlotSchema = z.union([z.literal('main'), z.coerce.number().int().min(0).max(5)]);
+// Image slot of a recipe: 'main' or a step index 0-5. Strict on purpose: accepts
+// an integer 0-5 or a digit-only string (multipart sends strings) and outputs a
+// number. z.coerce.number() is avoided because it maps '', null, false and [] to 0.
+const StepSlotSchema = z.union([
+  z.number().int().min(0).max(5),
+  z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(0).max(5)),
+]);
+
+export const ImageSlotSchema = z.union([z.literal('main'), StepSlotSchema]);
 
 // POST /api/image/link request body per docs/specs/03.
 export const LinkImageRequestSchema = z.object({

@@ -30,10 +30,6 @@ const UploadImageFieldsSchema = z.object({
   slot: ImageSlotSchema,
 });
 
-// Multipart fields are strings and z.coerce.number() turns '' into 0, so only
-// 'main' or a plain non-negative integer string reaches the slot schema.
-const SLOT_FIELD_PATTERN = /^(main|\d+)$/;
-
 // Standalone image upload for the review panel (docs/specs/14): lets the user add
 // or replace a single step image after ingestion, before Save. Reuses the
 // manual-ingestion hosting path (same MIME/size validation, same
@@ -103,10 +99,9 @@ export function createImageApp(deps: ImageDeps) {
 
   app.post('/image/upload', async (c) => {
     const body = await c.req.parseBody();
-    const slotField = body.slot;
     const parsed = UploadImageFieldsSchema.safeParse({
       namespaceId: body.namespaceId,
-      slot: typeof slotField === 'string' && SLOT_FIELD_PATTERN.test(slotField) ? slotField : undefined,
+      slot: body.slot,
     });
     if (!parsed.success) {
       throw new AppError('INVALID_INPUT', 'namespaceId must be a UUID and slot "main" or an integer from 0 to 5.', {

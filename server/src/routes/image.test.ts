@@ -239,6 +239,27 @@ describe('POST /api/image/upload and /api/image/link', () => {
     expect(second.url).not.toBe(first.url);
   });
 
+  it.each([['empty string', ''], ['null', null], ['false', false], ['blank string', ' '], ['array', []]])(
+    'rejects a link slot of %s with 400 INVALID_INPUT',
+    async (_name, slot) => {
+      stubFetch(png);
+      const res = await link(makeApp(), { namespaceId: NAMESPACE, slot, url: 'https://remote.example.com/a.png' });
+      const body = (await res.json()) as ApiErrorEnvelope;
+
+      expect(res.status).toBe(400);
+      expect(body.error.code).toBe('INVALID_INPUT');
+    },
+  );
+
+  it('accepts a numeric-string link slot', async () => {
+    stubFetch(png);
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: '2', url: 'https://remote.example.com/a.png' });
+    const body = (await res.json()) as UploadSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.url).toMatch(/step-2-[0-9a-f]{8}\.png$/);
+  });
+
   it('downloads a linked image into a step slot', async () => {
     stubFetch(png);
     const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: 2, url: 'https://remote.example.com/a.png' });
