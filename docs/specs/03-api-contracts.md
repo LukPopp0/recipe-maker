@@ -89,6 +89,22 @@ Multipart fields:
 
 Response shape mirrors /api/ingest/url.
 
+### POST /api/ingest/capture
+Runs the URL pipeline on a recipe page captured by the user's own browser (spec 15). The page URL is never fetched by the server.
+Multipart fields:
+- url: string (required, http(s); otherwise 400 `INVALID_URL`). Relative image URLs in the page resolve against it; it becomes `metadata.source_url`.
+- html: string (required, non-empty). More than `URL_MAX_RESPONSE_BYTES` UTF-8 bytes -> 400 `INVALID_INPUT`.
+- mainImageUrl: string (optional, http(s); otherwise 400 `INVALID_INPUT`). Replaces the model's main image pick.
+- mainImage: file (optional, requires `mainImageUrl`, else 400 `INVALID_INPUT`). Bytes the browser already downloaded; hosted instead of downloading `mainImageUrl`.
+
+The request body is limited to `MANUAL_REQUEST_MAX_BYTES`; the route is rate limited like the other `/api/ingest/*` routes. Captured HTML is untrusted, exactly like fetched HTML, and every image URL the server downloads goes through the same SSRF guardrails.
+
+Response mirrors /api/ingest/url (`diagnostics.fetchMode` is `capture`) plus:
+- imageNamespaceId: string
+- unhosted: `{ slot: "main" | number, url: string, warning: string }[]` - images the server could not host: a main image whose bytes were rejected or that could not be downloaded (the recipe then shows the placeholder), and step images that were dropped. The browser can retry these with its own bytes.
+
+Errors as for /api/ingest/url (for example 422 `URL_EXTRACTION_FAILED` when the page has no recipe content).
+
 ### POST /api/recipe/validate
 Request: canonical recipe candidate.
 Response: valid boolean + normalized value or errors.

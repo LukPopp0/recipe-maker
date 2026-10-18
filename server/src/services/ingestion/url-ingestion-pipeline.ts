@@ -200,35 +200,6 @@ export async function runUrlIngestionPipeline({
     });
   };
 
-  // One error line per failed extraction attempt: the thrown error's code,
-  // message and string cause, or the pre-check's reason for a bad result.
-  const logAttemptFailure = (
-    attempt: 'primary' | 'retry',
-    outcome: { result: unknown; error: unknown },
-    startedAt: number,
-  ): void => {
-    const base = {
-      requestId,
-      stage: 'extract' as const,
-      durationMs: Date.now() - startedAt,
-      outcome: 'error' as const,
-      attempt,
-      url,
-    };
-    if (outcome.error !== null && outcome.error !== undefined) {
-      const err = outcome.error;
-      const cause = err instanceof AppError ? (err.details as { cause?: unknown } | undefined)?.cause : undefined;
-      logStage({
-        ...base,
-        errorCode: err instanceof AppError ? err.code : 'INTERNAL_ERROR',
-        message: err instanceof Error ? err.message : String(err),
-        ...(typeof cause === 'string' ? { cause } : {}),
-      });
-      return;
-    }
-    logStage({ ...base, reason: describeExtractionFailure(outcome.result) ?? 'unknown failure' });
-  };
-
   const browserOpts = {
     timeoutMs: resolvedEnv.BROWSER_FETCH_TIMEOUT_MS,
     maxBytes: resolvedEnv.URL_MAX_RESPONSE_BYTES,
@@ -308,6 +279,83 @@ export async function runUrlIngestionPipeline({
     throw err;
   }
 
+  return extractRecipeFromHtml({
+    html: activeHtml,
+    pageUrl: effectiveUrl,
+    logUrl: url,
+    fetchMode,
+    requestId,
+    geminiClient,
+    geminiConfig,
+    startedAt: pipelineStart,
+    cleaned,
+  });
+}
+
+export interface ExtractRecipeFromHtmlParams {
+  html: string
+  // Page URL the HTML belongs to: relative image URLs resolve against it and
+  // it is shown to the model. Never fetched here.
+  pageUrl: string
+  // URL written to log lines when it differs from pageUrl (the URL as
+  // submitted, before redirects). Defaults to pageUrl.
+  logUrl?: string
+  fetchMode: UrlIngestionFetchMode
+  requestId: string
+  geminiClient: GeminiCanonicalRecipeGenerator
+  geminiConfig: GeminiConfig
+  // Pipeline start (Date.now()) so durations cover the whole request.
+  startedAt: number
+  // Pre-cleaned HTML, when the caller already cleaned it.
+  cleaned?: CleanedHtml
+}
+
+// Everything after "we have the page HTML": minimum-content pre-check, the
+// fetch ok/error log line, and Gemini extraction with one retry. Shared by the
+// URL pipeline (HTML it fetched) and POST /api/ingest/capture (HTML captured
+// in the user's browser). The HTML is untrusted in both cases.
+export async function extractRecipeFromHtml({
+  html,
+  pageUrl,
+  logUrl = pageUrl,
+  fetchMode,
+  requestId,
+  geminiClient,
+  geminiConfig,
+  startedAt,
+  cleaned: precleaned,
+}: ExtractRecipeFromHtmlParams): Promise<RunUrlIngestionPipelineResult> {
+  const cleaned = precleaned ?? cleanHtmlForExtraction(html, geminiConfig.tokenBudget, pageUrl);
+
+  // One error line per failed extraction attempt: the thrown error's code,
+  // message and string cause, or the pre-check's reason for a bad result.
+  const logAttemptFailure = (
+    attempt: 'primary' | 'retry',
+    outcome: { result: unknown; error: unknown },
+    startedAt: number,
+  ): void => {
+    const base = {
+      requestId,
+      stage: 'extract' as const,
+      durationMs: Date.now() - startedAt,
+      outcome: 'error' as const,
+      attempt,
+      url: logUrl,
+    };
+    if (outcome.error !== null && outcome.error !== undefined) {
+      const err = outcome.error;
+      const cause = err instanceof AppError ? (err.details as { cause?: unknown } | undefined)?.cause : undefined;
+      logStage({
+        ...base,
+        errorCode: err instanceof AppError ? err.code : 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : String(err),
+        ...(typeof cause === 'string' ? { cause } : {}),
+      });
+      return;
+    }
+    logStage({ ...base, reason: describeExtractionFailure(outcome.result) ?? 'unknown failure' });
+  };
+
   // Minimum-content pre-check, before any Gemini call. JSON-LD alone is
   // sufficient content even when visible text is thin.
   if (!cleaned.recipeJsonLd && cleaned.cleanedText.trim().length < MIN_CONTENT_CHARS) {
@@ -315,16 +363,16 @@ export async function runUrlIngestionPipeline({
     logStage({
       requestId,
       stage: 'fetch',
-      durationMs: Date.now() - pipelineStart,
+      durationMs: Date.now() - startedAt,
       outcome: 'error',
       errorCode: 'URL_EXTRACTION_FAILED',
-      url,
+      url: logUrl,
       fetchMode,
     });
     throw new AppError(
       'URL_EXTRACTION_FAILED',
       'This page does not contain a recognizable recipe. Try another URL or use manual input.',
-      { requestId, url: effectiveUrl },
+      { requestId, url: pageUrl },
     );
   }
 
@@ -333,9 +381,9 @@ export async function runUrlIngestionPipeline({
   logStage({
     requestId,
     stage: 'fetch',
-    durationMs: Date.now() - pipelineStart,
+    durationMs: Date.now() - startedAt,
     outcome: 'ok',
-    url,
+    url: logUrl,
     fetchMode,
     usedJsonLd,
   });
@@ -344,11 +392,11 @@ export async function runUrlIngestionPipeline({
 
   // Per-instruction images declared by the site's own JSON-LD, overlaid onto
   // whichever extraction attempt succeeds.
-  const jsonLdStepImages = extractJsonLdStepImages(cleaned.recipeJsonLd, effectiveUrl);
+  const jsonLdStepImages = extractJsonLdStepImages(cleaned.recipeJsonLd, pageUrl);
 
   // Primary Gemini call + structural pre-check.
   const primaryPrompt = buildUrlIngestionPrompt({
-    url: effectiveUrl,
+    url: pageUrl,
     cleanedText: cleaned.cleanedText,
     candidateImages: cleaned.candidateImages,
     titleHint: cleaned.titleHint,
@@ -377,7 +425,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
-      url,
+      url: logUrl,
       outcome: 'ok',
       extractor: 'gemini-primary',
       model: geminiConfig.primaryModel,
@@ -388,7 +436,7 @@ export async function runUrlIngestionPipeline({
       diagnostics: {
         extractor: 'gemini-primary',
         model: geminiConfig.primaryModel,
-        durationMs: Date.now() - pipelineStart,
+        durationMs: Date.now() - startedAt,
         fetchMode,
         usedJsonLd,
       },
@@ -397,10 +445,10 @@ export async function runUrlIngestionPipeline({
 
   // Retry once against a further-reduced content chunk.
   const retryBudget = Math.floor(geminiConfig.tokenBudget / RETRY_TOKEN_BUDGET_DIVISOR);
-  const reducedCleaned: CleanedHtml = cleanHtmlForExtraction(activeHtml, retryBudget, effectiveUrl);
+  const reducedCleaned: CleanedHtml = cleanHtmlForExtraction(html, retryBudget, pageUrl);
 
   const retryPrompt = buildUrlIngestionRetryPrompt({
-    url: effectiveUrl,
+    url: pageUrl,
     reducedText: reducedCleaned.cleanedText,
     candidateImages: reducedCleaned.candidateImages,
     titleHint: cleaned.titleHint,
@@ -431,7 +479,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
-      url,
+      url: logUrl,
       outcome: 'ok',
       extractor: 'gemini-retry',
       model: geminiConfig.retryModel,
@@ -442,7 +490,7 @@ export async function runUrlIngestionPipeline({
       diagnostics: {
         extractor: 'gemini-retry',
         model: geminiConfig.retryModel,
-        durationMs: Date.now() - pipelineStart,
+        durationMs: Date.now() - startedAt,
         fetchMode,
         usedJsonLd,
       },
@@ -457,7 +505,7 @@ export async function runUrlIngestionPipeline({
       requestId,
       stage: 'extract',
       durationMs: Date.now() - extractStart,
-      url,
+      url: logUrl,
       outcome: 'error',
       errorCode: 'AI_QUOTA_EXCEEDED',
     });
@@ -468,12 +516,12 @@ export async function runUrlIngestionPipeline({
     requestId,
     stage: 'extract',
     durationMs: Date.now() - extractStart,
-    url,
+    url: logUrl,
     outcome: 'error',
     errorCode: 'URL_EXTRACTION_FAILED',
   });
   throw new AppError('URL_EXTRACTION_FAILED', 'Could not extract a usable recipe from this URL.', {
     requestId,
-    url: effectiveUrl,
+    url: pageUrl,
   });
 }

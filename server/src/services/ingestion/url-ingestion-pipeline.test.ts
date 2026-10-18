@@ -7,7 +7,7 @@ import { URL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
 import { QUOTA_MESSAGE, type GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { GeminiCanonicalRecipeGenerator } from './url-ingestion-pipeline.js';
 import type { BrowserHtmlFetcher } from '../url-ingestion/browser-fetcher.js';
-import { describeExtractionFailure, runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
+import { describeExtractionFailure, extractRecipeFromHtml, runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
 
 const RECIPE_HTML = `
   <html>
@@ -746,6 +746,35 @@ describe('runUrlIngestionPipeline', () => {
         fetchMode: 'static',
       });
     });
+  });
+});
+
+describe('extractRecipeFromHtml', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    globalThis.fetch = originalFetch;
+  });
+
+  it('extracts from given HTML without any fetch', async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    const generateCanonicalRecipe = vi.fn().mockResolvedValue(VALID_CANDIDATE);
+
+    const result = await extractRecipeFromHtml({
+      html: RECIPE_HTML,
+      pageUrl: 'https://example.com/lasagna',
+      fetchMode: 'capture',
+      requestId: 'req-capture',
+      geminiClient: fakeGeminiClient(generateCanonicalRecipe),
+      geminiConfig: makeGeminiConfig(),
+      startedAt: Date.now(),
+    });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result.recipeCandidate).toBe(VALID_CANDIDATE);
+    expect(result.diagnostics.fetchMode).toBe('capture');
   });
 });
 
