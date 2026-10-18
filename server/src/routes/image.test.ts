@@ -277,6 +277,8 @@ describe('POST /api/image/upload and /api/image/link', () => {
     expect(res.status).toBe(502);
     expect(body.error.code).toBe('IMAGE_DOWNLOAD_FAILED');
     expect(body.error.message).toContain('unsupported content type "image/avif"');
+    expect(body.error.message).toMatch(/^Could not download the image: /);
+    expect(body.error.message).not.toContain('not re-hosted');
   });
 
   it.each([401, 403])('returns the paste hint when the linked image answers %i', async (status) => {

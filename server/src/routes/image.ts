@@ -8,8 +8,7 @@ import { AppError } from '../lib/errors.js';
 import { ok } from '../lib/response.js';
 import { parseJsonBody } from '../middleware/validate.js';
 import type { AppVariables } from '../middleware/request-id.js';
-import { describeRehostFailure } from '../services/images/image-rehoster.js';
-import { fetchAndStoreRemoteImage } from '../services/images/remote-image-fetcher.js';
+import { fetchAndStoreRemoteImage, type FetchAndStoreRemoteImageResult } from '../services/images/remote-image-fetcher.js';
 import { hostUploadedImage } from '../services/images/upload-image-hoster.js';
 import type { StorageAdapter } from '../services/storage/storage-adapter.js';
 
@@ -37,6 +36,28 @@ const UploadImageFieldsSchema = z.object({
 // key, so a re-upload never overwrites a file a saved recipe shows; the old
 // file stays until the 24 h admin cleanup. Deliberately NOT mounted under /ingest/* -
 // the ingestion rate limiter must not throttle uploads.
+// User-facing reason for a failed Link download (the 401/403 and blocked cases
+// are handled before this is called).
+function describeLinkFailure(
+  result: Extract<FetchAndStoreRemoteImageResult, { ok: false }>,
+  maxBytes: number,
+): string {
+  switch (result.reason) {
+    case 'blocked':
+      return 'the address is blocked or invalid';
+    case 'status':
+      return `the site answered with status ${result.status}`;
+    case 'unsupported-type':
+      return `unsupported content type "${result.contentType}"`;
+    case 'oversized':
+      return `the image is over the ${maxBytes}-byte limit`;
+    case 'timeout':
+      return 'the download timed out';
+    case 'error':
+      return `the download failed (${result.message})`;
+  }
+}
+
 export function createImageApp(deps: ImageDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
   const { env, storageAdapter } = deps;
@@ -142,7 +163,10 @@ export function createImageApp(deps: ImageDeps) {
           { status: result.status },
         );
       }
-      throw new AppError('IMAGE_DOWNLOAD_FAILED', describeRehostFailure('The image', url, result, env.IMAGE_MAX_BYTES));
+      throw new AppError(
+        'IMAGE_DOWNLOAD_FAILED',
+        `Could not download the image: ${describeLinkFailure(result, env.IMAGE_MAX_BYTES)}.`,
+      );
     }
 
     return c.json(ok(c.get('requestId'), { url: result.url }));

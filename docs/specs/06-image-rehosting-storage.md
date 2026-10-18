@@ -37,6 +37,10 @@ Implementations:
      already shows (or another recipe's, via a shared namespace), and the URL
      changes so browsers never serve a cached old image. Replaced files become
      unreferenced and the admin "Unused images" cleanup removes them.
+   - user-driven paths (`/api/image/upload`, `/api/image/link`, capture
+     main-image bytes): recipes/{namespace}/{main-0|step-i}-{8 hex}.jpg, a new
+     key per change, never overwriting. Ingest re-hosting keeps
+     {kind}-{index}.jpg in its fresh per-ingest namespace.
    The extension is always `.jpg` (the key is rewritten whatever the source
    format) and the stored content type is `image/jpeg`.
 5. Store image and return hosted URL.

@@ -84,9 +84,10 @@ review panel.
   does not throttle uploads. Body-limited by MANUAL_REQUEST_MAX_BYTES.
 
 `/api/image/step` is kept for old clients and is implemented through the same
-slot hosting function as `POST /api/image/upload` (slot = `stepIndex`). The
-review panel now uses `/api/image/upload` and `/api/image/link` (docs/specs/03)
-for both the main and step slots.
+slot hosting function as `POST /api/image/upload` (slot = `stepIndex`).
+`/api/image/upload` and `/api/image/link` (docs/specs/03) exist for both the
+main and step slots; the review panel switches to them in the frontend phase
+(docs/specs/15), until then it still uses `/api/image/step`.
 
 ### Review panel UI
 - StepEditor (editable, namespace present): per-step thumbnail when
