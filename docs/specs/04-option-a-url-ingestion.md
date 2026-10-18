@@ -9,9 +9,15 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
    - block localhost/private network addresses.
    - enforce redirect and size limits.
 3. Fetch HTML with timeout (static fetch, browser-like request headers).
-   - Non-2xx final responses fail explicitly: 401/403 -> URL_FETCH_BLOCKED
-     (bot protection; point the user at manual input), other statuses ->
+   - Non-2xx final responses fail explicitly: other statuses ->
      URL_FETCH_FAILED. Challenge/error pages are never fed to extraction.
+   - A static 401/403 tries the headless browser (step 5) when
+     BROWSER_FALLBACK_ENABLED; only a browser 401/403 (or a 401/403 with the
+     fallback disabled) is URL_FETCH_BLOCKED (bot protection; point the user
+     at manual input).
+   - Every fetch-stage exit logs a `"stage":"fetch"` line with `url` (as
+     submitted) and `fetchMode`; error lines add `errorCode` and `status`
+     (when the error carries an HTTP status).
 4. Extract structured metadata and cleaned text from the HTML:
    - schema.org Recipe JSON-LD from `<script type="application/ld+json">`
      blocks is the highest-priority extraction input. It is present in the
@@ -111,7 +117,8 @@ Ingest a recipe from a URL, normalize it, and return canonical JSON.
 - Not a recipe page.
 - Missing minimum required content (title + ingredients + at least one step).
 - Fetch/parsing failures.
-- Site blocks automated access (401/403, bot-protection challenge). No
+- Site blocks automated access (401/403 from both the static fetch and the
+  headless-browser retry, or bot-protection challenge). No
   stealth/fingerprint-evasion measures are used; the user is directed to
   manual input instead.
 - Gemini response fails schema validation after retry.

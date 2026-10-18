@@ -6,6 +6,7 @@ import { loadGeminiConfig } from '../ai/config.js';
 import { URL_RECIPE_OUTPUT_JSON_SCHEMA } from '../ai/output-schemas.js';
 import { QUOTA_MESSAGE, type GenerateCanonicalRecipeParams } from '../ai/gemini-client.js';
 import type { GeminiCanonicalRecipeGenerator } from './url-ingestion-pipeline.js';
+import type { BrowserHtmlFetcher } from '../url-ingestion/browser-fetcher.js';
 import { describeExtractionFailure, runUrlIngestionPipeline } from './url-ingestion-pipeline.js';
 
 const RECIPE_HTML = `
@@ -54,6 +55,19 @@ function makeGeminiConfig() {
 // Fallback disabled: these tests cover the static-fetch flow; the browser
 // fallback path has its own dedicated tests below with a fake fetcher.
 const STATIC_ENV = loadServerEnv({ BROWSER_FALLBACK_ENABLED: 'false' });
+
+function stageLogLines(logSpy: { mock: { calls: unknown[][] } }) {
+  return logSpy.mock.calls
+    .map((call: unknown[]) => call[0] as string)
+    .map((line: string) => {
+      try {
+        return JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })
+    .filter((parsed: Record<string, unknown> | null): parsed is Record<string, unknown> => parsed !== null && 'stage' in parsed);
+}
 
 function fakeGeminiClient(
   handler: (params: GenerateCanonicalRecipeParams) => Promise<unknown>,
@@ -331,6 +345,142 @@ describe('runUrlIngestionPipeline', () => {
         }),
       ).rejects.toMatchObject({ code: 'URL_EXTRACTION_FAILED' });
     });
+
+    const run403 = (
+      fetcher: BrowserHtmlFetcher,
+      env: typeof FALLBACK_ENV,
+      generate = vi.fn(),
+      requestId = 'req-403',
+    ) =>
+      runUrlIngestionPipeline({
+        url: 'https://example.com/lasagna',
+        geminiClient: fakeGeminiClient(generate),
+        geminiConfig: makeGeminiConfig(),
+        env,
+        browserFetcher: fetcher,
+        requestId,
+      });
+
+    it('tries the browser on a static 403 and continues with the rendered HTML', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+      const { fetcher, fetchWithBrowser } = fakeBrowserFetcher(RENDERED_HTML);
+
+      const result = await run403(fetcher, FALLBACK_ENV, vi.fn().mockResolvedValue(VALID_CANDIDATE));
+
+      expect(fetchWithBrowser).toHaveBeenCalledTimes(1);
+      expect(result.diagnostics.fetchMode).toBe('browser');
+    });
+
+    it('throws URL_FETCH_BLOCKED when the browser also gets 403', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+      const fetchWithBrowser = vi.fn().mockRejectedValue(new AppError('URL_FETCH_BLOCKED', 'x', { status: 403 }));
+      const generate = vi.fn();
+
+      await expect(run403({ fetchWithBrowser }, FALLBACK_ENV, generate)).rejects.toMatchObject({
+        code: 'URL_FETCH_BLOCKED',
+      });
+      expect(generate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the browser error code when the 403 fallback fails another way', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+      const fetchWithBrowser = vi.fn().mockRejectedValue(new AppError('URL_FETCH_TIMEOUT', 'slow'));
+
+      await expect(run403({ fetchWithBrowser }, FALLBACK_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_TIMEOUT',
+      });
+    });
+
+    it('throws URL_FETCH_BLOCKED without a browser attempt when the fallback is disabled', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+      const fetchWithBrowser = vi.fn();
+
+      await expect(run403({ fetchWithBrowser }, STATIC_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_BLOCKED',
+      });
+      expect(fetchWithBrowser).not.toHaveBeenCalled();
+    });
+
+    it('logs a fetch error line for a blocked static fetch', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+
+      await expect(run403({ fetchWithBrowser: vi.fn() }, STATIC_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_BLOCKED',
+      });
+
+      expect(stageLogLines(logSpy).find((l) => l.stage === 'fetch')).toMatchObject({
+        stage: 'fetch',
+        outcome: 'error',
+        errorCode: 'URL_FETCH_BLOCKED',
+        status: 403,
+        fetchMode: 'static',
+        url: 'https://example.com/lasagna',
+      });
+    });
+
+    it('logs fetchMode browser when the 403 fallback is blocked too', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('denied', { status: 403 }));
+      const fetchWithBrowser = vi.fn().mockRejectedValue(new AppError('URL_FETCH_BLOCKED', 'x', { status: 403 }));
+
+      await expect(run403({ fetchWithBrowser }, FALLBACK_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_BLOCKED',
+      });
+
+      expect(stageLogLines(logSpy).find((l) => l.stage === 'fetch')).toMatchObject({
+        outcome: 'error',
+        errorCode: 'URL_FETCH_BLOCKED',
+        status: 403,
+        fetchMode: 'browser',
+      });
+    });
+
+    it('logs a fetch error line for a non-403 HTTP error', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response('boom', { status: 500 }));
+
+      await expect(run403({ fetchWithBrowser: vi.fn() }, FALLBACK_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_FAILED',
+      });
+
+      expect(stageLogLines(logSpy).find((l) => l.stage === 'fetch')).toMatchObject({
+        outcome: 'error',
+        errorCode: 'URL_FETCH_FAILED',
+        status: 500,
+        fetchMode: 'static',
+      });
+    });
+
+    it('logs a fetch error line without status for a timeout', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+      await expect(run403({ fetchWithBrowser: vi.fn() }, FALLBACK_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_TIMEOUT',
+      });
+
+      const line = stageLogLines(logSpy).find((l) => l.stage === 'fetch');
+      expect(line).toMatchObject({ outcome: 'error', errorCode: 'URL_FETCH_TIMEOUT', fetchMode: 'static' });
+      expect(line).not.toHaveProperty('status');
+    });
+
+    it('logs a fetch error line when the JS-shell browser fallback throws', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(SHELL_HTML));
+      const fetchWithBrowser = vi.fn().mockRejectedValue(new AppError('URL_FETCH_FAILED', 'x', { status: 500 }));
+
+      await expect(run403({ fetchWithBrowser }, FALLBACK_ENV)).rejects.toMatchObject({
+        code: 'URL_FETCH_FAILED',
+      });
+
+      expect(stageLogLines(logSpy).find((l) => l.stage === 'fetch')).toMatchObject({
+        outcome: 'error',
+        errorCode: 'URL_FETCH_FAILED',
+        status: 500,
+        fetchMode: 'browser',
+      });
+    });
   });
 
   it('throws URL_EXTRACTION_FAILED for empty page content without calling Gemini', async () => {
@@ -394,19 +544,6 @@ describe('runUrlIngestionPipeline', () => {
   });
 
   describe('stage logging', () => {
-    function stageLogLines(logSpy: { mock: { calls: unknown[][] } }) {
-      return logSpy.mock.calls
-        .map((call: unknown[]) => call[0] as string)
-        .map((line: string) => {
-          try {
-            return JSON.parse(line) as Record<string, unknown>;
-          } catch {
-            return null;
-          }
-        })
-        .filter((parsed: Record<string, unknown> | null): parsed is Record<string, unknown> => parsed !== null && 'stage' in parsed);
-    }
-
     it('emits fetch and extract ok logs on the happy path', async () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       globalThis.fetch = vi.fn().mockResolvedValue(new Response(RECIPE_HTML));
@@ -430,6 +567,7 @@ describe('runUrlIngestionPipeline', () => {
         stage: 'fetch',
         outcome: 'ok',
         fetchMode: 'static',
+        url: 'https://example.com/lasagna',
       });
       expect(extractLine).toMatchObject({
         requestId: 'req-log-1',
@@ -488,6 +626,8 @@ describe('runUrlIngestionPipeline', () => {
         stage: 'fetch',
         outcome: 'error',
         errorCode: 'URL_EXTRACTION_FAILED',
+        url: 'https://example.com/empty',
+        fetchMode: 'static',
       });
     });
   });
