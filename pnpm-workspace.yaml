@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - extension
   - server
   - shared
 allowBuilds:
