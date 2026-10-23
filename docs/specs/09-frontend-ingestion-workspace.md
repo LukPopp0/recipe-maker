@@ -60,7 +60,8 @@ Controls:
   `main_image` is blank or equals the placeholder URL from `/api/me`; otherwise
   a plain "Main image" section with the control. Save is allowed either way.
 - Each step has its own image control; setting or removing an image clears that
-  slot's warnings. Read-only mode (Library) shows thumbnails only.
+  slot's warnings. Read-only mode (Library) shows step image thumbnails only:
+  no main image thumbnail and no image controls.
 - Show pantry_items as derived values from fixed pantry allowlist routing.
 - Add/remove tags.
 - Validate recipe before download.

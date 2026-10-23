@@ -83,7 +83,7 @@ function App() {
         if (!proceed) return false;
       }
       // Recipes that never went through ingestion (Load JSON, Open in Create)
-      // get a fresh client-minted namespace for step-image uploads.
+      // get a fresh client-minted namespace for image uploads.
       setRecipeState({
         recipe,
         diagnostics,
@@ -216,6 +216,9 @@ function App() {
         </div>
         {recipeState ? (
           <ReviewPanel
+            // A replaced recipe gets a new namespace: remount so a pending
+            // upload from the old recipe cannot land in the new one.
+            key={recipeState.imageNamespaceId}
             recipe={recipeState.recipe}
             diagnostics={recipeState.diagnostics}
             onChange={handleRecipeChange}

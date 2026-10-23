@@ -92,8 +92,9 @@ is no separate worker, queue or database server.
    warnings; the default placeholder image is used when there is no main image.
 
 The response carries the recipe, diagnostics, and an `imageNamespaceId` that the
-review panel uses to upload step images into the same storage namespace
-(`POST /api/image/step`). Nothing is saved yet. Each stage writes one
+review panel uses to put the main image and step images into the same storage
+namespace (`POST /api/image/upload` for pasted or uploaded files,
+`POST /api/image/link` for image URLs). Nothing is saved yet. Each stage writes one
 structured log line ([spec 11](specs/11-testing-observability-and-ops.md)).
 Gemini quota errors surface as `AI_QUOTA_EXCEEDED` (HTTP 429).
 

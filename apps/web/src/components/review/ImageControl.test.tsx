@@ -46,12 +46,60 @@ describe('ImageControl', () => {
     expect(mockedUpload).toHaveBeenCalledWith('ns', 'main', file, 'image.png');
   });
 
-  it('ignores a paste without an image', () => {
+  it('falls back to clipboardData.items when files is empty (Firefox Android)', async () => {
+    mockedUpload.mockResolvedValue({ ok: true, value: { url: '/images/ff.jpg' } });
+    renderMain();
+    const file = new File([new Uint8Array([1])], 'image.png', { type: 'image/png' });
+    fireEvent.paste(screen.getByRole('textbox', { name: 'Main image paste area' }), {
+      clipboardData: { files: [], items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }] },
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('/images/ff.jpg'));
+    expect(mockedUpload).toHaveBeenCalledWith('ns', 'main', file, 'image.png');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps the item type when the item file has none', async () => {
+    mockedUpload.mockResolvedValue({ ok: true, value: { url: '/images/ff.jpg' } });
+    renderMain();
+    const untyped = new File([new Uint8Array([1])], '', { type: '' });
+    fireEvent.paste(screen.getByRole('group', { name: 'Main image' }), {
+      clipboardData: { files: [], items: [{ kind: 'file', type: 'image/png', getAsFile: () => untyped }] },
+    });
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalledTimes(1));
+    const [, , sent, name] = mockedUpload.mock.calls[0];
+    expect(sent.type).toBe('image/png');
+    expect(name).toBe('pasted.png');
+  });
+
+  it('ignores a paste without an image outside the paste box', () => {
     renderMain();
     fireEvent.paste(screen.getByRole('group', { name: 'Main image' }), {
       clipboardData: { files: [], items: [], getData: () => 'hello' },
     });
     expect(mockedUpload).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('explains a paste without an image in the paste box', () => {
+    renderMain();
+    fireEvent.paste(screen.getByRole('textbox', { name: 'Main image paste area' }), {
+      clipboardData: { files: [], items: [], getData: () => 'hello' },
+    });
+    expect(mockedUpload).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The clipboard has no image. Copy the image itself, or use Link.',
+    );
+  });
+
+  it('leaves a text paste into the link URL input alone', async () => {
+    renderMain();
+    await userEvent.click(screen.getByRole('button', { name: 'Link' }));
+    const urlInput = screen.getByLabelText('Image URL');
+    const textPaste = createEvent.paste(urlInput, {
+      clipboardData: { files: [], items: [], getData: () => 'https://e.com/a.jpg' },
+    });
+    fireEvent(urlInput, textPaste);
+    expect(textPaste.defaultPrevented).toBe(false);
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -140,6 +188,40 @@ describe('ImageControl', () => {
     expect(screen.getByRole('img', { name: 'Main image' })).toHaveAttribute('src', '/images/a.jpg');
     await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('clears a stale error on Remove', async () => {
+    renderMain('/images/a.jpg');
+    const file = new File([new Uint8Array([1])], 'cake.heic', { type: 'image/heic' });
+    fireEvent.change(screen.getByLabelText('Upload'), { target: { files: [file] } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(onChange).toHaveBeenCalledWith(null);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('announces Working... as a status while uploading', async () => {
+    let resolve: (v: { ok: true; value: { url: string } }) => void = () => {};
+    mockedUpload.mockReturnValue(new Promise((r) => { resolve = r; }));
+    renderMain();
+    const file = new File([new Uint8Array([1])], 'image.png', { type: 'image/png' });
+    fireEvent.paste(screen.getByRole('group', { name: 'Main image' }), { clipboardData: { files: [file], items: [] } });
+    expect(screen.getByRole('status')).toHaveTextContent('Working...');
+    resolve({ ok: true, value: { url: '/images/b.jpg' } });
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  });
+
+  it('ignores a result that arrives after unmount', async () => {
+    let resolve: (v: { ok: true; value: { url: string } }) => void = () => {};
+    mockedUpload.mockReturnValue(new Promise((r) => { resolve = r; }));
+    const { unmount } = renderMain();
+    const file = new File([new Uint8Array([1])], 'image.png', { type: 'image/png' });
+    fireEvent.paste(screen.getByRole('group', { name: 'Main image' }), { clipboardData: { files: [file], items: [] } });
+    expect(mockedUpload).toHaveBeenCalledTimes(1);
+    unmount();
+    resolve({ ok: true, value: { url: '/images/late.jpg' } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('has no Remove button when empty', () => {

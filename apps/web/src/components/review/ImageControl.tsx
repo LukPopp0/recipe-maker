@@ -15,6 +15,20 @@ type ImageControlProps = {
 }
 
 const CLIPBOARD_HINT = 'Could not read the clipboard. Long-press the paste box and choose Paste.';
+const NO_IMAGE_PASTED = 'The clipboard has no image. Copy the image itself, or use Link.';
+
+// The pasted image: clipboardData.files first, then a file item (Firefox on
+// Android fills only items). The server needs an exact mime type, so an item
+// file without one is rewrapped with the item's type.
+function pastedImage(data: DataTransfer | null): File | null {
+  const fromFiles = Array.from(data?.files ?? []).find((file) => file.type.startsWith('image/'));
+  if (fromFiles) return fromFiles;
+  const item = Array.from(data?.items ?? []).find((i) => i.kind === 'file' && i.type.startsWith('image/'));
+  const file = item?.getAsFile();
+  if (!item || !file) return null;
+  if (file.type) return file;
+  return new File([file], `pasted.${item.type.slice('image/'.length)}`, { type: item.type });
+}
 
 export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, removeLabel }: ImageControlProps) {
   const [busy, setBusy] = useState(false);
@@ -22,9 +36,19 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState('');
   const busyRef = useRef(false);
+  // A result that lands after unmount (recipe replaced, step removed) must not
+  // be written into whatever recipe is current by then.
+  const mountedRef = useRef(false);
   const pasteBoxRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlId = useId();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // The box is only a paste target: refuse every edit. Native listener because
   // React's onBeforeInput is synthesized from other events.
@@ -39,6 +63,7 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
   const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.read === 'function';
 
   async function finish(result: ClientResult<{ url: string }>): Promise<boolean> {
+    if (!mountedRef.current) return false;
     if (!result.ok) {
       setError(result.error.message);
       return false;
@@ -71,9 +96,13 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
       event.preventDefault();
       return;
     }
-    const files = Array.from(event.clipboardData?.files ?? []);
-    const image = files.find((file) => file.type.startsWith('image/'));
-    if (!image) return;
+    const image = pastedImage(event.clipboardData);
+    if (!image) {
+      // Only the paste box is a dedicated image target; a text paste anywhere
+      // else (e.g. the link URL input) is left alone.
+      if (pasteBoxRef.current?.contains(event.target as Node)) setError(NO_IMAGE_PASTED);
+      return;
+    }
     event.preventDefault();
     void sendFile(image, image.name || 'image');
   }
@@ -173,7 +202,10 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
             className="btn btn-ghost btn-sm"
             disabled={busy}
             aria-label={removeLabel}
-            onClick={() => onChange(null)}
+            onClick={() => {
+              setError(null);
+              onChange(null);
+            }}
           >
             Remove
           </button>
@@ -194,7 +226,7 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
           </button>
         </form>
       )}
-      {busy && <p className="image-control-status">Working...</p>}
+      {busy && <p className="image-control-status" role="status">Working...</p>}
       {error && (
         <p className="image-control-error" role="alert">{error}</p>
       )}

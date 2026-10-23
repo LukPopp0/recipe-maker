@@ -1,8 +1,7 @@
 // One editable block per step: step_header input, step_description textarea
-// (600 maxlength + live character count), the step image (ImageControl when a
-// namespace is given, else a plain thumbnail)
-// with paste / link / upload / remove (paste / link / upload / remove, docs/specs/14), and a remove button (disabled
-// at the 1-step floor). "Add step" is disabled at the 6-step cap (docs/specs/02
+// (600 maxlength + live character count), the step image (an ImageControl
+// with paste / link / upload / remove when a namespace is given, else a plain
+// thumbnail), and a remove-step button (disabled at the 1-step floor). "Add step" is disabled at the 6-step cap (docs/specs/02
 // rule 9) with an explanatory hint. All updates are immutable - every
 // callback builds a fresh array/object.
 import type { Step } from 'shared';
