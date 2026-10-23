@@ -1,12 +1,24 @@
 // Must stay self-contained: the extension serializes it via scripting.executeScript({ func }).
 export function collectCapture(doc: Document = document): { url: string; html: string; mainImageUrl?: string } {
   const base = doc.location.href;
+  const byId = new Map<string, Record<string, unknown>>();
 
-  const firstImage = (img: unknown): string | undefined => {
+  const indexNodes = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(indexNodes);
+    } else if (node && typeof node === 'object') {
+      const o = node as Record<string, unknown>;
+      if (typeof o['@id'] === 'string' && !byId.has(o['@id'])) byId.set(o['@id'], o);
+      if (o['@graph']) indexNodes(o['@graph']);
+    }
+  };
+
+  const firstImage = (img: unknown, depth = 0): string | undefined => {
+    if (depth > 5) return undefined;
     if (typeof img === 'string') return img || undefined;
     if (Array.isArray(img)) {
       for (const item of img) {
-        const found = firstImage(item);
+        const found = firstImage(item, depth + 1);
         if (found) return found;
       }
       return undefined;
@@ -14,7 +26,11 @@ export function collectCapture(doc: Document = document): { url: string; html: s
     if (img && typeof img === 'object') {
       const o = img as Record<string, unknown>;
       if (typeof o.url === 'string' && o.url) return o.url;
-      if (typeof o['@id'] === 'string' && o['@id']) return o['@id'];
+      if (typeof o.contentUrl === 'string' && o.contentUrl) return o.contentUrl;
+      if (typeof o['@id'] === 'string') {
+        const target = byId.get(o['@id']);
+        if (target && target !== o) return firstImage(target, depth + 1);
+      }
     }
     return undefined;
   };
@@ -38,32 +54,35 @@ export function collectCapture(doc: Document = document): { url: string; html: s
     return undefined;
   };
 
-  let raw: string | undefined;
-  const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
-  for (const script of Array.from(scripts)) {
+  const toHttpUrl = (raw: string | undefined): string | undefined => {
+    if (!raw) return undefined;
     try {
-      const recipe = findRecipe(JSON.parse(script.textContent ?? ''));
-      const img = recipe ? firstImage(recipe.image) : undefined;
-      if (img) {
-        raw = img;
-        break;
-      }
+      const u = new URL(raw, base);
+      return u.protocol === 'http:' || u.protocol === 'https:' ? u.toString() : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const parsed: unknown[] = [];
+  for (const script of Array.from(doc.querySelectorAll('script[type="application/ld+json"]'))) {
+    try {
+      const data = JSON.parse(script.textContent ?? '');
+      parsed.push(data);
+      indexNodes(data);
     } catch {
       // invalid JSON-LD: ignore
     }
   }
-  if (!raw) {
-    const og = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
-    if (og) raw = og;
-  }
 
   let mainImageUrl: string | undefined;
-  if (raw) {
-    try {
-      mainImageUrl = new URL(raw, base).toString();
-    } catch {
-      mainImageUrl = undefined;
-    }
+  for (const data of parsed) {
+    const recipe = findRecipe(data);
+    mainImageUrl = recipe ? toHttpUrl(firstImage(recipe.image)) : undefined;
+    if (mainImageUrl) break;
+  }
+  if (!mainImageUrl) {
+    mainImageUrl = toHttpUrl(doc.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? undefined);
   }
 
   const result: { url: string; html: string; mainImageUrl?: string } = {

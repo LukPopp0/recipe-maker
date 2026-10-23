@@ -11,10 +11,32 @@ export type CaptureMessage =
   | (Base & { type: 'relay-request'; id: string; url: string })
   | (Base & { type: 'relay-reply'; id: string; url: string; image: Blob | null });
 
-const TYPES = ['ready', 'payload', 'relay-request', 'relay-reply'];
+const isBlob = (x: unknown): boolean => typeof Blob !== 'undefined' && x instanceof Blob;
+const isStr = (x: unknown): boolean => typeof x === 'string';
 
 export function isCaptureMessage(data: unknown): data is CaptureMessage {
   if (typeof data !== 'object' || data === null) return false;
   const d = data as Record<string, unknown>;
-  return d.protocol === CAPTURE_PROTOCOL && typeof d.type === 'string' && TYPES.includes(d.type);
+  if (d.protocol !== CAPTURE_PROTOCOL) return false;
+  if (d.channel !== undefined && d.channel !== EXTENSION_CHANNEL) return false;
+  switch (d.type) {
+    case 'ready':
+      return true;
+    case 'payload': {
+      const p = d.payload as Record<string, unknown> | null | undefined;
+      if (typeof p !== 'object' || p === null) return false;
+      return (
+        isStr(p.url) &&
+        isStr(p.html) &&
+        (p.mainImageUrl === undefined || isStr(p.mainImageUrl)) &&
+        (p.mainImage === undefined || isBlob(p.mainImage))
+      );
+    }
+    case 'relay-request':
+      return isStr(d.id) && isStr(d.url);
+    case 'relay-reply':
+      return isStr(d.id) && isStr(d.url) && (d.image === null || isBlob(d.image));
+    default:
+      return false;
+  }
 }

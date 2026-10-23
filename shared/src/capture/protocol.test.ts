@@ -18,4 +18,17 @@ describe('isCaptureMessage', () => {
     expect(isCaptureMessage({ protocol: CAPTURE_PROTOCOL, type: 'nope' })).toBe(false);
     for (const v of [null, undefined, 'ready', 42]) expect(isCaptureMessage(v)).toBe(false);
   });
+  it('validates per-type fields and channel', () => {
+    const p = CAPTURE_PROTOCOL;
+    expect(isCaptureMessage({ protocol: p, type: 'payload', payload: { url: 'u' } })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'payload' })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'payload', payload: { url: 'u', html: 'h', mainImage: 'x' } })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'payload', payload: { url: 'u', html: 'h', mainImage: new Blob(['a']) } })).toBe(true);
+    expect(isCaptureMessage({ protocol: p, type: 'relay-request', url: 'u' })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'relay-request', id: '1' })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'relay-reply', id: '1', url: 'u', image: 'nope' })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'relay-reply', id: '1', url: 'u', image: new Blob(['a']) })).toBe(true);
+    expect(isCaptureMessage({ protocol: p, type: 'ready', channel: 'other' })).toBe(false);
+    expect(isCaptureMessage({ protocol: p, type: 'ready', channel: 'recipe-maker-extension' })).toBe(true);
+  });
 });

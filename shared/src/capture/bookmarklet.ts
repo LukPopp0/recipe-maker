@@ -11,7 +11,13 @@ export function runBookmarklet(appOrigin: string, win: Window = window): void {
   }
 
   const payload: Promise<CapturePayload> = (async () => {
-    const collected = collectCapture(win.document);
+    let collected: ReturnType<typeof collectCapture>;
+    try {
+      collected = collectCapture(win.document);
+    } catch (err) {
+      console.error('Recipe Maker: page collection failed', err);
+      return { url: win.location.href, html: win.document.documentElement.outerHTML };
+    }
     const result: CapturePayload = { ...collected };
     if (collected.mainImageUrl) {
       const blob = await fetchImageBlob(collected.mainImageUrl, CAPTURE_IMAGE_MAX_BYTES);

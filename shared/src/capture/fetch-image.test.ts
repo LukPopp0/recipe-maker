@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fetchImageBlob } from './fetch-image.js';
 
 // Fake fetch returning jsdom Blobs (Node's Response.blob() yields a different Blob class).
@@ -32,5 +32,25 @@ describe('fetchImageBlob', () => {
       blob: async () => new Blob(['abc']),
     })) as unknown as typeof fetch;
     expect((await fetchImageBlob('u', 100, fake))?.type).toBe('image/webp');
+  });
+
+  it('wraps a blob with a non-image type using the header image type', async () => {
+    const fake = (async () => ({
+      ok: true,
+      headers: new Headers({ 'content-type': 'image/png' }),
+      blob: async () => new Blob(['abc'], { type: 'application/octet-stream' }),
+    })) as unknown as typeof fetch;
+    expect((await fetchImageBlob('u', 100, fake))?.type).toBe('image/png');
+  });
+
+  it('rejects early on an oversized content-length without reading the body', async () => {
+    const blob = vi.fn(async () => new Blob(['abc']));
+    const fake = (async () => ({
+      ok: true,
+      headers: new Headers({ 'content-type': 'image/png', 'content-length': '5000' }),
+      blob,
+    })) as unknown as typeof fetch;
+    expect(await fetchImageBlob('u', 100, fake)).toBeNull();
+    expect(blob).not.toHaveBeenCalled();
   });
 });

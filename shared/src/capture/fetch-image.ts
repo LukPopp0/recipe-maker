@@ -8,6 +8,9 @@ export async function fetchImageBlob(
     if (!res.ok) return null;
     const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
     if (!type.startsWith('image/')) return null;
+    // Only the image/* family is checked here; the server enforces jpeg/png/webp.
+    const declared = Number(res.headers.get('content-length'));
+    if (Number.isFinite(declared) && declared > maxBytes) return null;
     const blob = await res.blob();
     if (blob.size > maxBytes) return null;
     return blob.type.startsWith('image/') ? blob : new Blob([blob], { type });

@@ -35,6 +35,29 @@ describe('collectCapture', () => {
     expect('mainImageUrl' in result).toBe(false);
   });
 
+  it('resolves an @id image reference through the @graph', () => {
+    document.head.innerHTML = ld(
+      '{"@graph":[{"@type":"Recipe","image":{"@id":"https://s/#primary"}},{"@type":"ImageObject","@id":"https://s/#primary","url":"https://s/p.jpg"}]}',
+    );
+    expect(collectCapture(document).mainImageUrl).toBe('https://s/p.jpg');
+  });
+
+  it('falls back to og:image when an @id reference cannot be resolved', () => {
+    document.head.innerHTML =
+      '<meta property="og:image" content="https://x/og.jpg">' +
+      ld('{"@type":"Recipe","image":{"@id":"https://s/#missing"}}');
+    expect(collectCapture(document).mainImageUrl).toBe('https://x/og.jpg');
+  });
+
+  it('skips non-http(s) image urls and tries the next source', () => {
+    document.head.innerHTML =
+      '<meta property="og:image" content="https://x/og.jpg">' +
+      ld('{"@type":"Recipe","image":"data:image/png;base64,AAAA"}');
+    expect(collectCapture(document).mainImageUrl).toBe('https://x/og.jpg');
+    document.head.innerHTML = '<meta property="og:image" content="data:image/png;base64,AAAA">';
+    expect(collectCapture(document).mainImageUrl).toBeUndefined();
+  });
+
   it('returns the full outerHTML and location.href', () => {
     const result = collectCapture(document);
     expect(result.html).toBe(document.documentElement.outerHTML);

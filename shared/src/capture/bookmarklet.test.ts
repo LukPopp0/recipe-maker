@@ -120,4 +120,28 @@ describe('runBookmarklet', () => {
       ),
     );
   });
+
+  it('ignores protocol-less data from the app window', async () => {
+    runBookmarklet(ORIGIN, window);
+    say(ORIGIN, appWin, 'ready');
+    say(ORIGIN, appWin, { type: 'ready' });
+    say(ORIGIN, appWin, null);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(sent()).not.toHaveBeenCalled();
+  });
+
+  it('still posts url and html (no image) when collection throws', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(document, 'querySelectorAll').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    runBookmarklet(ORIGIN, window);
+    say(ORIGIN, appWin, { protocol: CAPTURE_PROTOCOL, type: 'ready' });
+    await waitFor(() => expect(sent()).toHaveBeenCalled());
+    const payload = sent().mock.calls[0][0].payload;
+    expect(payload.url).toBe(location.href);
+    expect(payload.html).toBe(document.documentElement.outerHTML);
+    expect(payload.mainImage).toBeUndefined();
+    expect(errSpy).toHaveBeenCalled();
+  });
 });
