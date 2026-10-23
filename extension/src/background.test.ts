@@ -121,7 +121,10 @@ describe('background', () => {
       { type: 'relay-request', url: 'https://cdn.example/step.png' },
       appSender(99),
     )) as { base64: string; type: string };
-    expect(fetchImpl).toHaveBeenCalledWith('https://cdn.example/step.png', { credentials: 'include' });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://cdn.example/step.png',
+      expect.objectContaining({ credentials: 'include' }),
+    );
     expect(reply.type).toBe('image/jpeg');
     expect(reply.base64).toBe('AQID');
   });
@@ -141,7 +144,7 @@ describe('background', () => {
     const { fire, fetchImpl } = setup();
     await fire.actionClicked({ id: 7, index: 2 });
     await fire.message({ type: 'ready' }, appSender(99));
-    expect(fetchImpl).toHaveBeenCalledWith(page.mainImageUrl, { credentials: 'include' });
+    expect(fetchImpl).toHaveBeenCalledWith(page.mainImageUrl, expect.objectContaining({ credentials: 'include' }));
   });
 
   it('ignores relay requests from a tab on another origin', async () => {
@@ -186,7 +189,95 @@ describe('background', () => {
     const fake = createFakeApi({ storage: { appOrigin: ORIGIN }, hostAccess: false });
     createBackground(fake.api, vi.fn() as unknown as typeof fetch);
     await fake.fire.actionClicked({ id: 7, index: 2 });
-    expect(fake.calls.map((c) => c.name)).toEqual(['runtime.openOptionsPage']);
+    expect(fake.calls).toEqual([
+      { name: 'tabs.create', args: [{ url: 'chrome-extension://ext-id/options.html?reason=permission' }] },
+    ]);
+  });
+
+  describe('fail-closed sender checks', () => {
+    const cases: Array<[string, Record<string, unknown>]> = [
+      ['no tab (only a url)', { id: 'ext-id', frameId: 0, url: `${ORIGIN}/capture` }],
+      ['tab without url', { id: 'ext-id', frameId: 0, tab: { id: 99 } }],
+      ['unparsable tab url', { id: 'ext-id', frameId: 0, tab: { id: 99, url: 'not a url' } }],
+    ];
+    for (const [name, sender] of cases) {
+      it(`answers null, does not fetch and keeps the payload: ${name}`, async () => {
+        const { fire, fetchImpl } = setup();
+        await fire.actionClicked({ id: 7, index: 2 });
+        await flush();
+        const fetched = vi.mocked(fetchImpl).mock.calls.length;
+        expect(await fire.message({ type: 'ready' }, sender)).toBeNull();
+        expect(await fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, sender)).toBeNull();
+        expect(vi.mocked(fetchImpl).mock.calls.length).toBe(fetched);
+        expect(await fire.message({ type: 'ready' }, appSender(99))).toMatchObject({ url: page.url });
+      });
+    }
+
+    it('answers null without fetching when no app address is stored', async () => {
+      const fake = createFakeApi({ executeScript: async () => [{ result: page }] });
+      const fetchImpl = vi.fn(async () => imageResponse());
+      createBackground(fake.api, fetchImpl as unknown as typeof fetch);
+      expect(await fake.fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, appSender(99))).toBeNull();
+      expect(await fake.fire.message({ type: 'ready' }, appSender(99))).toBeNull();
+      expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
+    it('answers null without fetching when the check throws', async () => {
+      const { fire, fetchImpl, api } = setup();
+      await fire.actionClicked({ id: 7, index: 2 });
+      await flush();
+      const fetched = vi.mocked(fetchImpl).mock.calls.length;
+      const get = api.storage.local.get;
+      api.storage.local.get = async () => Promise.reject(new Error('storage down'));
+      expect(await fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, appSender(99))).toBeNull();
+      expect(await fire.message({ type: 'ready' }, appSender(99))).toBeNull();
+      expect(vi.mocked(fetchImpl).mock.calls.length).toBe(fetched);
+      api.storage.local.get = get;
+      expect(await fire.message({ type: 'ready' }, appSender(99))).toMatchObject({ url: page.url });
+    });
+  });
+
+  it('gives background image fetches a 20 s timeout signal', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const { fire, fetchImpl } = setup();
+    await fire.message({ type: 'relay-request', url: 'https://cdn.example/step.png' }, appSender(99));
+    expect(timeout).toHaveBeenCalledWith(20000);
+    const init = vi.mocked(fetchImpl).mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    timeout.mockRestore();
+  });
+
+  it('sends the payload without the image and answers a relay with null when the fetch times out', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => AbortSignal.abort());
+    const hang = vi.fn(
+      (_url: unknown, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('timeout', 'TimeoutError')));
+          if (init?.signal?.aborted) reject(new DOMException('timeout', 'TimeoutError'));
+        }),
+    );
+    const { fire } = setup({ fetchImpl: hang as unknown as typeof fetch });
+    await fire.actionClicked({ id: 7, index: 2 });
+    const reply = (await fire.message({ type: 'ready' }, appSender(99))) as Record<string, unknown>;
+    expect(reply).toEqual(page);
+    expect(await fire.message({ type: 'relay-request', url: 'https://cdn.example/step.png' }, appSender(99))).toBeNull();
+    timeout.mockRestore();
+  });
+
+  it('never fetches non-http(s) urls', async () => {
+    const fetchImpl = vi.fn(async () => imageResponse());
+    const { fire } = setup({
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      collect: async () => [{ result: { ...page, mainImageUrl: 'file:///etc/passwd' } }],
+    });
+    await fire.actionClicked({ id: 7, index: 2 });
+    const reply = (await fire.message({ type: 'ready' }, appSender(99))) as Record<string, unknown>;
+    expect(reply).toMatchObject({ url: page.url, mainImageUrl: 'file:///etc/passwd' });
+    expect(reply).not.toHaveProperty('mainImage');
+    for (const url of ['file:///etc/passwd', 'data:image/png;base64,AAAA', 'ftp://x.example/a.png', 'javascript:1', 'blob:https://x.example/1', 'not a url']) {
+      expect(await fire.message({ type: 'relay-request', url }, appSender(99))).toBeNull();
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('ignores messages it does not know', async () => {

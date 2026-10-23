@@ -35,6 +35,19 @@ describe('options', () => {
     delete g.chrome;
   });
 
+  it('explains why it opened when host access is missing', async () => {
+    window.history.pushState({}, '', '/options.html?reason=permission');
+    await load({ storage: { appOrigin: 'https://recipes.example' } });
+    expect(status()).toBe('Recipe Maker needs access to all websites to read recipe pages. Press Save to allow it.');
+    window.history.pushState({}, '', '/options.html');
+  });
+
+  it('shows no explanation when opened normally', async () => {
+    window.history.pushState({}, '', '/options.html');
+    await load();
+    expect(status()).toBe('');
+  });
+
   it('shows the stored address', async () => {
     await load({ storage: { appOrigin: 'https://recipes.example' } });
     expect(input().value).toBe('https://recipes.example');

@@ -20,6 +20,17 @@ function isCapturePage(url: string | undefined, appOrigin: string): boolean {
   }
 }
 
+const FETCH_TIMEOUT_MS = 20000;
+
+function isHttpUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function originOf(url: string | undefined): string | undefined {
   try {
     return new URL(url ?? '').origin;
@@ -30,7 +41,12 @@ function originOf(url: string | undefined): string | undefined {
 
 export function createBackground(api: ExtensionApi, rawFetch: typeof fetch): void {
   // The recipe site's own session (cookies) is used for its images.
-  const fetchImpl: typeof fetch = (input, init) => rawFetch(input, { credentials: 'include', ...init });
+  // Only http(s) is fetched, and every fetch gets a timeout (the app's relay waits 30 s).
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (!isHttpUrl(url)) throw new Error('Only http and https urls are fetched');
+    return rawFetch(input, { credentials: 'include', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), ...init });
+  };
   // In memory only: if the browser stops the worker before the app tab says ready,
   // the app tab times out and shows its "press the button again" message.
   const pending = new Map<number, Promise<PendingPayload | null>>();
@@ -70,7 +86,7 @@ export function createBackground(api: ExtensionApi, rawFetch: typeof fetch): voi
       // Without host access nothing can be read: send the user to the options page to grant it.
       const hasAccess = await api.permissions?.contains?.({ origins: ['<all_urls>'] });
       if (hasAccess === false) {
-        await api.runtime.openOptionsPage();
+        await api.tabs.create({ url: api.runtime.getURL('options.html?reason=permission') });
         return;
       }
       const appTab = await api.tabs.create({
@@ -114,10 +130,16 @@ export function createBackground(api: ExtensionApi, rawFetch: typeof fetch): voi
 
   // Only the bridge in the app's own top frame may talk to us.
   const isTrusted = async (sender: ExtensionSender): Promise<boolean> => {
-    if (api.runtime.id !== undefined && sender.id !== api.runtime.id) return false;
-    if (sender.frameId !== undefined && sender.frameId !== 0) return false;
-    const appOrigin = await getAppOrigin();
-    return appOrigin !== undefined && originOf(sender.tab?.url ?? sender.url) === appOrigin;
+    try {
+      if (api.runtime.id !== undefined && sender.id !== api.runtime.id) return false;
+      if (sender.frameId !== undefined && sender.frameId !== 0) return false;
+      // The tab is required: `sender.url` alone is not enough.
+      if (!sender.tab) return false;
+      const appOrigin = await getAppOrigin();
+      return appOrigin !== undefined && originOf(sender.tab.url) === appOrigin;
+    } catch {
+      return false;
+    }
   };
 
   api.action.onClicked.addListener(onClicked);

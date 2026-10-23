@@ -39,6 +39,7 @@ export interface ExtensionApi {
   };
   runtime: {
     id?: string;
+    getURL(path: string): string;
     // Return true and call sendResponse later to answer asynchronously (works in both browsers).
     onMessage: ApiEvent<[unknown, ExtensionSender, (response?: unknown) => void]>;
     sendMessage(message: unknown): Promise<unknown>;

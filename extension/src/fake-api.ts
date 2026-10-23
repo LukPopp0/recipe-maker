@@ -38,6 +38,7 @@ export function createFakeApi(opts: Options = {}) {
     },
     runtime: {
       id: 'ext-id',
+      getURL: (path: string) => `chrome-extension://ext-id/${path}`,
       onMessage: { addListener: (l: never) => messages.push(l), removeListener: () => {} },
       sendMessage: async (m: unknown) => {
         record('runtime.sendMessage', m);

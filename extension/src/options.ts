@@ -40,6 +40,9 @@ async function save(): Promise<void> {
   }
 }
 
+if (new URLSearchParams(window.location.search).get('reason') === 'permission') {
+  status.textContent = 'Recipe Maker needs access to all websites to read recipe pages. Press Save to allow it.';
+}
 saveButton.addEventListener('click', () => void save());
 api.storage.local
   .get('appOrigin')
