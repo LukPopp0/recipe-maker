@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SetupPage } from './SetupPage.tsx';
 import { buildBookmarklet } from '../../lib/bookmarklet.ts';
@@ -62,6 +62,35 @@ describe('SetupPage', () => {
   it('mentions the permission prompt and the developer-mode warning', () => {
     render(<SetupPage appOrigin={ORIGIN} />);
     expect(screen.getAllByText(/grant access to all sites/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/developer-mode warning is expected/i)).toBeInTheDocument();
+    expect(screen.getByText(/That is expected/i)).toBeInTheDocument();
+  });
+
+  it('shows a manual copy fallback when the clipboard fails', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+    render(<SetupPage appOrigin={ORIGIN} />);
+    await user.click(screen.getByRole('button', { name: 'Copy bookmarklet code' }));
+    expect(await screen.findByText('Could not copy. Select the code below and copy it.')).toBeInTheDocument();
+    const box = screen.getByRole('textbox', { name: 'Bookmarklet code' }) as HTMLTextAreaElement;
+    expect(box).toHaveAttribute('readonly');
+    expect(box.value).toBe(buildBookmarklet(ORIGIN));
+    expect(box).toHaveFocus();
+  });
+
+  it('resets Copied after 2 seconds', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+      render(<SetupPage appOrigin={ORIGIN} />);
+      await user.click(screen.getByRole('button', { name: 'Copy bookmarklet code' }));
+      expect(await screen.findByText('Copied')).toBeInTheDocument();
+      await act(async () => {
+        vi.advanceTimersByTime(2100);
+      });
+      expect(screen.queryByText('Copied')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

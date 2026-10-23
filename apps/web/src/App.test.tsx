@@ -463,4 +463,51 @@ describe('Open in Create', () => {
       window.history.pushState({}, '', '/');
     }
   });
+
+  describe('Setup history', () => {
+    afterEach(() => {
+      window.history.replaceState(null, '', '/');
+    });
+
+    it('Create -> Setup -> Back shows Create, Forward shows Setup again', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole('link', { name: 'Setup' }));
+      expect(window.location.pathname).toBe('/setup');
+
+      window.history.back();
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Input' })).toBeVisible());
+      expect(window.location.pathname).toBe('/');
+
+      window.history.forward();
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Why this exists' })).toBeVisible());
+      expect(window.location.pathname).toBe('/setup');
+    });
+
+    it('leaving Setup via Library replaces the entry so the view always matches the path', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      const before = window.history.length;
+      await user.click(screen.getByRole('link', { name: 'Setup' }));
+      await user.click(screen.getByRole('button', { name: 'Library' }));
+      expect(window.location.pathname).toBe('/');
+      // pushState for Setup, replaceState for leaving: one new entry only.
+      expect(window.history.length).toBe(before + 1);
+      expect(screen.queryByRole('heading', { name: 'Why this exists' })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Library' })).toBeVisible();
+
+      window.history.back();
+      await waitFor(() => expect(window.location.pathname).toBe('/'));
+      expect(screen.queryByRole('heading', { name: 'Why this exists' })).not.toBeInTheDocument();
+    });
+
+    it('does not push a duplicate /setup entry when already on Setup', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole('link', { name: 'Setup' }));
+      const length = window.history.length;
+      await user.click(screen.getByRole('link', { name: 'Setup' }));
+      expect(window.history.length).toBe(length);
+    });
+  });
 });

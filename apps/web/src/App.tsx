@@ -178,24 +178,32 @@ function App() {
   }, []);
 
   const openSetup = useCallback(() => {
-    if (view !== 'setup') previousViewRef.current = view;
+    if (view === 'setup') return;
+    previousViewRef.current = view;
     window.history.pushState({}, '', '/setup');
     setView('setup');
   }, [view]);
 
+  // The path and the view stay in sync both ways (Back and Forward).
   useEffect(() => {
     const onPopState = () => {
-      if (window.location.pathname !== '/setup') {
-        setView((current) => (current === 'setup' ? previousViewRef.current : current));
-      }
+      const onSetupPath = window.location.pathname === '/setup';
+      setView((current) => {
+        if (onSetupPath) {
+          if (current !== 'setup') previousViewRef.current = current;
+          return 'setup';
+        }
+        return current === 'setup' ? previousViewRef.current : current;
+      });
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  // Create/Library buttons leave Setup: restore the path too.
+  // Create/Library leave Setup by replacing its history entry, so Back never
+  // lands on a /setup entry that shows another view.
   const switchView = useCallback((next: WorkspaceView) => {
-    if (window.location.pathname === '/setup') window.history.pushState({}, '', '/');
+    if (window.location.pathname === '/setup') window.history.replaceState(null, '', '/');
     setView(next);
   }, []);
 

@@ -1119,3 +1119,11 @@
   user-select: all;
   overflow-wrap: anywhere;
 }
+
+.setup-code-fallback {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+}

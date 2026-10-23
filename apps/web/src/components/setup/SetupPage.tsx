@@ -11,6 +11,20 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
   const bookmarklet = buildBookmarklet(appOrigin);
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fallbackRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => () => {
+    if (copiedTimer.current !== null) clearTimeout(copiedTimer.current);
+  }, []);
+
+  useEffect(() => {
+    if (copyFailed) {
+      fallbackRef.current?.focus();
+      fallbackRef.current?.select();
+    }
+  }, [copyFailed]);
 
   // React 19 blocks javascript: hrefs, so set it on the DOM node directly.
   useEffect(() => {
@@ -20,10 +34,15 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(bookmarklet);
-      setCopied(true);
     } catch {
       setCopied(false);
+      setCopyFailed(true);
+      return;
     }
+    setCopyFailed(false);
+    setCopied(true);
+    if (copiedTimer.current !== null) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -60,6 +79,19 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
               Copy bookmarklet code
             </button>{' '}
             {copied ? <span role="status">Copied</span> : null}
+            {copyFailed ? (
+              <>
+                <span role="status">Could not copy. Select the code below and copy it.</span>
+                <textarea
+                  ref={fallbackRef}
+                  className="setup-code-fallback"
+                  aria-label="Bookmarklet code"
+                  readOnly
+                  rows={4}
+                  value={bookmarklet}
+                />
+              </>
+            ) : null}
           </li>
           <li>Create any bookmark in Chrome, then edit it.</li>
           <li>Paste the code as the URL and give it a short name such as "rm".</li>
@@ -108,7 +140,7 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
           <li>Click "Load unpacked" and choose the folder.</li>
           <li>Open the extension options and enter the Recipe Maker address shown above.</li>
         </ol>
-        <p>Chrome shows a developer-mode warning on startup; the developer-mode warning is expected. The bookmarklet also works in Chrome on desktop.</p>
+        <p>Chrome shows a developer-mode warning on startup. That is expected. The bookmarklet also works in Chrome on desktop.</p>
       </section>
     </div>
   );
