@@ -26,3 +26,5 @@ export { PANTRY_ALLOWLIST, PANTRY_VARIANTS, isPantryItem, pantryCanonicalName } 
 export { TAG_VOCABULARY } from './constants/tag-vocabulary.js';
 
 export { INGREDIENT_IMAGE_MANIFEST } from './generated/ingredient-manifest.js';
+
+export * from './capture/protocol.js';
