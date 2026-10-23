@@ -2,7 +2,7 @@
 // component trees. Recipe/error shapes are imported from api/client.ts and
 // shared, never redefined here.
 import type { ApiFailure, IngestDiagnostics } from './api/client.ts';
-import type { CanonicalRecipe } from 'shared';
+import type { CanonicalRecipe, UnhostedImage } from 'shared';
 
 // Lifecycle of a single ingestion attempt (URL, Manual, or Load JSON tab).
 // Stages are honest client-side lifecycle points, not simulated backend
@@ -30,6 +30,9 @@ export type WorkspaceRecipeState = {
   // by every successful save, so "Save changes" updates it in place. null
   // until the recipe has been saved once (fresh ingest, Load JSON).
   sourceId: string | null
+  // Images a capture could not host (warnings cleared when the slot gets a
+  // new image). Empty for every non-capture source.
+  unhosted: UnhostedImage[]
 } | null;
 
 // Replacing the loaded recipe (fresh ingestion or Load JSON) discards any

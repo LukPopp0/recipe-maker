@@ -6,6 +6,7 @@ import type {
   ApiResponse,
   CanonicalRecipe,
   CurrentUser,
+  ImageSlot,
   LibraryScope,
   RecipeMeta,
   RecipeSummary,
@@ -22,7 +23,7 @@ export type IngestResult = {
   recipe: CanonicalRecipe
   diagnostics: IngestDiagnostics
   // Storage-key namespace of the ingestion's hosted images; the review panel
-  // uploads step images into the same namespace via uploadStepImage.
+  // uploads images into the same namespace via uploadImage/linkImage.
   imageNamespaceId: string
 }
 
@@ -150,22 +151,36 @@ export async function ingestManual(fields: {
   });
 }
 
-// Uploads one step image from the review panel. The server hosts it under
-// recipes/{namespaceId}/step-{stepIndex}-{suffix} and returns the hosted URL; the
-// caller writes that URL onto the step being edited.
-export async function uploadStepImage(
+// Uploads image bytes into one slot ('main' or a step index) of an ingestion's
+// image namespace. The blob keeps its own type when wrapped by FormData; the
+// server rejects anything that is not exactly jpeg, png or webp.
+export async function uploadImage(
   namespaceId: string,
-  stepIndex: number,
-  file: File,
+  slot: ImageSlot,
+  file: Blob,
+  filename = 'image',
 ): Promise<ClientResult<{ url: string }>> {
   const formData = new FormData();
   formData.append('namespaceId', namespaceId);
-  formData.append('stepIndex', String(stepIndex));
-  formData.append('file', file);
+  formData.append('slot', String(slot));
+  formData.append('file', file, filename);
 
-  return request<{ url: string }>('/api/image/step', {
+  return request<{ url: string }>('/api/image/upload', {
     method: 'POST',
     body: formData,
+  });
+}
+
+// Asks the server to fetch and host a remote image into a slot.
+export async function linkImage(
+  namespaceId: string,
+  slot: ImageSlot,
+  url: string,
+): Promise<ClientResult<{ url: string }>> {
+  return request<{ url: string }>('/api/image/link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ namespaceId, slot, url }),
   });
 }
 
@@ -209,7 +224,7 @@ export async function deleteRecipe(id: string): Promise<ClientResult<Record<stri
   return request(`/api/recipe/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-export async function getMe(): Promise<ClientResult<{ user: CurrentUser }>> {
+export async function getMe(): Promise<ClientResult<{ user: CurrentUser; placeholderImageUrl: string }>> {
   return request('/api/me');
 }
 

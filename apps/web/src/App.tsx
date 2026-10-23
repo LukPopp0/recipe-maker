@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CanonicalRecipe, CurrentUser } from 'shared';
 import { getMe, type IngestDiagnostics } from './api/client.ts';
+import { DEFAULT_PLACEHOLDER_IMAGE_URL } from './lib/image-slots.ts';
 import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-types.ts';
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
@@ -59,9 +60,14 @@ function App() {
   // it for owner/admin actions; a failed lookup just hides the name.
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
+  const [placeholderImageUrl, setPlaceholderImageUrl] = useState(DEFAULT_PLACEHOLDER_IMAGE_URL);
+
   useEffect(() => {
     void getMe().then((result) => {
-      if (result.ok) setCurrentUser(result.value.user);
+      if (result.ok) {
+        setCurrentUser(result.value.user);
+        setPlaceholderImageUrl(result.value.placeholderImageUrl || DEFAULT_PLACEHOLDER_IMAGE_URL);
+      }
     });
   }, []);
 
@@ -77,7 +83,7 @@ function App() {
         if (!proceed) return false;
       }
       // Recipes that never went through ingestion (Load JSON, Open in Create)
-      // get a fresh client-minted namespace for step-image uploads.
+      // get a fresh client-minted namespace for image uploads.
       setRecipeState({
         recipe,
         diagnostics,
@@ -85,6 +91,7 @@ function App() {
         dirty: false,
         imageNamespaceId: imageNamespaceId ?? crypto.randomUUID(),
         sourceId: sourceId ?? null,
+        unhosted: [],
       });
       setShowCardPreview(false);
       setInputCollapsed(true);
@@ -209,10 +216,15 @@ function App() {
         </div>
         {recipeState ? (
           <ReviewPanel
+            // A replaced recipe gets a new namespace: remount so a pending
+            // upload from the old recipe cannot land in the new one.
+            key={recipeState.imageNamespaceId}
             recipe={recipeState.recipe}
             diagnostics={recipeState.diagnostics}
             onChange={handleRecipeChange}
             imageNamespaceId={recipeState.imageNamespaceId}
+            placeholderImageUrl={placeholderImageUrl}
+            unhosted={recipeState.unhosted}
           />
         ) : (
           <p className="workspace-empty-note">

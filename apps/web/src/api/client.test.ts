@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadStepImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadImage, linkImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -26,13 +26,21 @@ describe('api/client', () => {
   describe('getMe', () => {
     it('gets /api/me and unwraps the user', async () => {
       fetchMock.mockResolvedValue(
-        jsonResponse({ ok: true, requestId: 'r', user: { username: 'alice', isAdmin: false } }),
+        jsonResponse({
+          ok: true,
+          requestId: 'r',
+          user: { username: 'alice', isAdmin: false },
+          placeholderImageUrl: '/images/placeholder-recipe.png',
+        }),
       );
 
       const result = await getMe();
 
       expect(fetchMock.mock.calls[0][0]).toBe('/api/me');
-      expect(result).toEqual({ ok: true, value: { user: { username: 'alice', isAdmin: false } } });
+      expect(result).toEqual({
+        ok: true,
+        value: { user: { username: 'alice', isAdmin: false }, placeholderImageUrl: '/images/placeholder-recipe.png' },
+      });
     });
   });
 
@@ -197,39 +205,47 @@ describe('api/client', () => {
     });
   });
 
-  describe('uploadStepImage', () => {
-    it('posts FormData with namespaceId, stepIndex, and the file to /api/image/step', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ok: true, requestId: 'req-1', url: '/images/recipes/ns/step-2.png' }),
-      );
-      const file = new File(['x'], 'pan.png', { type: 'image/png' });
+  describe('uploadImage', () => {
+    it('posts FormData with namespaceId, slot and the file, keeping its type', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', url: '/images/a.jpg' }));
+      const blob = new Blob(['x'], { type: 'image/png' });
 
-      const result = await uploadStepImage('ns-uuid', 2, file);
+      const result = await uploadImage('ns', 'main', blob, 'pic.png');
 
-      expect(result).toEqual({ ok: true, value: { url: '/images/recipes/ns/step-2.png' } });
+      expect(result).toEqual({ ok: true, value: { url: '/images/a.jpg' } });
       const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('/api/image/step');
+      expect(url).toBe('/api/image/upload');
       expect(init.method).toBe('POST');
       const form = init.body as FormData;
-      expect(form.get('namespaceId')).toBe('ns-uuid');
-      expect(form.get('stepIndex')).toBe('2');
-      expect(form.get('file')).toBe(file);
+      expect(form.get('namespaceId')).toBe('ns');
+      expect(form.get('slot')).toBe('main');
+      const file = form.get('file') as File;
+      expect(file.type).toBe('image/png');
+      expect(file.name).toBe('pic.png');
     });
 
-    it('maps an ok:false envelope to an ApiFailure', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse(
-          { ok: false, requestId: 'req-9', error: { code: 'INVALID_INPUT', message: 'bad upload' } },
-          { status: 400 },
-        ),
-      );
+    it('sends a numeric slot as a string and defaults the filename', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', url: '/images/a.jpg' }));
 
-      const result = await uploadStepImage('ns-uuid', 0, new File(['x'], 'a.png', { type: 'image/png' }));
+      await uploadImage('ns', 2, new Blob(['x'], { type: 'image/webp' }));
 
-      expect(result).toEqual({
-        ok: false,
-        error: { code: 'INVALID_INPUT', message: 'bad upload', details: undefined, requestId: 'req-9' },
-      });
+      const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+      expect(form.get('slot')).toBe('2');
+      expect((form.get('file') as File).name).toBe('image');
+    });
+  });
+
+  describe('linkImage', () => {
+    it('posts JSON namespaceId, slot and url to /api/image/link', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r', url: '/images/b.jpg' }));
+
+      const result = await linkImage('ns', 3, 'https://x/y.jpg');
+
+      expect(result).toEqual({ ok: true, value: { url: '/images/b.jpg' } });
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/image/link');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({ namespaceId: 'ns', slot: 3, url: 'https://x/y.jpg' });
     });
   });
 

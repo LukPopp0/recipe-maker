@@ -1,25 +1,39 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import type { IngestDiagnostics } from '../../api/client.ts';
 import { ReviewPanel } from './ReviewPanel.tsx';
+import { uploadImage } from '../../api/client.ts';
+
+vi.mock('../../api/client.ts', () => ({
+  uploadImage: vi.fn(),
+  linkImage: vi.fn(),
+}));
+
+const mockedUploadImage = vi.mocked(uploadImage);
 
 // Stateful harness mirroring how App.tsx actually threads onChange back into
 // props - needed for multi-keystroke interactions on a controlled input.
 function Harness({
   initial,
   onChange,
+  imageNamespaceId,
+  placeholderImageUrl,
 }: {
   initial: CanonicalRecipe
   onChange: (recipe: CanonicalRecipe) => void
+  imageNamespaceId?: string
+  placeholderImageUrl?: string
 }) {
   const [recipe, setRecipe] = useState(initial);
   return (
     <ReviewPanel
       recipe={recipe}
       diagnostics={null}
+      imageNamespaceId={imageNamespaceId}
+      placeholderImageUrl={placeholderImageUrl}
       onChange={(next) => {
         setRecipe(next);
         onChange(next);
@@ -196,6 +210,185 @@ describe('ReviewPanel', () => {
     expect(prompt.indexOf('</steps>')).toBeLessThan(prompt.indexOf('generate one photorealistic'));
     expect(prompt).toContain('There should be 2 separate images.');
     expect(await screen.findByRole('button', { name: /copied/i })).toBeInTheDocument();
+  });
+});
+
+describe('main image and step image controls', () => {
+  const PLACEHOLDER_RECIPE = { ...RECIPE, main_image: '/images/placeholder-recipe.png' };
+
+  it('shows the Add main image prompt when main_image is the placeholder', () => {
+    render(<ReviewPanel recipe={PLACEHOLDER_RECIPE} diagnostics={null} onChange={vi.fn()} imageNamespaceId="ns" />);
+
+    expect(screen.getByRole('region', { name: 'Add main image' })).toBeVisible();
+    expect(screen.getByText('Recipes are picked by their photo. Paste, link or upload one.')).toBeVisible();
+  });
+
+  it('uses the placeholder URL passed in from /api/me', () => {
+    const url = 'https://cdn.x/p.png';
+    render(
+      <ReviewPanel
+        recipe={{ ...RECIPE, main_image: url }}
+        diagnostics={null}
+        onChange={vi.fn()}
+        imageNamespaceId="ns"
+        placeholderImageUrl={url}
+      />,
+    );
+
+    expect(screen.getByRole('region', { name: 'Add main image' })).toBeVisible();
+  });
+
+  it('shows no prompt for a remote main_image from Load JSON', () => {
+    render(
+      <ReviewPanel
+        recipe={{ ...RECIPE, main_image: 'https://example.com/pic.jpg' }}
+        diagnostics={null}
+        onChange={vi.fn()}
+        imageNamespaceId="ns"
+      />,
+    );
+
+    expect(screen.queryByRole('region', { name: 'Add main image' })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Main image' })).toBeInTheDocument();
+  });
+
+  it('hides the prompt and clears main-image warnings once an image is set', async () => {
+    const recipe = {
+      ...PLACEHOLDER_RECIPE,
+      metadata: { ...RECIPE.metadata, warnings: ['Main image was not re-hosted: blocked', 'Keep me'] },
+    };
+    const onChange = vi.fn();
+    render(<ReviewPanel recipe={recipe} diagnostics={null} onChange={onChange} imageNamespaceId="ns" />);
+
+    const group = screen.getByRole('group', { name: 'Main image' });
+    const input = group.querySelector('input[type="file"]') as HTMLInputElement;
+    mockedUploadImage.mockResolvedValue({ ok: true, value: { url: '/images/recipes/ns/main-0-x.jpg' } });
+    await userEvent.setup().upload(input, new File(['x'], 'm.png', { type: 'image/png' }));
+
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalled());
+    const next = onChange.mock.calls[0][0] as CanonicalRecipe;
+    expect(next.main_image).toBe('/images/recipes/ns/main-0-x.jpg');
+    expect(next.metadata.warnings).toEqual(['Keep me']);
+  });
+
+  it('clears a capture unhosted warning for the slot', async () => {
+    const warning = '"main.heic" was not uploaded: x';
+    const recipe = { ...PLACEHOLDER_RECIPE, metadata: { ...RECIPE.metadata, warnings: [warning] } };
+    const onChange = vi.fn();
+    render(
+      <ReviewPanel
+        recipe={recipe}
+        diagnostics={null}
+        onChange={onChange}
+        imageNamespaceId="ns"
+        unhosted={[{ slot: 'main', url: 'https://e.com/main.heic', warning }]}
+      />,
+    );
+
+    const input = screen.getByRole('group', { name: 'Main image' }).querySelector('input[type="file"]') as HTMLInputElement;
+    mockedUploadImage.mockResolvedValue({ ok: true, value: { url: '/images/recipes/ns/main-0-x.jpg' } });
+    await userEvent.setup().upload(input, new File(['x'], 'm.png', { type: 'image/png' }));
+
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect((onChange.mock.calls[0][0] as CanonicalRecipe).metadata.warnings).toEqual([]);
+  });
+
+  it('sets a step image through setSlotImage', async () => {
+    const onChange = vi.fn();
+    render(<ReviewPanel recipe={RECIPE} diagnostics={null} onChange={onChange} imageNamespaceId="ns" />);
+
+    const input = screen.getByRole('group', { name: 'Step 1 image' }).querySelector('input[type="file"]') as HTMLInputElement;
+    mockedUploadImage.mockResolvedValue({ ok: true, value: { url: '/images/recipes/ns/step-0-x.jpg' } });
+    await userEvent.setup().upload(input, new File(['x'], 's.png', { type: 'image/png' }));
+
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect((onChange.mock.calls[0][0] as CanonicalRecipe).steps[0].image).toBe('/images/recipes/ns/step-0-x.jpg');
+  });
+
+  it('keeps both step images when two uploads overlap', async () => {
+    const resolvers: Array<(value: { ok: true; value: { url: string } }) => void> = [];
+    mockedUploadImage.mockReset();
+    mockedUploadImage.mockImplementation(() => new Promise((resolve) => { resolvers.push(resolve); }));
+    const onChange = vi.fn();
+    const twoSteps = {
+      ...RECIPE,
+      steps: [
+        { step_header: 'A', step_description: 'a' },
+        { step_header: 'B', step_description: 'b' },
+      ],
+    };
+    render(<Harness initial={twoSteps} onChange={onChange} imageNamespaceId="ns" />);
+    const file = new File([new Uint8Array([1])], 'x.png', { type: 'image/png' });
+
+    fireEvent.paste(screen.getByRole('group', { name: 'Step 1 image' }), { clipboardData: { files: [file], items: [] } });
+    fireEvent.paste(screen.getByRole('group', { name: 'Step 2 image' }), { clipboardData: { files: [file], items: [] } });
+    await waitFor(() => expect(resolvers).toHaveLength(2));
+    resolvers[0]({ ok: true, value: { url: '/s1.jpg' } });
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    resolvers[1]({ ok: true, value: { url: '/s2.jpg' } });
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
+
+    const last = onChange.mock.lastCall?.[0] as CanonicalRecipe;
+    expect(last.steps[0].image).toBe('/s1.jpg');
+    expect(last.steps[1].image).toBe('/s2.jpg');
+  });
+
+  it('keeps an edit made while an upload is pending', async () => {
+    let resolveUpload: (value: { ok: true; value: { url: string } }) => void = () => {};
+    mockedUploadImage.mockReset();
+    mockedUploadImage.mockImplementation(() => new Promise((resolve) => { resolveUpload = resolve; }));
+    const onChange = vi.fn();
+    render(<Harness initial={RECIPE} onChange={onChange} imageNamespaceId="ns" />);
+    const file = new File([new Uint8Array([1])], 'x.png', { type: 'image/png' });
+
+    fireEvent.paste(screen.getByRole('group', { name: 'Step 1 image' }), { clipboardData: { files: [file], items: [] } });
+    await waitFor(() => expect(mockedUploadImage).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Carbonara' } });
+    resolveUpload({ ok: true, value: { url: '/s1.jpg' } });
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
+
+    const last = onChange.mock.lastCall?.[0] as CanonicalRecipe;
+    expect(last.title).toBe('Carbonara');
+    expect(last.steps[0].image).toBe('/s1.jpg');
+    expect(screen.getByLabelText(/title/i)).toHaveValue('Carbonara');
+  });
+
+  it('keeps the main image control (and its focus) when an upload clears the prompt', async () => {
+    mockedUploadImage.mockReset();
+    mockedUploadImage.mockResolvedValue({ ok: true, value: { url: '/images/recipes/ns/main-0-x.jpg' } });
+    render(<Harness initial={PLACEHOLDER_RECIPE} onChange={vi.fn()} imageNamespaceId="ns" />);
+
+    const group = screen.getByRole('group', { name: 'Main image' });
+    group.focus();
+    const input = group.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], 'm.png', { type: 'image/png' })] } });
+
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Add main image' })).not.toBeInTheDocument());
+    expect(screen.getByRole('region', { name: 'Main image' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Main image' })).toBe(group);
+    expect(group).toHaveFocus();
+  });
+
+  it('Remove on the main image restores the placeholder and shows the prompt again', async () => {
+    const placeholder = 'https://cdn.x/p.png';
+    const onChange = vi.fn();
+    render(
+      <Harness initial={RECIPE} onChange={onChange} imageNamespaceId="ns" placeholderImageUrl={placeholder} />,
+    );
+    expect(screen.queryByRole('region', { name: 'Add main image' })).not.toBeInTheDocument();
+
+    const group = screen.getByRole('group', { name: 'Main image' });
+    await userEvent.setup().click(within(group).getByRole('button', { name: 'Remove' }));
+
+    expect((onChange.mock.lastCall?.[0] as CanonicalRecipe).main_image).toBe(placeholder);
+    expect(screen.getByRole('region', { name: 'Add main image' })).toBeVisible();
+  });
+
+  it('shows no image controls in read-only mode', () => {
+    render(<ReviewPanel recipe={PLACEHOLDER_RECIPE} diagnostics={null} readOnly imageNamespaceId="ns" />);
+
+    expect(screen.queryByRole('region', { name: 'Add main image' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
   });
 });
 

@@ -3,9 +3,11 @@
 // field change builds a fresh CanonicalRecipe and calls onChange - App.tsx
 // owns the single source of truth (recipeState), including dirty/savedId
 // bookkeeping (Task 4). No field here mutates the `recipe` prop.
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import type { CanonicalRecipe, Ingredient, Step } from 'shared';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
+import type { CanonicalRecipe, Ingredient, Step, UnhostedImage } from 'shared';
 import type { IngestDiagnostics } from '../../api/client.ts';
+import { DEFAULT_PLACEHOLDER_IMAGE_URL, isMissingMainImage, setSlotImage } from '../../lib/image-slots.ts';
+import { ImageControl } from './ImageControl.tsx';
 import { IngredientEditor } from './IngredientEditor.tsx';
 import { StepEditor } from './StepEditor.tsx';
 import { TagEditor } from './TagEditor.tsx';
@@ -44,17 +46,30 @@ export function ReviewPanel({
   onChange,
   readOnly = false,
   imageNamespaceId,
+  placeholderImageUrl = DEFAULT_PLACEHOLDER_IMAGE_URL,
+  unhosted,
 }: {
   recipe: CanonicalRecipe
   diagnostics: IngestDiagnostics | null
   onChange?: (recipe: CanonicalRecipe) => void
   readOnly?: boolean
-  // Storage namespace for review-stage step-image uploads (StepEditor).
+  // Storage namespace for review-stage image uploads (main image and steps).
   imageNamespaceId?: string
+  // Default recipe image from /api/me; a main_image equal to it counts as missing.
+  placeholderImageUrl?: string
+  // Capture images that could not be hosted; their warnings clear with the slot.
+  unhosted?: UnhostedImage[]
 }) {
   const emit = onChange ?? noop;
   const [promptCopied, setPromptCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Image uploads/links resolve after a wait; they must build on the recipe as
+  // it is then, not as it was when they started (overlapping uploads, edits
+  // made meanwhile).
+  const latestRecipe = useRef(recipe);
+  useLayoutEffect(() => {
+    latestRecipe.current = recipe;
+  });
 
   useEffect(() => () => {
     if (copiedTimer.current !== null) clearTimeout(copiedTimer.current);
@@ -95,8 +110,36 @@ export function ReviewPanel({
     emit({ ...recipe, tags });
   };
 
+  const handleSlotImage = (slot: 'main' | number, url: string | null) => {
+    const next = setSlotImage(latestRecipe.current, slot, url, { placeholderUrl: placeholderImageUrl, unhosted });
+    // Keep a second result that lands before the re-render from losing this one.
+    latestRecipe.current = next;
+    emit(next);
+  };
+
+  const mainMissing = isMissingMainImage(recipe.main_image, placeholderImageUrl);
+
   return (
     <div className="review-panel">
+      {/* One section in both states so the control keeps its tree position
+          (and focus) when the prompt flips. */}
+      {!readOnly && imageNamespaceId ? (
+        <section
+          aria-labelledby="review-main-image-heading"
+          className={mainMissing ? 'review-panel-main-image-prompt' : undefined}
+        >
+          <h3 id="review-main-image-heading">{mainMissing ? 'Add main image' : 'Main image'}</h3>
+          {mainMissing ? <p>Recipes are picked by their photo. Paste, link or upload one.</p> : null}
+          <ImageControl
+            label="Main image"
+            slot="main"
+            imageUrl={mainMissing ? null : recipe.main_image}
+            namespaceId={imageNamespaceId}
+            onChange={(url) => handleSlotImage('main', url)}
+          />
+        </section>
+      ) : null}
+
       {readOnly ? (
         <>
           <p className="review-panel-static-field">
@@ -144,6 +187,7 @@ export function ReviewPanel({
           onChange={handleStepsChange}
           readOnly={readOnly}
           imageNamespaceId={imageNamespaceId}
+          onImageChange={handleSlotImage}
         />
       </section>
 

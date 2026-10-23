@@ -1,36 +1,32 @@
 // One editable block per step: step_header input, step_description textarea
-// (600 maxlength + live character count), the step image (thumbnail when set)
-// with an upload-only file control (docs/specs/14 - add or replace a step image
-// after ingestion; no URL input, no removal), and a remove button (disabled
-// at the 1-step floor). "Add step" is disabled at the 6-step cap (docs/specs/02
+// (600 maxlength + live character count), the step image (an ImageControl
+// with paste / link / upload / remove when a namespace is given, else a plain
+// thumbnail), and a remove-step button (disabled at the 1-step floor). "Add step" is disabled at the 6-step cap (docs/specs/02
 // rule 9) with an explanatory hint. All updates are immutable - every
 // callback builds a fresh array/object.
-import { useState, type ChangeEvent } from 'react';
 import type { Step } from 'shared';
-import { uploadStepImage } from '../../api/client.ts';
-import { ACCEPTED_IMAGE_TYPES, validateImageFile } from '../../lib/upload-limits.ts';
+import { ImageControl } from './ImageControl.tsx';
 
 const MAX_STEPS = 6;
 const MIN_STEPS = 1;
 const DESCRIPTION_MAXLENGTH = 600;
-const ACCEPT = ACCEPTED_IMAGE_TYPES.join(',');
 
 export function StepEditor({
   steps,
   onChange,
   readOnly = false,
   imageNamespaceId,
+  onImageChange,
 }: {
   steps: Step[]
   onChange: (steps: Step[]) => void
   readOnly?: boolean
-  // Storage namespace for step-image uploads; the upload control is only
-  // rendered when this is provided.
+  // Storage namespace for step images; the image control is only rendered
+  // when this is provided.
   imageNamespaceId?: string
+  // Called with the hosted URL (or null on remove) for the step at index.
+  onImageChange?: (index: number, url: string | null) => void
 }) {
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
-  const [uploadErrors, setUploadErrors] = useState<Record<number, string>>({});
-
   const updateField = (index: number, field: 'step_header' | 'step_description', value: string) => {
     onChange(steps.map((step, i) => (i === index ? { ...step, [field]: value } : step)));
   };
@@ -41,34 +37,6 @@ export function StepEditor({
 
   const addStep = () => {
     onChange([...steps, { step_header: '', step_description: '' }]);
-  };
-
-  const handleImageSelect = async (index: number, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    // Reset the input so re-selecting the same file fires change again.
-    event.target.value = '';
-    if (!file || !imageNamespaceId) return;
-
-    const validationErrors: string[] = [];
-    validateImageFile(file, validationErrors);
-    if (validationErrors.length > 0) {
-      setUploadErrors((prev) => ({ ...prev, [index]: validationErrors[0] }));
-      return;
-    }
-
-    setUploadErrors((prev) => {
-      const { [index]: _cleared, ...rest } = prev;
-      return rest;
-    });
-    setUploadingIndex(index);
-    const result = await uploadStepImage(imageNamespaceId, index, file);
-    setUploadingIndex(null);
-
-    if (result.ok) {
-      onChange(steps.map((step, i) => (i === index ? { ...step, image: result.value.url } : step)));
-    } else {
-      setUploadErrors((prev) => ({ ...prev, [index]: result.error.message }));
-    }
   };
 
   const atCap = steps.length >= MAX_STEPS;
@@ -118,7 +86,7 @@ export function StepEditor({
           <span className="step-editor-char-count">
             {step.step_description.length} / {DESCRIPTION_MAXLENGTH}
           </span>
-          {step.image ? (
+          {!imageNamespaceId && step.image ? (
             <img
               className="step-editor-image-thumb"
               data-testid="step-image-thumb"
@@ -127,21 +95,14 @@ export function StepEditor({
             />
           ) : null}
           {imageNamespaceId ? (
-            <label className="step-editor-image-upload">
-              <span>{step.image ? 'Replace step image' : 'Upload step image'}</span>
-              <input
-                type="file"
-                accept={ACCEPT}
-                disabled={uploadingIndex !== null}
-                onChange={(event) => void handleImageSelect(index, event)}
-              />
-            </label>
-          ) : null}
-          {uploadingIndex === index ? <span className="step-editor-image-status">Uploading...</span> : null}
-          {uploadErrors[index] ? (
-            <p className="step-editor-image-error" role="alert">
-              {uploadErrors[index]}
-            </p>
+            <ImageControl
+              label={`Step ${index + 1} image`}
+              slot={index}
+              imageUrl={step.image ?? null}
+              namespaceId={imageNamespaceId}
+              onChange={(url) => onImageChange?.(index, url)}
+              removeLabel={`Remove image from step ${index + 1}`}
+            />
           ) : null}
           <button
             type="button"

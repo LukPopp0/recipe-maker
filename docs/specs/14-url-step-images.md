@@ -86,15 +86,18 @@ review panel.
 `/api/image/step` is kept for old clients and is implemented through the same
 slot hosting function as `POST /api/image/upload` (slot = `stepIndex`).
 `/api/image/upload` and `/api/image/link` (docs/specs/03) exist for both the
-main and step slots; the review panel switches to them in the frontend phase
-(docs/specs/15), until then it still uses `/api/image/step`.
+main and step slots; the review panel uses them (via ImageControl); `/api/image/step` has no
+frontend caller any more.
 
 ### Review panel UI
-- StepEditor (editable, namespace present): per-step thumbnail when
-  `step.image` is set, plus an upload-only file control (jpeg/png/webp,
-  client-validated via lib/upload-limits before the round trip). Success
-  writes the hosted URL onto `steps[i].image` through the normal onChange
-  flow (marks workspace dirty). No URL input, no remove control.
+- StepEditor (editable, namespace present): one ImageControl per step
+  (Paste / Link / Upload / Remove, jpeg/png/webp, client-validated via
+  lib/upload-limits before the round trip) replaces the old upload-only file
+  control. The hosted URL is written onto `steps[i].image` through the normal
+  onChange flow (marks workspace dirty); Remove deletes `steps[i].image`.
+  The same control exists for the main image (docs/specs/09). Warnings for a
+  slot (server "not re-hosted" and capture "not uploaded") are removed when
+  the slot gets a new image.
 - Read-only mode (Library view) renders the thumbnail only.
 - Save persists `steps[].image` verbatim (no re-host at save time).
 

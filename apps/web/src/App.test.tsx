@@ -20,7 +20,7 @@ vi.mock('./api/client.ts', () => ({
 const mockedIngestUrl = vi.mocked(ingestUrl);
 
 beforeEach(() => {
-  vi.mocked(getMe).mockResolvedValue({ ok: true, value: { user: { username: 'alice', isAdmin: false } } });
+  vi.mocked(getMe).mockResolvedValue({ ok: true, value: { user: { username: 'alice', isAdmin: false }, placeholderImageUrl: '/images/placeholder-recipe.png' } });
 });
 
 const RECIPE: CanonicalRecipe = {
@@ -96,6 +96,30 @@ describe('App', () => {
 
     // Header status chip and the action tray note both report the dirty state.
     expect(screen.getAllByText('Unsaved changes').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('passes placeholderImageUrl from /api/me to the review panel', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getMe).mockResolvedValue({
+      ok: true,
+      value: { user: { username: 'alice', isAdmin: false }, placeholderImageUrl: 'https://cdn.x/p.png' },
+    });
+    mockedIngestUrl.mockReset();
+    mockedIngestUrl.mockResolvedValueOnce({
+      ok: true,
+      value: {
+        recipe: { ...RECIPE, main_image: 'https://cdn.x/p.png' },
+        diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 },
+        imageNamespaceId: 'ns-test',
+      },
+    });
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'https://example.com/recipe');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+
+    expect(await screen.findByRole('region', { name: 'Add main image' })).toBeVisible();
   });
 
   it('wires the loaded recipe into the JSON panel', async () => {
