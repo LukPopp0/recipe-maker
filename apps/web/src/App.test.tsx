@@ -439,4 +439,28 @@ describe('Open in Create', () => {
       expect(screen.getByAltText(/main/i)).toHaveAttribute('src', '/images/relayed.jpg');
     });
   });
+
+  it('opens Setup from the header and returns on Back', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('link', { name: 'Setup' }));
+    expect(window.location.pathname).toBe('/setup');
+    expect(screen.getByRole('heading', { name: 'Why this exists' })).toBeVisible();
+
+    window.history.pushState({}, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Input' })).toBeVisible());
+    expect(screen.queryByRole('heading', { name: 'Why this exists' })).not.toBeInTheDocument();
+  });
+
+  it('shows Setup when loaded at /setup', () => {
+    window.history.pushState({}, '', '/setup');
+    try {
+      render(<App />);
+      expect(screen.getByRole('heading', { name: 'Why this exists' })).toBeVisible();
+    } finally {
+      window.history.pushState({}, '', '/');
+    }
+  });
 });

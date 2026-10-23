@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CanonicalRecipe, CurrentUser, ImageSlot, UnhostedImage } from 'shared';
 import { getMe, uploadImage, type CaptureIngestResult, type IngestDiagnostics } from './api/client.ts';
 import { DEFAULT_PLACEHOLDER_IMAGE_URL, isSlotEmpty, setSlotImage } from './lib/image-slots.ts';
@@ -13,9 +13,11 @@ import { ActionTray } from './components/ActionTray.tsx';
 import { useTheme } from './lib/use-theme.ts';
 import { LibraryPanel } from './components/library/LibraryPanel.tsx';
 import { CardView } from './components/card/CardView.tsx';
+import { SetupPage } from './components/setup/SetupPage.tsx';
 
-// Nav is local-state only (plan decision 11) - no router yet.
-type WorkspaceView = 'create' | 'library';
+// Nav is local-state only (plan decision 11) - no router. Only /setup gets a
+// pushed path (docs/specs/15); popstate returns to the previous view.
+type WorkspaceView = 'create' | 'library' | 'setup';
 
 // Hides Create panels behind the card preview (or Library view) via inline
 // style rather than the `hidden` attribute: `hidden` (and CSS visibility)
@@ -49,7 +51,10 @@ function statusVariant(state: WorkspaceRecipeState): string {
 }
 
 function App() {
-  const [view, setView] = useState<WorkspaceView>('create');
+  const [view, setView] = useState<WorkspaceView>(() =>
+    window.location.pathname === '/setup' ? 'setup' : 'create',
+  );
+  const previousViewRef = useRef<WorkspaceView>('create');
   // Capture mode (docs/specs/15) is decided once at load: the handoff hook
   // rewrites the URL to / after receiving the page.
   const [captureMode] = useState(() => window.location.pathname === '/capture');
@@ -172,6 +177,28 @@ function App() {
     setRecipeState((prev) => (prev ? { ...prev, savedId: id, sourceId: id, dirty: false } : prev));
   }, []);
 
+  const openSetup = useCallback(() => {
+    if (view !== 'setup') previousViewRef.current = view;
+    window.history.pushState({}, '', '/setup');
+    setView('setup');
+  }, [view]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (window.location.pathname !== '/setup') {
+        setView((current) => (current === 'setup' ? previousViewRef.current : current));
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Create/Library buttons leave Setup: restore the path too.
+  const switchView = useCallback((next: WorkspaceView) => {
+    if (window.location.pathname === '/setup') window.history.pushState({}, '', '/');
+    setView(next);
+  }, []);
+
   const inCreate = view === 'create' && !showCardPreview;
 
   return (
@@ -183,7 +210,7 @@ function App() {
             type="button"
             className="workspace-nav-item"
             aria-current={view === 'create' ? 'page' : undefined}
-            onClick={() => setView('create')}
+            onClick={() => switchView('create')}
           >
             Create
           </button>
@@ -191,10 +218,21 @@ function App() {
             type="button"
             className="workspace-nav-item"
             aria-current={view === 'library' ? 'page' : undefined}
-            onClick={() => setView('library')}
+            onClick={() => switchView('library')}
           >
             Library
           </button>
+          <a
+            href="/setup"
+            className="workspace-nav-item"
+            aria-current={view === 'setup' ? 'page' : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              openSetup();
+            }}
+          >
+            Setup
+          </a>
         </nav>
         <span className={`workspace-status workspace-status--${statusVariant(recipeState)}`}>
           {statusLabel(recipeState)}
@@ -240,7 +278,7 @@ function App() {
           {captureMode ? (
             <CapturePanel handoff={handoff} onExtractStart={handleExtractStart} onIngested={handleCaptureIngested} />
           ) : null}
-          <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} />
+          <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} onOpenSetup={openSetup} />
         </div>
       </section>
 
@@ -311,6 +349,13 @@ function App() {
         <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">
           <h2 id="library-panel-heading">Library</h2>
           <LibraryPanel currentUser={currentUser} onOpenInCreate={handleOpenInCreate} />
+        </section>
+      ) : null}
+
+      {view === 'setup' ? (
+        <section className="workspace-panel workspace-panel-setup" aria-labelledby="setup-panel-heading">
+          <h2 id="setup-panel-heading">Setup</h2>
+          <SetupPage appOrigin={window.location.origin} />
         </section>
       ) : null}
 

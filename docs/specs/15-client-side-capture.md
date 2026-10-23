@@ -41,4 +41,8 @@ A relayed blob is skipped when null, when it has no `image/*` type, or when its 
 Filled in by a later task.
 
 ## Setup page
-Filled in by a later task.
+`/setup` (header link `Setup`, and the link next to a `URL_FETCH_BLOCKED` error) explains why the tools exist and offers them. The page shows the app origin (`window.location.origin`) so it can be copied into the extension options. Sections:
+- Bookmarklet (desktop): a draggable `Send to Recipe Maker` link (its `javascript:` href is set on the DOM node, because React blocks such hrefs). Works in Firefox desktop and Chrome desktop. Does not work in Firefox on Android (Firefox blocks the new tab it opens); those users use the Firefox extension.
+- Bookmarklet (Chrome on Android): a `Copy bookmarklet code` button plus steps (create a bookmark, paste the code as the URL, name it, check the saved URL still starts with `javascript:`, then type the name in the address bar and tap the suggestion). A bookmarklet made in Chrome desktop syncs to Android with bookmark sync.
+- Firefox extension (desktop and Android): download link for `recipe-maker.xpi` from the latest GitHub release. Desktop: open the file. Android: download it, enable the debug menu (Settings > About Firefox, tap the logo 5 times), then "Install add-on from file". Firefox asks to grant access to all sites. Set the Recipe Maker address in the options. Pasting images is unreliable on Firefox Android: add manual images with Link or Upload.
+- Chrome extension (desktop): download link for `recipe-maker-chrome.zip`; extract, open `chrome://extensions`, enable Developer mode, "Load unpacked", set the address in the options. The developer-mode warning is expected.
