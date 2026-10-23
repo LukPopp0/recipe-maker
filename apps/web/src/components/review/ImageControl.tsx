@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ClipboardEvent, ChangeEvent, FormEvent } from 'react';
 import type { ImageSlot } from 'shared';
 import { linkImage, uploadImage } from '../../api/client.ts';
@@ -14,15 +14,27 @@ type ImageControlProps = {
   removeLabel?: string
 }
 
-const CLIPBOARD_HINT = 'Could not read the clipboard. Long-press the box and choose Paste instead.';
+const CLIPBOARD_HINT = 'Could not read the clipboard. Long-press the paste box and choose Paste.';
 
 export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, removeLabel }: ImageControlProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState('');
+  const busyRef = useRef(false);
+  const pasteBoxRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlId = useId();
+
+  // The box is only a paste target: refuse every edit. Native listener because
+  // React's onBeforeInput is synthesized from other events.
+  useEffect(() => {
+    const box = pasteBoxRef.current;
+    if (!box) return;
+    const block = (event: Event) => event.preventDefault();
+    box.addEventListener('beforeinput', block);
+    return () => box.removeEventListener('beforeinput', block);
+  }, []);
 
   const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.read === 'function';
 
@@ -36,6 +48,7 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
   }
 
   async function sendFile(file: File, filename?: string) {
+    if (busyRef.current) return;
     const problems: string[] = [];
     validateImageFile(file, problems);
     if (problems.length > 0) {
@@ -43,15 +56,21 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
       return;
     }
     setError(null);
+    busyRef.current = true;
     setBusy(true);
     try {
       await finish(await uploadImage(namespaceId, slot, file, filename));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
 
   function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
+    if (busyRef.current) {
+      event.preventDefault();
+      return;
+    }
     const files = Array.from(event.clipboardData?.files ?? []);
     const image = files.find((file) => file.type.startsWith('image/'));
     if (!image) return;
@@ -60,6 +79,7 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
   }
 
   async function handlePasteButton() {
+    if (busyRef.current) return;
     setError(null);
     let file: File | null = null;
     try {
@@ -93,8 +113,9 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
   async function handleLink(event: FormEvent) {
     event.preventDefault();
     const url = linkValue.trim();
-    if (!url) return;
+    if (!url || busyRef.current) return;
     setError(null);
+    busyRef.current = true;
     setBusy(true);
     try {
       if (await finish(await linkImage(namespaceId, slot, url))) {
@@ -102,6 +123,7 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
         setLinkOpen(false);
       }
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -113,6 +135,17 @@ export function ImageControl({ label, slot, imageUrl, namespaceId, onChange, rem
       ) : (
         <div className="image-control-empty">No image. Paste, link or upload one.</div>
       )}
+      <div
+        className="image-control-paste"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-label={`${label} paste area`}
+        data-placeholder="Paste image here"
+        onPaste={(event) => event.preventDefault()}
+        ref={pasteBoxRef}
+        onDrop={(event) => event.preventDefault()}
+      />
       <div className="image-control-actions">
         {canReadClipboard && (
           <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => void handlePasteButton()}>

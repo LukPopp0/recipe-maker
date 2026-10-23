@@ -1082,3 +1082,16 @@
   color: var(--color-danger, #b3261e);
   margin: 0;
 }
+
+.image-control-paste {
+  min-height: 2.5rem;
+  padding: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.image-control-paste:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted);
+}
