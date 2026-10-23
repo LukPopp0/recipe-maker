@@ -579,22 +579,6 @@
   border: 1px solid var(--color-border);
 }
 
-.step-editor-image-upload {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.step-editor-image-status {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.step-editor-image-error {
-  font-size: var(--font-size-xs);
-  color: var(--color-danger, #b3261e);
-  margin: 0;
-}
-
 .review-panel-steps-header {
   display: flex;
   align-items: center;

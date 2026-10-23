@@ -4,8 +4,10 @@
 // owns the single source of truth (recipeState), including dirty/savedId
 // bookkeeping (Task 4). No field here mutates the `recipe` prop.
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import type { CanonicalRecipe, Ingredient, Step } from 'shared';
+import type { CanonicalRecipe, Ingredient, Step, UnhostedImage } from 'shared';
 import type { IngestDiagnostics } from '../../api/client.ts';
+import { DEFAULT_PLACEHOLDER_IMAGE_URL, isMissingMainImage, setSlotImage } from '../../lib/image-slots.ts';
+import { ImageControl } from './ImageControl.tsx';
 import { IngredientEditor } from './IngredientEditor.tsx';
 import { StepEditor } from './StepEditor.tsx';
 import { TagEditor } from './TagEditor.tsx';
@@ -44,6 +46,8 @@ export function ReviewPanel({
   onChange,
   readOnly = false,
   imageNamespaceId,
+  placeholderImageUrl = DEFAULT_PLACEHOLDER_IMAGE_URL,
+  unhosted,
 }: {
   recipe: CanonicalRecipe
   diagnostics: IngestDiagnostics | null
@@ -51,6 +55,10 @@ export function ReviewPanel({
   readOnly?: boolean
   // Storage namespace for review-stage step-image uploads (StepEditor).
   imageNamespaceId?: string
+  // Default recipe image from /api/me; a main_image equal to it counts as missing.
+  placeholderImageUrl?: string
+  // Capture images that could not be hosted; their warnings clear with the slot.
+  unhosted?: UnhostedImage[]
 }) {
   const emit = onChange ?? noop;
   const [promptCopied, setPromptCopied] = useState(false);
@@ -95,8 +103,38 @@ export function ReviewPanel({
     emit({ ...recipe, tags });
   };
 
+  const handleSlotImage = (slot: 'main' | number, url: string | null) => {
+    emit(setSlotImage(recipe, slot, url, { placeholderUrl: placeholderImageUrl, unhosted }));
+  };
+
+  const mainMissing = isMissingMainImage(recipe.main_image, placeholderImageUrl);
+  const mainControl = imageNamespaceId ? (
+    <ImageControl
+      label="Main image"
+      slot="main"
+      imageUrl={mainMissing ? null : recipe.main_image}
+      namespaceId={imageNamespaceId}
+      onChange={(url) => handleSlotImage('main', url)}
+    />
+  ) : null;
+
   return (
     <div className="review-panel">
+      {!readOnly && mainControl ? (
+        mainMissing ? (
+          <section aria-labelledby="review-add-main-image-heading" className="review-panel-main-image-prompt">
+            <h3 id="review-add-main-image-heading">Add main image</h3>
+            <p>Recipes are picked by their photo. Paste, link or upload one.</p>
+            {mainControl}
+          </section>
+        ) : (
+          <section aria-labelledby="review-main-image-heading">
+            <h3 id="review-main-image-heading">Main image</h3>
+            {mainControl}
+          </section>
+        )
+      ) : null}
+
       {readOnly ? (
         <>
           <p className="review-panel-static-field">
@@ -144,6 +182,7 @@ export function ReviewPanel({
           onChange={handleStepsChange}
           readOnly={readOnly}
           imageNamespaceId={imageNamespaceId}
+          onImageChange={handleSlotImage}
         />
       </section>
 

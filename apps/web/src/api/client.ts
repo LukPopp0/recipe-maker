@@ -23,7 +23,7 @@ export type IngestResult = {
   recipe: CanonicalRecipe
   diagnostics: IngestDiagnostics
   // Storage-key namespace of the ingestion's hosted images; the review panel
-  // uploads step images into the same namespace via uploadStepImage.
+  // uploads images into the same namespace via uploadImage/linkImage.
   imageNamespaceId: string
 }
 
@@ -146,25 +146,6 @@ export async function ingestManual(fields: {
   }
 
   return request<IngestResult>('/api/ingest/manual', {
-    method: 'POST',
-    body: formData,
-  });
-}
-
-// Uploads one step image from the review panel. The server hosts it under
-// recipes/{namespaceId}/step-{stepIndex}-{suffix} and returns the hosted URL; the
-// caller writes that URL onto the step being edited.
-export async function uploadStepImage(
-  namespaceId: string,
-  stepIndex: number,
-  file: File,
-): Promise<ClientResult<{ url: string }>> {
-  const formData = new FormData();
-  formData.append('namespaceId', namespaceId);
-  formData.append('stepIndex', String(stepIndex));
-  formData.append('file', file);
-
-  return request<{ url: string }>('/api/image/step', {
     method: 'POST',
     body: formData,
   });

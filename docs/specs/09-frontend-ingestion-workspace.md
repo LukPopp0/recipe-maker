@@ -52,8 +52,15 @@ Editable fields:
 - time
 - ingredient rows
 - step headers/descriptions
+- main image and per-step images (ImageControl: Paste / Link / Upload / Remove)
 
 Controls:
+- "Add main image" prompt at the top (heading + "Recipes are picked by their
+  photo. Paste, link or upload one.") with the main image control, shown when
+  `main_image` is blank or equals the placeholder URL from `/api/me`; otherwise
+  a plain "Main image" section with the control. Save is allowed either way.
+- Each step has its own image control; setting or removing an image clears that
+  slot's warnings. Read-only mode (Library) shows thumbnails only.
 - Show pantry_items as derived values from fixed pantry allowlist routing.
 - Add/remove tags.
 - Validate recipe before download.

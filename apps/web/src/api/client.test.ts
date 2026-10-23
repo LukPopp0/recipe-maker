@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadStepImage, uploadImage, linkImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
+import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadImage, linkImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -202,42 +202,6 @@ describe('api/client', () => {
       expect(init.method).toBe('PUT');
       expect(JSON.parse(init.body as string)).toEqual(fakeRecipe);
       expect(result).toEqual({ ok: true, value: { id: 'abc' } });
-    });
-  });
-
-  describe('uploadStepImage', () => {
-    it('posts FormData with namespaceId, stepIndex, and the file to /api/image/step', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ok: true, requestId: 'req-1', url: '/images/recipes/ns/step-2.png' }),
-      );
-      const file = new File(['x'], 'pan.png', { type: 'image/png' });
-
-      const result = await uploadStepImage('ns-uuid', 2, file);
-
-      expect(result).toEqual({ ok: true, value: { url: '/images/recipes/ns/step-2.png' } });
-      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('/api/image/step');
-      expect(init.method).toBe('POST');
-      const form = init.body as FormData;
-      expect(form.get('namespaceId')).toBe('ns-uuid');
-      expect(form.get('stepIndex')).toBe('2');
-      expect(form.get('file')).toBe(file);
-    });
-
-    it('maps an ok:false envelope to an ApiFailure', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse(
-          { ok: false, requestId: 'req-9', error: { code: 'INVALID_INPUT', message: 'bad upload' } },
-          { status: 400 },
-        ),
-      );
-
-      const result = await uploadStepImage('ns-uuid', 0, new File(['x'], 'a.png', { type: 'image/png' }));
-
-      expect(result).toEqual({
-        ok: false,
-        error: { code: 'INVALID_INPUT', message: 'bad upload', details: undefined, requestId: 'req-9' },
-      });
     });
   });
 
