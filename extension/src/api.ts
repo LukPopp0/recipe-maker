@@ -14,6 +14,9 @@ export interface ExtensionTab {
 }
 
 export interface ExtensionSender {
+  id?: string;
+  frameId?: number;
+  url?: string;
   tab?: ExtensionTab;
 }
 
@@ -24,6 +27,7 @@ export interface ExtensionApi {
   tabs: {
     create(options: { url: string; index?: number; active?: boolean }): Promise<ExtensionTab>;
     onUpdated: ApiEvent<[number, { status?: string; url?: string }, ExtensionTab]>;
+    onRemoved: ApiEvent<[number]>;
   };
   scripting: {
     executeScript(injection: {
@@ -34,6 +38,7 @@ export interface ExtensionApi {
     }): Promise<Array<{ result?: unknown }>>;
   };
   runtime: {
+    id?: string;
     // Return true and call sendResponse later to answer asynchronously (works in both browsers).
     onMessage: ApiEvent<[unknown, ExtensionSender, (response?: unknown) => void]>;
     sendMessage(message: unknown): Promise<unknown>;

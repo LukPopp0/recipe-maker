@@ -8,6 +8,7 @@ type Options = {
   createdTabId?: number;
   executeScript?: (injection: { func?: unknown; files?: string[]; target: { tabId: number } }) => Promise<Array<{ result?: unknown }>>;
   permissionGranted?: boolean;
+  hostAccess?: boolean;
 };
 
 export function createFakeApi(opts: Options = {}) {
@@ -15,6 +16,7 @@ export function createFakeApi(opts: Options = {}) {
   const stored: Record<string, unknown> = { ...(opts.storage ?? {}) };
   const clicked: Array<(tab: ExtensionTab) => unknown> = [];
   const updated: Array<(id: number, info: { status?: string }, tab: ExtensionTab) => unknown> = [];
+  const removed: Array<(id: number) => unknown> = [];
   const messages: Array<(m: unknown, s: ExtensionSender, r: (v?: unknown) => void) => unknown> = [];
   const record = (name: string, ...args: unknown[]) => calls.push({ name, args });
 
@@ -26,6 +28,7 @@ export function createFakeApi(opts: Options = {}) {
         return { id: opts.createdTabId ?? 99 };
       },
       onUpdated: { addListener: (l: never) => updated.push(l), removeListener: () => {} },
+      onRemoved: { addListener: (l: never) => removed.push(l), removeListener: () => {} },
     },
     scripting: {
       executeScript: async (i: { func?: unknown; files?: string[]; target: { tabId: number } }) => {
@@ -34,6 +37,7 @@ export function createFakeApi(opts: Options = {}) {
       },
     },
     runtime: {
+      id: 'ext-id',
       onMessage: { addListener: (l: never) => messages.push(l), removeListener: () => {} },
       sendMessage: async (m: unknown) => {
         record('runtime.sendMessage', m);
@@ -57,7 +61,7 @@ export function createFakeApi(opts: Options = {}) {
         record('permissions.request', p);
         return opts.permissionGranted ?? true;
       },
-      contains: async () => true,
+      contains: async () => opts.hostAccess ?? true,
     },
   } as unknown as ExtensionApi;
 
@@ -67,6 +71,7 @@ export function createFakeApi(opts: Options = {}) {
     stored,
     fire: {
       actionClicked: (tab: ExtensionTab) => clicked[0](tab),
+      tabRemoved: (id: number) => removed[0](id),
       tabUpdated: (id: number, info: { status?: string }, tab: ExtensionTab) => updated[0](id, info, tab),
       // Resolves with the response (sendResponse value), or undefined if the listener did not answer.
       message: (message: unknown, sender: ExtensionSender = {}) =>

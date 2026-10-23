@@ -4,6 +4,7 @@ import { createFakeApi, flush } from './fake-api';
 import { base64ToBlob } from './base64';
 
 const ORIGIN = 'https://recipes.example';
+const appSender = (id = 99) => ({ id: 'ext-id', frameId: 0, tab: { id, url: `${ORIGIN}/capture` } });
 const page = { url: 'https://site.example/r', html: '<html></html>', mainImageUrl: 'https://site.example/i.jpg' };
 
 function imageResponse(type = 'image/jpeg', bytes = [1, 2, 3]) {
@@ -59,7 +60,7 @@ describe('background', () => {
   it('answers ready with the pending payload once and then null', async () => {
     const { fire } = setup();
     await fire.actionClicked({ id: 7, index: 2 });
-    const first = (await fire.message({ type: 'ready' }, { tab: { id: 99 } })) as {
+    const first = (await fire.message({ type: 'ready' }, appSender(99))) as {
       url: string;
       html: string;
       mainImageUrl: string;
@@ -69,18 +70,18 @@ describe('background', () => {
     expect(first.mainImage.type).toBe('image/jpeg');
     const blob = base64ToBlob(first.mainImage.base64, first.mainImage.type);
     expect(new Uint8Array(await blob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
-    expect(await fire.message({ type: 'ready' }, { tab: { id: 99 } })).toBeNull();
+    expect(await fire.message({ type: 'ready' }, appSender(99))).toBeNull();
   });
 
   it('answers ready with null for a tab without a pending payload', async () => {
     const { fire } = setup();
-    expect(await fire.message({ type: 'ready' }, { tab: { id: 12 } })).toBeNull();
+    expect(await fire.message({ type: 'ready' }, appSender(12))).toBeNull();
   });
 
   it('sends the payload without image bytes when the image fetch fails', async () => {
     const { fire } = setup({ fetchImpl: vi.fn(async () => new Response('no', { status: 404 })) as unknown as typeof fetch });
     await fire.actionClicked({ id: 7, index: 2 });
-    const reply = (await fire.message({ type: 'ready' }, { tab: { id: 99 } })) as Record<string, unknown>;
+    const reply = (await fire.message({ type: 'ready' }, appSender(99))) as Record<string, unknown>;
     expect(reply).toEqual(page);
     expect(reply).not.toHaveProperty('mainImage');
   });
@@ -89,7 +90,7 @@ describe('background', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { fire } = setup({ collect: async () => Promise.reject(new Error('Cannot access chrome:// pages')) });
     await fire.actionClicked({ id: 7, index: 2 });
-    expect(await fire.message({ type: 'ready' }, { tab: { id: 99 } })).toBeNull();
+    expect(await fire.message({ type: 'ready' }, appSender(99))).toBeNull();
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
@@ -98,7 +99,8 @@ describe('background', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { fire } = setup({ collect: async () => [{}] });
     await fire.actionClicked({ id: 7, index: 2 });
-    expect(await fire.message({ type: 'ready' }, { tab: { id: 99 } })).toBeNull();
+    expect(await fire.message({ type: 'ready' }, appSender(99))).toBeNull();
+    expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
 
@@ -117,9 +119,9 @@ describe('background', () => {
     const { fire, fetchImpl } = setup();
     const reply = (await fire.message(
       { type: 'relay-request', url: 'https://cdn.example/step.png' },
-      { tab: { id: 99 } },
+      appSender(99),
     )) as { base64: string; type: string };
-    expect(fetchImpl).toHaveBeenCalledWith('https://cdn.example/step.png');
+    expect(fetchImpl).toHaveBeenCalledWith('https://cdn.example/step.png', { credentials: 'include' });
     expect(reply.type).toBe('image/jpeg');
     expect(reply.base64).toBe('AQID');
   });
@@ -129,14 +131,66 @@ describe('background', () => {
       async () => new Response('x', { status: 200, headers: { 'content-type': 'image/png', 'content-length': '99999999' } }),
     );
     const a = setup({ fetchImpl: big as unknown as typeof fetch });
-    expect(await a.fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, { tab: { id: 1 } })).toBeNull();
+    expect(await a.fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, appSender(1))).toBeNull();
     const html = vi.fn(async () => new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } }));
     const b = setup({ fetchImpl: html as unknown as typeof fetch });
-    expect(await b.fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, { tab: { id: 1 } })).toBeNull();
+    expect(await b.fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, appSender(1))).toBeNull();
+  });
+
+  it('fetches the main image with the site session (credentials include)', async () => {
+    const { fire, fetchImpl } = setup();
+    await fire.actionClicked({ id: 7, index: 2 });
+    await fire.message({ type: 'ready' }, appSender(99));
+    expect(fetchImpl).toHaveBeenCalledWith(page.mainImageUrl, { credentials: 'include' });
+  });
+
+  it('ignores relay requests from a tab on another origin', async () => {
+    const { fire, fetchImpl } = setup();
+    const other = { id: 'ext-id', frameId: 0, tab: { id: 5, url: 'https://evil.example/capture' } };
+    expect(await fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, other)).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('keeps the pending payload when ready comes from another origin, a subframe or another extension', async () => {
+    const { fire } = setup();
+    await fire.actionClicked({ id: 7, index: 2 });
+    const other = { id: 'ext-id', frameId: 0, tab: { id: 99, url: 'https://evil.example/capture' } };
+    const sub = { ...appSender(99), frameId: 3 };
+    const foreign = { ...appSender(99), id: 'other-ext' };
+    for (const sender of [other, sub, foreign]) {
+      expect(await fire.message({ type: 'ready' }, sender)).toBeNull();
+    }
+    expect(await fire.message({ type: 'relay-request', url: 'https://x.example/a.png' }, sub)).toBeNull();
+    expect(await fire.message({ type: 'ready' }, appSender(99))).toMatchObject({ url: page.url });
+  });
+
+  it('drops the pending payload when its tab is closed', async () => {
+    const { fire } = setup();
+    await fire.actionClicked({ id: 7, index: 2 });
+    fire.tabRemoved(99);
+    expect(await fire.message({ type: 'ready' }, appSender(99))).toBeNull();
+  });
+
+  it('only injects the bridge on the exact /capture page of the app origin', async () => {
+    const { fire, calls } = setup();
+    await fire.actionClicked({ id: 7, index: 2 });
+    const before = calls.length;
+    await fire.tabUpdated(99, { status: 'complete' }, { id: 99, url: 'https://recipes.example.evil.test/capture' });
+    await fire.tabUpdated(99, { status: 'complete' }, { id: 99, url: `${ORIGIN}/capturex` });
+    expect(calls.length).toBe(before);
+    await fire.tabUpdated(99, { status: 'complete' }, { id: 99, url: `${ORIGIN}/capture?x=1` });
+    expect(calls.length).toBe(before + 1);
+  });
+
+  it('opens the options page instead of capturing when host access is missing', async () => {
+    const fake = createFakeApi({ storage: { appOrigin: ORIGIN }, hostAccess: false });
+    createBackground(fake.api, vi.fn() as unknown as typeof fetch);
+    await fake.fire.actionClicked({ id: 7, index: 2 });
+    expect(fake.calls.map((c) => c.name)).toEqual(['runtime.openOptionsPage']);
   });
 
   it('ignores messages it does not know', async () => {
     const { fire } = setup();
-    expect(await fire.message({ type: 'other' }, { tab: { id: 1 } })).toBeUndefined();
+    expect(await fire.message({ type: 'other' }, appSender(1))).toBeUndefined();
   });
 });

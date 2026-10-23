@@ -23,9 +23,16 @@ async function save(): Promise<void> {
   try {
     // Started first, synchronously in the click handler, so it still counts as a user gesture.
     const granted = api.permissions.request({ origins: ['<all_urls>'] });
+    // Settled early so a storage failure never leaves it as an unhandled rejection.
+    const outcome = granted.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
     await api.storage.local.set({ appOrigin: origin });
     input.value = origin;
-    status.textContent = (await granted)
+    const result = await outcome;
+    if ('error' in result) throw result.error;
+    status.textContent = result.value
       ? `Saved ${origin}.`
       : `Saved ${origin}, but access to all websites was not allowed. Press Save again and allow it.`;
   } catch (error) {

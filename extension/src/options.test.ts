@@ -47,6 +47,22 @@ describe('options', () => {
     expect(stored.appOrigin).toBe('https://recipes.example');
     expect(calls.find((c) => c.name === 'permissions.request')?.args[0]).toEqual({ origins: ['<all_urls>'] });
     expect(status()).toMatch(/Saved/);
+    const names = calls.map((c) => c.name);
+    expect(names.indexOf('permissions.request')).toBeLessThan(names.indexOf('storage.local.set'));
+  });
+
+  it('settles the permission request when storing fails', async () => {
+    const fake = await load({ permissionGranted: false });
+    fake.api.storage.local.set = async () => Promise.reject(new Error('disk full'));
+    fake.api.permissions.request = async () => Promise.reject(new Error('denied'));
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    input().value = 'https://recipes.example';
+    await save();
+    await flush();
+    process.off('unhandledRejection', unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
+    expect(status()).toMatch(/Could not save: disk full/);
   });
 
   it('rejects an invalid address', async () => {
