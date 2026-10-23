@@ -23,19 +23,19 @@ Some recipe sites block requests from server and data-center IP addresses (403),
 3. The app's `useCaptureHandoff` posts `ready` to `window.opener` (target `'*'`, no data) and `{ ...ready, channel }` to its own window (target `location.origin`), every 500 ms.
 4. The source answers with a `payload` message. The app accepts it only from `window.opener` without a channel marker, or from its own window with `channel === 'recipe-maker-extension'`, and only if `isCaptureMessage` validates it. The first payload wins.
 5. On payload the app replaces `/capture` with `/` in the history and the Create workspace shows `Page received from {hostname}`, the URL and an `Extract recipe` button. Nothing is sent to the server yet.
-6. `Extract recipe` posts `POST /api/ingest/capture` (multipart: `url`, `html`, `mainImageUrl`, `mainImage` as a file named `main-image` with its own `image/*` type). Progress and errors use `StageStatus` / `ErrorBanner` like the URL tab.
+6. `Extract recipe` posts `POST /api/ingest/capture` (multipart: `url`, `html`, `mainImageUrl`, `mainImage` as a file named `main-image` with the blob's own type; the server rejects anything but jpeg/png/webp for it and falls back to the image URL). Progress and errors use `StageStatus` / `ErrorBanner` like the URL tab.
 7. The recipe is adopted like any ingestion (`imageNamespaceId`, `unhosted`).
 8. Images the server could not host come back as `unhosted`; the app relays them (below) and uploads each via `POST /api/image/upload`.
 9. The user reviews and saves explicitly as usual.
 
-Handoff failure: if no payload arrives within 15 s the panel shows `Did not receive the page. Go back to the recipe tab and press Send to Recipe Maker again. If you just logged in, the second try works.` (the first try can be lost to a login redirect that drops `window.opener`).
+Handoff failure: if no payload arrives within 15 s the panel shows `Did not receive the page. Go back to the recipe tab and press Send to Recipe Maker again. If you just logged in, the second try works.` (the first try can be lost to a login redirect that drops `window.opener`). A payload that arrives after the failure is still accepted, which helps when the source is just slow.
 
 Timeouts (defaults): handoff 15000 ms, ready interval 500 ms, relay 30000 ms.
 
 ## Relay
 For each `unhosted` entry, sequentially, the app sends `relay-request { id, url }` back on the channel the payload came from (opener or extension channel). The source fetches the image with the recipe site's own session and answers `relay-reply { id, url, image }` (`image: null` when it could not). The app accepts replies under the same source/channel rules as payloads, and only from the channel the payload used. A request with no reply within the relay timeout counts as `null`.
 
-A relayed blob is skipped when null, when it has no `image/*` type, or when its upload fails (the recipe keeps the server's unhosted warning). A successful upload fills the slot through a functional state update that applies only if the workspace still has the same `imageNamespaceId` and the slot is still empty, so it never overwrites an image the user set meanwhile. Relay updates do not mark the recipe dirty.
+A relayed blob is skipped when null, when it has no `image/*` type, or when its upload fails (the recipe keeps the server's unhosted warning). A successful upload fills the slot through a functional state update that applies only if the workspace still has the same `imageNamespaceId` and the slot is still empty, so it never overwrites an image the user set meanwhile. Relay updates do not mark the recipe dirty, except after the recipe was saved: then the image is a real unsaved change and the workspace shows the unsaved state. A filled slot is also removed from the workspace `unhosted` list. A `relay-reply` is accepted only when both its `id` and `url` match the pending request; on page unmount all pending requests resolve with `null`.
 
 ## Bookmarklet and extension
 Filled in by a later task.

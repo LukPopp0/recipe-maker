@@ -133,7 +133,14 @@ function App() {
           setRecipeState((prev) => {
             if (!prev || prev.imageNamespaceId !== result.imageNamespaceId) return prev;
             if (!isSlotEmpty(prev.recipe, slot, placeholderImageUrl)) return prev;
-            return { ...prev, recipe: setSlotImage(prev.recipe, slot, url, { placeholderUrl: placeholderImageUrl, unhosted: prev.unhosted }) };
+            // Before a save the image is part of the fresh extraction (stays
+            // not dirty); after a save it is a real unsaved change.
+            return {
+              ...prev,
+              recipe: setSlotImage(prev.recipe, slot, url, { placeholderUrl: placeholderImageUrl, unhosted: prev.unhosted }),
+              unhosted: prev.unhosted.filter((u) => u.slot !== slot),
+              ...(prev.savedId !== null ? { dirty: true, savedId: null } : {}),
+            };
           });
         },
       });

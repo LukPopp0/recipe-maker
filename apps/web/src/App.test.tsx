@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import App from './App.tsx';
-import { getMe, getRecipe, ingestCapture, ingestUrl, linkImage, listRecipes, uploadImage } from './api/client.ts';
+import { getMe, getRecipe, ingestCapture, ingestUrl, linkImage, listRecipes, saveRecipe, uploadImage } from './api/client.ts';
 import { useCaptureHandoff } from './capture/use-capture-handoff.ts';
 
 vi.mock('./api/client.ts', () => ({
@@ -414,6 +414,29 @@ describe('Open in Create', () => {
       await new Promise((r) => setTimeout(r, 0));
 
       expect(screen.getByAltText(/main/i)).toHaveAttribute('src', '/images/user.jpg');
+    });
+
+    it('marks the recipe dirty when a relayed image lands after Save', async () => {
+      let release!: (b: Blob) => void;
+      setup(() => new Promise<Blob>((r) => { release = r; }));
+      const valid = {
+        ...captureValue.recipe,
+        ingredients: [{ name: 'Noodles', amount_text: '200g' }],
+      };
+      vi.mocked(ingestCapture).mockResolvedValue({ ok: true, value: { ...captureValue, recipe: valid } });
+      vi.mocked(saveRecipe).mockResolvedValue({ ok: true, value: { id: 'saved-1' } });
+      vi.mocked(uploadImage).mockResolvedValue({ ok: true, value: { url: '/images/relayed.jpg' } });
+      render(<App />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Extract recipe' }));
+      await userEvent.click(await screen.findByRole('button', { name: /save recipe/i }));
+      await waitFor(() => expect(saveRecipe).toHaveBeenCalled());
+      expect((await screen.findAllByText('Saved')).length).toBeGreaterThan(0);
+
+      release(new Blob(['x'], { type: 'image/jpeg' }));
+
+      await waitFor(() => expect(screen.getAllByText('Unsaved changes').length).toBeGreaterThan(0));
+      expect(screen.getByAltText(/main/i)).toHaveAttribute('src', '/images/relayed.jpg');
     });
   });
 });

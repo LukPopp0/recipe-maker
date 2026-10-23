@@ -42,7 +42,7 @@ export function useCaptureHandoff(
   const { timeoutMs = 15000, readyIntervalMs = 500, relayTimeoutMs = 30000 } = opts;
   const [state, setState] = useState<HandoffState>(enabled ? { phase: 'waiting' } : { phase: 'off' });
   const sourceRef = useRef<Source | null>(null);
-  const pending = useRef(new Map<string, (blob: Blob | null) => void>());
+  const pending = useRef(new Map<string, { url: string; settle: (blob: Blob | null) => void }>());
 
   useEffect(() => {
     if (!enabled) return;
@@ -73,10 +73,10 @@ export function useCaptureHandoff(
         setState({ phase: 'received', payload: message.payload });
       } else if (message.type === 'relay-reply') {
         if (source !== sourceRef.current) return;
-        const resolve = pending.current.get(message.id);
-        if (resolve) {
+        const entry = pending.current.get(message.id);
+        if (entry && entry.url === message.url) {
           pending.current.delete(message.id);
-          resolve(message.image);
+          entry.settle(message.image);
         }
       }
     };
@@ -95,6 +95,15 @@ export function useCaptureHandoff(
     };
   }, [enabled, timeoutMs, readyIntervalMs]);
 
+  // No relay request outlives the page: unmount settles them all with null.
+  useEffect(() => {
+    const map = pending.current;
+    return () => {
+      for (const entry of map.values()) entry.settle(null);
+      map.clear();
+    };
+  }, []);
+
   const requestRelay = useCallback(
     (url: string): Promise<Blob | null> => {
       const source = sourceRef.current;
@@ -105,9 +114,12 @@ export function useCaptureHandoff(
           pending.current.delete(id);
           resolve(null);
         }, relayTimeoutMs);
-        pending.current.set(id, (blob) => {
-          window.clearTimeout(timer);
-          resolve(blob);
+        pending.current.set(id, {
+          url,
+          settle: (blob) => {
+            window.clearTimeout(timer);
+            resolve(blob);
+          },
         });
         post(source, { protocol: CAPTURE_PROTOCOL, type: 'relay-request', id, url });
       });

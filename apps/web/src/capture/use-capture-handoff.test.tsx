@@ -132,4 +132,96 @@ describe('useCaptureHandoff', () => {
     expect(openerPost).not.toHaveBeenCalled();
     expect(selfPost).not.toHaveBeenCalled();
   });
+
+  it('still accepts a late payload after the handoff failed', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useCaptureHandoff(true, { timeoutMs: 1000 }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(result.current.state).toEqual({ phase: 'failed' });
+
+    dispatch(payloadMsg, openerFrame.contentWindow);
+
+    expect(result.current.state).toEqual({ phase: 'received', payload });
+  });
+
+  it('sends relay requests on the own window with the channel marker for the extension channel', () => {
+    const { result } = renderHook(() => useCaptureHandoff(true));
+    dispatch({ ...payloadMsg, channel: EXTENSION_CHANNEL }, window);
+    const selfPost = vi.spyOn(window, 'postMessage');
+    openerPost.mockClear();
+
+    act(() => {
+      void result.current.requestRelay('https://img/a.jpg');
+    });
+
+    expect(openerPost).not.toHaveBeenCalled();
+    expect(selfPost).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'relay-request', url: 'https://img/a.jpg', channel: EXTENSION_CHANNEL }),
+      window.location.origin,
+    );
+  });
+
+  it('ignores relay replies from the wrong source or channel, or with a different url', async () => {
+    const { result } = renderHook(() => useCaptureHandoff(true));
+    dispatch(payloadMsg, openerFrame.contentWindow);
+    let promise!: Promise<Blob | null>;
+    act(() => {
+      promise = result.current.requestRelay('https://img/a.jpg');
+    });
+    const { id } = openerPost.mock.calls.at(-1)![0] as { id: string };
+    const image = new Blob(['x'], { type: 'image/png' });
+    const reply = { protocol: CAPTURE_PROTOCOL, type: 'relay-reply', id, url: 'https://img/a.jpg', image };
+    let settled = false;
+    void promise.then(() => { settled = true; });
+
+    dispatch(reply, otherFrame.contentWindow);
+    dispatch({ ...reply, channel: EXTENSION_CHANNEL }, window);
+    dispatch({ ...reply, url: 'https://img/other.jpg' }, openerFrame.contentWindow);
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    dispatch(reply, openerFrame.contentWindow);
+    await expect(promise).resolves.toBe(image);
+  });
+
+  it('stops the ready interval after a payload and on unmount', () => {
+    vi.useFakeTimers();
+    const first = renderHook(() => useCaptureHandoff(true, { readyIntervalMs: 500, timeoutMs: 60000 }));
+    openerPost.mockClear();
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(openerPost).toHaveBeenCalledTimes(2);
+
+    dispatch(payloadMsg, openerFrame.contentWindow);
+    openerPost.mockClear();
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(openerPost).not.toHaveBeenCalled();
+    first.unmount();
+
+    const second = renderHook(() => useCaptureHandoff(true, { readyIntervalMs: 500, timeoutMs: 60000 }));
+    second.unmount();
+    openerPost.mockClear();
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(openerPost).not.toHaveBeenCalled();
+  });
+
+  it('resolves pending relay requests with null on unmount', async () => {
+    const { result, unmount } = renderHook(() => useCaptureHandoff(true));
+    dispatch(payloadMsg, openerFrame.contentWindow);
+    let promise!: Promise<Blob | null>;
+    act(() => {
+      promise = result.current.requestRelay('https://img/a.jpg');
+    });
+
+    unmount();
+
+    await expect(promise).resolves.toBeNull();
+  });
 });
