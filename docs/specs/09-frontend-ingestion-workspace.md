@@ -26,6 +26,9 @@ Actions:
 States:
 - idle/loading/success/error.
 
+## Capture Mode (`/capture`)
+Opened by the bookmarklet or extension (docs/specs/15). Read once at load: when the path is `/capture`, a capture panel appears above the ingest tabs. It shows the waiting state, the handoff-failed instructions, or `Page received from {hostname}` with the URL and an explicit `Extract recipe` button (nothing is sent before the click). After extraction the recipe is adopted with `unhosted`, and images the server could not host are relayed from the capture source and uploaded into their slots without marking the recipe dirty and without overwriting a slot the user filled meanwhile.
+
 ## Load JSON Tab
 Fields:
 - File picker (accepts .json).

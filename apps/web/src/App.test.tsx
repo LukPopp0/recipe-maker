@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CanonicalRecipe } from 'shared';
 import App from './App.tsx';
-import { getMe, getRecipe, ingestUrl, listRecipes } from './api/client.ts';
+import { getMe, getRecipe, ingestCapture, ingestUrl, linkImage, listRecipes, uploadImage } from './api/client.ts';
+import { useCaptureHandoff } from './capture/use-capture-handoff.ts';
 
 vi.mock('./api/client.ts', () => ({
   ingestUrl: vi.fn(),
+  ingestCapture: vi.fn(),
+  uploadImage: vi.fn(),
+  linkImage: vi.fn(),
   listRecipes: vi.fn(),
   getRecipe: vi.fn(),
   deleteRecipe: vi.fn(),
@@ -15,6 +19,10 @@ vi.mock('./api/client.ts', () => ({
   saveRecipe: vi.fn(),
   listUnusedImages: vi.fn(),
   deleteImages: vi.fn(),
+}));
+
+vi.mock('./capture/use-capture-handoff.ts', () => ({
+  useCaptureHandoff: vi.fn(() => ({ state: { phase: 'off' }, requestRelay: vi.fn() })),
 }));
 
 const mockedIngestUrl = vi.mocked(ingestUrl);
@@ -348,5 +356,64 @@ describe('Open in Create', () => {
 
     expect(await screen.findByRole('button', { name: 'Save changes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save as new' })).toBeInTheDocument();
+  });
+
+  describe('capture mode', () => {
+    const PLACEHOLDER = '/images/placeholder-recipe.png';
+    const captureValue = {
+      recipe: { ...RECIPE, main_image: PLACEHOLDER },
+      diagnostics: { extractor: 'capture', model: 'gemini', durationMs: 1 },
+      imageNamespaceId: 'ns-cap',
+      unhosted: [{ slot: 'main' as const, url: 'https://img/a.jpg', warning: 'Main image was not re-hosted: blocked' }],
+    };
+
+    function setup(requestRelay: () => Promise<Blob | null>) {
+      window.history.replaceState(null, '', '/capture');
+      vi.mocked(useCaptureHandoff).mockReturnValue({
+        state: { phase: 'received', payload: { url: 'https://example.com/r', html: '<html></html>' } },
+        requestRelay,
+      });
+      vi.mocked(ingestCapture).mockResolvedValue({ ok: true, value: captureValue });
+    }
+
+    afterEach(() => {
+      window.history.replaceState(null, '', '/');
+      vi.mocked(useCaptureHandoff).mockReturnValue({ state: { phase: 'off' }, requestRelay: vi.fn() });
+    });
+
+    it('enters capture mode on /capture and relays unhosted images after extraction', async () => {
+      const blob = new Blob(['x'], { type: 'image/jpeg' });
+      setup(() => Promise.resolve(blob));
+      vi.mocked(uploadImage).mockResolvedValue({ ok: true, value: { url: '/images/ns-cap/main.jpg' } });
+      render(<App />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Extract recipe' }));
+
+      await waitFor(() => expect(screen.queryByRole('region', { name: 'Add main image' })).not.toBeInTheDocument());
+      expect(uploadImage).toHaveBeenCalledWith('ns-cap', 'main', blob);
+      expect(screen.getByAltText(/main/i)).toHaveAttribute('src', '/images/ns-cap/main.jpg');
+      expect(screen.queryByText('Unsaved changes', { selector: '.workspace-status' })).not.toBeInTheDocument();
+    });
+
+    it('relay never overwrites a slot the user already filled', async () => {
+      let release!: (b: Blob) => void;
+      setup(() => new Promise<Blob>((r) => { release = r; }));
+      vi.mocked(uploadImage).mockResolvedValue({ ok: true, value: { url: '/images/relayed.jpg' } });
+      vi.mocked(linkImage).mockResolvedValue({ ok: true, value: { url: '/images/user.jpg' } });
+      render(<App />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Extract recipe' }));
+      const region = await screen.findByRole('region', { name: 'Add main image' });
+      await userEvent.click(within(region).getByRole('button', { name: 'Link' }));
+      await userEvent.type(within(region).getByLabelText('Image URL'), 'https://example.com/u.jpg');
+      await userEvent.click(within(region).getByRole('button', { name: 'Use link' }));
+      await waitFor(() => expect(screen.queryByRole('region', { name: 'Add main image' })).not.toBeInTheDocument());
+
+      release(new Blob(['x'], { type: 'image/jpeg' }));
+      await waitFor(() => expect(uploadImage).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByAltText(/main/i)).toHaveAttribute('src', '/images/user.jpg');
+    });
   });
 });

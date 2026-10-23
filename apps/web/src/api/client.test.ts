@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanonicalRecipe } from 'shared';
-import { ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadImage, linkImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
+import { ingestCapture, ingestManual, ingestUrl, saveRecipe, updateRecipe, uploadImage, linkImage, validateRecipe, listRecipes, getRecipe, deleteRecipe, getMe, listUnusedImages, deleteImages } from './client.ts';
 
 function jsonResponse(body: unknown, init?: { status?: number }): Response {
   return new Response(JSON.stringify(body), {
@@ -152,6 +152,43 @@ describe('api/client', () => {
       if (!result.ok) {
         expect(result.error.requestId).toBe(sentHeaders['x-request-id']);
       }
+    });
+  });
+
+  describe('ingestCapture', () => {
+    it('posts url, html, mainImageUrl and the main image as a typed file', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ ok: true, requestId: 'r', recipe: fakeRecipe, diagnostics: {}, imageNamespaceId: 'ns', unhosted: [] }),
+      );
+
+      const result = await ingestCapture({
+        url: 'https://example.com/r',
+        html: '<html></html>',
+        mainImageUrl: 'https://example.com/m.png',
+        mainImage: new Blob(['x'], { type: 'image/png' }),
+      });
+
+      expect(result.ok).toBe(true);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('/api/ingest/capture');
+      expect(init.method).toBe('POST');
+      const form = init.body as FormData;
+      expect(form.get('url')).toBe('https://example.com/r');
+      expect(form.get('html')).toBe('<html></html>');
+      expect(form.get('mainImageUrl')).toBe('https://example.com/m.png');
+      const file = form.get('mainImage') as File;
+      expect(file.name).toBe('main-image');
+      expect(file.type).toBe('image/png');
+    });
+
+    it('omits the optional fields when not set', async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true, requestId: 'r' }));
+
+      await ingestCapture({ url: 'https://example.com/r', html: '<html></html>' });
+
+      const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+      expect(form.has('mainImageUrl')).toBe(false);
+      expect(form.has('mainImage')).toBe(false);
     });
   });
 

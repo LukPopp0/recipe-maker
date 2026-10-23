@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { CanonicalRecipe, CurrentUser } from 'shared';
-import { getMe, type IngestDiagnostics } from './api/client.ts';
-import { DEFAULT_PLACEHOLDER_IMAGE_URL } from './lib/image-slots.ts';
+import type { CanonicalRecipe, CurrentUser, ImageSlot, UnhostedImage } from 'shared';
+import { getMe, uploadImage, type CaptureIngestResult, type IngestDiagnostics } from './api/client.ts';
+import { DEFAULT_PLACEHOLDER_IMAGE_URL, isSlotEmpty, setSlotImage } from './lib/image-slots.ts';
+import { useCaptureHandoff } from './capture/use-capture-handoff.ts';
+import { relayUnhostedImages } from './capture/relay-images.ts';
+import { CapturePanel } from './components/ingest/CapturePanel.tsx';
 import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-types.ts';
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
@@ -47,6 +50,10 @@ function statusVariant(state: WorkspaceRecipeState): string {
 
 function App() {
   const [view, setView] = useState<WorkspaceView>('create');
+  // Capture mode (docs/specs/15) is decided once at load: the handoff hook
+  // rewrites the URL to / after receiving the page.
+  const [captureMode] = useState(() => window.location.pathname === '/capture');
+  const { state: handoff, requestRelay } = useCaptureHandoff(captureMode);
   const [recipeState, setRecipeState] = useState<WorkspaceRecipeState>(null);
   const [showCardPreview, setShowCardPreview] = useState(false);
   // Wizard flow (phase 8.5 item 11): the Input stage collapses to a slim row
@@ -75,7 +82,7 @@ function App() {
   // unsaved edits, so confirm first when the current state is dirty (plan
   // decision 12).
   const adoptRecipe = useCallback(
-    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string, sourceId?: string): boolean => {
+    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string, sourceId?: string, unhosted: UnhostedImage[] = []): boolean => {
       if (shouldConfirmReplace(recipeState)) {
         const proceed = window.confirm(
           'Loading a new recipe will discard your unsaved changes. Continue?',
@@ -91,7 +98,7 @@ function App() {
         dirty: false,
         imageNamespaceId: imageNamespaceId ?? crypto.randomUUID(),
         sourceId: sourceId ?? null,
-        unhosted: [],
+        unhosted,
       });
       setShowCardPreview(false);
       setInputCollapsed(true);
@@ -110,6 +117,29 @@ function App() {
     setShowCardPreview(false);
     setInputCollapsed(false);
   }, []);
+
+  // Capture: adopt the recipe, then ask the capture source for the images the
+  // server could not host. Relay results never mark the recipe dirty and never
+  // overwrite a slot the user filled meanwhile or a replaced workspace.
+  const handleCaptureIngested = useCallback(
+    (result: CaptureIngestResult) => {
+      if (!adoptRecipe(result.recipe, result.diagnostics, result.imageNamespaceId, undefined, result.unhosted)) return;
+      void relayUnhostedImages({
+        unhosted: result.unhosted,
+        namespaceId: result.imageNamespaceId,
+        requestRelay,
+        upload: uploadImage,
+        onImage: (slot: ImageSlot, url: string) => {
+          setRecipeState((prev) => {
+            if (!prev || prev.imageNamespaceId !== result.imageNamespaceId) return prev;
+            if (!isSlotEmpty(prev.recipe, slot, placeholderImageUrl)) return prev;
+            return { ...prev, recipe: setSlotImage(prev.recipe, slot, url, { placeholderUrl: placeholderImageUrl, unhosted: prev.unhosted }) };
+          });
+        },
+      });
+    },
+    [adoptRecipe, requestRelay, placeholderImageUrl],
+  );
 
   // Open in Create loads a saved recipe for editing: Save changes updates it
   // in place, Save as new makes a copy.
@@ -200,6 +230,9 @@ function App() {
           ) : null}
         </div>
         <div hidden={inputCollapsed}>
+          {captureMode ? (
+            <CapturePanel handoff={handoff} onExtractStart={handleExtractStart} onIngested={handleCaptureIngested} />
+          ) : null}
           <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} />
         </div>
       </section>
