@@ -59,6 +59,7 @@ function App() {
   // rewrites the URL to / after receiving the page.
   const [captureMode] = useState(() => window.location.pathname === '/capture');
   const { state: handoff, requestRelay } = useCaptureHandoff(captureMode);
+  const [relayRuns, setRelayRuns] = useState(0);
   const [recipeState, setRecipeState] = useState<WorkspaceRecipeState>(null);
   const [showCardPreview, setShowCardPreview] = useState(false);
   // Wizard flow (phase 8.5 item 11): the Input stage collapses to a slim row
@@ -124,11 +125,13 @@ function App() {
   }, []);
 
   // Capture: adopt the recipe, then ask the capture source for the images the
-  // server could not host. Relay results never mark the recipe dirty and never
-  // overwrite a slot the user filled meanwhile or a replaced workspace.
+  // server could not host. Relay results never overwrite a slot the user filled
+  // meanwhile or a replaced workspace; they mark the recipe dirty only after a save.
   const handleCaptureIngested = useCallback(
     (result: CaptureIngestResult) => {
       if (!adoptRecipe(result.recipe, result.diagnostics, result.imageNamespaceId, undefined, result.unhosted)) return;
+      if (result.unhosted.length === 0) return;
+      setRelayRuns((n) => n + 1);
       void relayUnhostedImages({
         unhosted: result.unhosted,
         namespaceId: result.imageNamespaceId,
@@ -148,7 +151,7 @@ function App() {
             };
           });
         },
-      });
+      }).finally(() => setRelayRuns((n) => n - 1));
     },
     [adoptRecipe, requestRelay, placeholderImageUrl],
   );
@@ -300,6 +303,7 @@ function App() {
           <span className="workspace-stage-number" aria-hidden="true">2</span>
           <h2 id="review-panel-heading">Review</h2>
         </div>
+        {relayRuns > 0 ? <p role="status">Fetching images from the recipe tab...</p> : null}
         {recipeState ? (
           <ReviewPanel
             // A replaced recipe gets a new namespace: remount so a pending

@@ -56,6 +56,29 @@ describe('useCaptureHandoff', () => {
     expect(window.location.pathname).toBe('/');
   });
 
+  it('does not clobber /setup when the payload arrives while Setup is shown', () => {
+    window.history.replaceState(null, '', '/setup');
+    const { result } = renderHook(() => useCaptureHandoff(true));
+
+    dispatch(payloadMsg, openerFrame.contentWindow);
+
+    expect(result.current.state).toEqual({ phase: 'received', payload });
+    expect(window.location.pathname).toBe('/setup');
+  });
+
+  it('resolves a relay request with null at once when the opener is gone or closed', async () => {
+    const { result } = renderHook(() => useCaptureHandoff(true));
+    dispatch(payloadMsg, openerFrame.contentWindow);
+    openerPost.mockClear();
+
+    Object.defineProperty(window, 'opener', { value: null, configurable: true });
+    await expect(result.current.requestRelay('https://img/a.jpg')).resolves.toBeNull();
+
+    Object.defineProperty(window, 'opener', { value: { closed: true, postMessage: openerPost }, configurable: true });
+    await expect(result.current.requestRelay('https://img/b.jpg')).resolves.toBeNull();
+    expect(openerPost).not.toHaveBeenCalled();
+  });
+
   it('accepts a payload from its own window only with the extension channel marker', () => {
     const { result } = renderHook(() => useCaptureHandoff(true));
 

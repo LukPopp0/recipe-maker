@@ -24,6 +24,14 @@ describe('SetupPage', () => {
     }
   });
 
+  it('nests sections as h3 and sub-steps as h4 below the panel h2', () => {
+    render(<SetupPage appOrigin={ORIGIN} />);
+    expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0);
+    expect(screen.getAllByRole('heading', { level: 3 }).length).toBeGreaterThanOrEqual(5);
+    expect(screen.getByRole('heading', { level: 4, name: 'Desktop' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'Android' })).toBeInTheDocument();
+  });
+
   it('renders the bookmarklet link with the app origin baked in', () => {
     render(<SetupPage appOrigin={ORIGIN} />);
     const link = screen.getByRole('link', { name: 'Send to Recipe Maker' });

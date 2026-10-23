@@ -395,6 +395,20 @@ describe('Open in Create', () => {
       expect(screen.queryByText('Unsaved changes', { selector: '.workspace-status' })).not.toBeInTheDocument();
     });
 
+    it('shows a status note while images are fetched from the recipe tab', async () => {
+      let release!: (b: Blob | null) => void;
+      setup(() => new Promise<Blob | null>((r) => { release = r; }));
+      render(<App />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Extract recipe' }));
+      const note = await screen.findByText('Fetching images from the recipe tab...');
+      expect(note).toBeVisible();
+      expect(note).toHaveAttribute('role', 'status');
+
+      release(null);
+      await waitFor(() => expect(screen.queryByText('Fetching images from the recipe tab...')).not.toBeInTheDocument());
+    });
+
     it('relay never overwrites a slot the user already filled', async () => {
       let release!: (b: Blob) => void;
       setup(() => new Promise<Blob>((r) => { release = r; }));
@@ -486,6 +500,7 @@ describe('Open in Create', () => {
 
     it('leaving Setup via Library replaces the entry so the view always matches the path', async () => {
       const user = userEvent.setup();
+      vi.mocked(listRecipes).mockResolvedValue({ ok: true, value: { recipes: [] } });
       render(<App />);
       const before = window.history.length;
       await user.click(screen.getByRole('link', { name: 'Setup' }));

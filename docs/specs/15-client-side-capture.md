@@ -22,8 +22,8 @@ Some recipe sites block requests from server and data-center IP addresses (403),
 2. The source collects the page (URL, HTML, optional main image URL and bytes) and opens `/capture` in the app (bookmarklet: new tab with `window.opener` set; extension: app tab with the bridge content script).
 3. The app's `useCaptureHandoff` posts `ready` to `window.opener` (target `'*'`, no data) and `{ ...ready, channel }` to its own window (target `location.origin`), every 500 ms.
 4. The source answers with a `payload` message. The app accepts it only from `window.opener` without a channel marker, or from its own window with `channel === 'recipe-maker-extension'`, and only if `isCaptureMessage` validates it. The first payload wins.
-5. On payload the app replaces `/capture` with `/` in the history and the Create workspace shows `Page received from {hostname}`, the URL and an `Extract recipe` button. Nothing is sent to the server yet.
-6. `Extract recipe` posts `POST /api/ingest/capture` (multipart: `url`, `html`, `mainImageUrl`, `mainImage` as a file named `main-image` with the blob's own type; the server rejects anything but jpeg/png/webp for it and falls back to the image URL). Progress and errors use `StageStatus` / `ErrorBanner` like the URL tab.
+5. On payload the app replaces the `/capture` history entry with `/` (only when the path is still `/capture`, so a Setup page opened meanwhile keeps its URL) and the Create workspace shows `Page received from {hostname}`, the URL and an `Extract recipe` button. Nothing is sent to the server yet.
+6. `Extract recipe` posts `POST /api/ingest/capture` (multipart: `url`, `html`, `mainImageUrl`, `mainImage` as a file named `main-image` with the blob's own type; the blob type is the bare media type, and the server compares the bare lowercased type too). If the server rejects the bytes (not jpeg/png/webp, too large, unreadable) the recipe gets the placeholder and an `unhosted` entry that is relayed in step 8; the image URL is not downloaded by the server. Progress and errors use `StageStatus` / `ErrorBanner` like the URL tab.
 7. The recipe is adopted like any ingestion (`imageNamespaceId`, `unhosted`).
 8. Images the server could not host come back as `unhosted`; the app relays them (below) and uploads each via `POST /api/image/upload`.
 9. The user reviews and saves explicitly as usual.
@@ -37,8 +37,23 @@ For each `unhosted` entry, sequentially, the app sends `relay-request { id, url 
 
 A relayed blob is skipped when null, when it has no `image/*` type, or when its upload fails (the recipe keeps the server's unhosted warning). A successful upload fills the slot through a functional state update that applies only if the workspace still has the same `imageNamespaceId` and the slot is still empty, so it never overwrites an image the user set meanwhile. Relay updates do not mark the recipe dirty, except after the recipe was saved: then the image is a real unsaved change and the workspace shows the unsaved state. A filled slot is also removed from the workspace `unhosted` list. A `relay-reply` is accepted only when both its `id` and `url` match the pending request; on page unmount all pending requests resolve with `null`.
 
-## Bookmarklet and extension
-Filled in by a later task.
+## Message protocol
+All messages are plain objects checked by `isCaptureMessage` (shared/src/capture/protocol.ts), used by both sides. Every message has `protocol: 'recipe-maker-capture/1'`; messages on the extension path also carry `channel: 'recipe-maker-extension'`.
+- `ready` (app to source): no data.
+- `payload` (source to app): `{ url, html, mainImageUrl?, mainImage? }`; `mainImage` is a `Blob`.
+- `relay-request` (app to source): `{ id, url }`.
+- `relay-reply` (source to app): `{ id, url, image }` with `image: Blob | null`.
+Images travel as `Blob` objects (structured clone), never base64, on the opener path. `fetchImageBlob` (shared/src/capture/fetch-image.ts) returns only `image/*` bodies within `CAPTURE_IMAGE_MAX_BYTES`, with the type normalized to the bare lowercased media type (no parameters such as `charset`). Timeouts are listed under Capture flow.
+
+## Bookmarklet
+`runBookmarklet(appOrigin)` (shared/src/capture/bookmarklet.ts) is the whole bookmarklet. `apps/web/scripts/generate-bookmarklet.mjs` bundles `bookmarklet-entry.ts` into a self-contained IIFE (so a `javascript:` run never replaces the page); the app origin token in it is replaced at runtime by the Setup page. It opens `appOrigin + '/capture'` in a new tab, collects the page and the main image in the background, and answers messages:
+- It accepts a message only when `event.origin === appOrigin && event.source === appWindow` and `isCaptureMessage` passes.
+- On `ready` it posts the `payload`; on `relay-request` it fetches the image with the recipe site's session and posts `relay-reply` echoing `id` and `url`.
+- It posts only with `targetOrigin = appOrigin`, never `'*'`, because the messages carry recipe data.
+If the tab cannot be opened it alerts to allow pop-ups. If collection throws it falls back to `{ url, html }`.
+
+## Extension
+Filled in by Task 18 (Firefox/Chrome extension and its bridge content script).
 
 ## Setup page
 `/setup` (header link `Setup`, and the link next to a `URL_FETCH_BLOCKED` error) explains why the tools exist and offers them. The page shows the app origin (`window.location.origin`) so it can be copied into the extension options. Sections:

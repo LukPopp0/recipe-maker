@@ -22,7 +22,16 @@ describe('fetchImageBlob', () => {
     const blob = await fetchImageBlob('u', 100, respond('abc', { headers: { 'content-type': 'image/jpeg; charset=x' } }));
     expect(blob).toBeInstanceOf(Blob);
     expect(blob?.size).toBe(3);
-    expect(blob?.type.startsWith('image/jpeg')).toBe(true);
+    expect(blob?.type).toBe('image/jpeg');
+  });
+
+  it('normalizes a parameterised or upper-case blob type to the bare media type', async () => {
+    const fake = (async () => ({
+      ok: true,
+      headers: new Headers({ 'content-type': 'Image/JPEG;charset=utf-8' }),
+      blob: async () => new Blob(['abc'], { type: 'image/jpeg;charset=utf-8' }),
+    })) as unknown as typeof fetch;
+    expect((await fetchImageBlob('u', 100, fake))?.type).toBe('image/jpeg');
   });
 
   it('wraps a typeless blob with the header image type', async () => {

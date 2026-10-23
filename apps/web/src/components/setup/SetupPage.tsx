@@ -48,7 +48,7 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
   return (
     <div className="setup-page">
       <section aria-labelledby="setup-why">
-        <h2 id="setup-why">Why this exists</h2>
+        <h3 id="setup-why">Why this exists</h3>
         <p>
           Many recipe sites block servers, so Recipe Maker cannot fetch them itself. Your browser can see the page,
           so these tools let your browser send it to Recipe Maker instead. Use the bookmarklet or an extension on
@@ -60,7 +60,7 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
       </section>
 
       <section aria-labelledby="setup-bookmarklet">
-        <h2 id="setup-bookmarklet">Bookmarklet (desktop)</h2>
+        <h3 id="setup-bookmarklet">Bookmarklet (desktop)</h3>
         <p>
           Drag this link to your bookmarks bar: <a ref={linkRef} href="#setup-bookmarklet" className="setup-bookmarklet" onClick={(e) => e.preventDefault()}>Send to Recipe Maker</a>
         </p>
@@ -72,7 +72,7 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
       </section>
 
       <section aria-labelledby="setup-chrome-android">
-        <h2 id="setup-chrome-android">Bookmarklet (Chrome on Android)</h2>
+        <h3 id="setup-chrome-android">Bookmarklet (Chrome on Android)</h3>
         <ol>
           <li>
             <button type="button" className="btn btn-sm" onClick={() => void copy()}>
@@ -106,17 +106,17 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
       </section>
 
       <section aria-labelledby="setup-firefox">
-        <h2 id="setup-firefox">Firefox extension (desktop and Android)</h2>
+        <h3 id="setup-firefox">Firefox extension (desktop and Android)</h3>
         <p>
           <a href={XPI_URL}>Download recipe-maker.xpi</a>
         </p>
-        <h3>Desktop</h3>
+        <h4>Desktop</h4>
         <ol>
           <li>Open the downloaded .xpi file in Firefox and confirm the install.</li>
           <li>Firefox asks to grant access to all sites; the extension needs it to read the recipe page.</li>
           <li>Open the extension options and enter the Recipe Maker address shown above.</li>
         </ol>
-        <h3>Android</h3>
+        <h4>Android</h4>
         <ol>
           <li>Download the .xpi file.</li>
           <li>In Firefox open Settings, then About Firefox, and tap the Firefox logo 5 times to enable the debug menu.</li>
@@ -130,7 +130,7 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
       </section>
 
       <section aria-labelledby="setup-chrome">
-        <h2 id="setup-chrome">Chrome extension (desktop)</h2>
+        <h3 id="setup-chrome">Chrome extension (desktop)</h3>
         <p>
           <a href={CHROME_ZIP_URL}>Download recipe-maker-chrome.zip</a>
         </p>

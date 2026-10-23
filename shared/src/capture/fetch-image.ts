@@ -13,7 +13,8 @@ export async function fetchImageBlob(
     if (Number.isFinite(declared) && declared > maxBytes) return null;
     const blob = await res.blob();
     if (blob.size > maxBytes) return null;
-    return blob.type.startsWith('image/') ? blob : new Blob([blob], { type });
+    // Always the bare media type: a Blob type may carry parameters (image/jpeg;charset=x).
+    return blob.type === type ? blob : new Blob([blob], { type });
   } catch {
     return null;
   }

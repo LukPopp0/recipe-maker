@@ -69,7 +69,8 @@ export function useCaptureHandoff(
         if (sourceRef.current !== null) return;
         sourceRef.current = source;
         stop();
-        window.history.replaceState(null, '', '/');
+        // Only the capture entry is replaced; never clobber /setup if it is shown.
+        if (window.location.pathname === '/capture') window.history.replaceState(null, '', '/');
         setState({ phase: 'received', payload: message.payload });
       } else if (message.type === 'relay-reply') {
         if (source !== sourceRef.current) return;
@@ -108,6 +109,8 @@ export function useCaptureHandoff(
     (url: string): Promise<Blob | null> => {
       const source = sourceRef.current;
       if (source === null) return Promise.resolve(null);
+      // A closed or missing opener can never answer: do not wait out the timeout.
+      if (source === 'opener' && (!window.opener || window.opener.closed)) return Promise.resolve(null);
       const id = crypto.randomUUID();
       return new Promise((resolve) => {
         const timer = window.setTimeout(() => {
