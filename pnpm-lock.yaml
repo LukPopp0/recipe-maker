@@ -108,6 +108,9 @@ importers:
 
   extension:
     devDependencies:
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
       typescript:
         specifier: ~6.0.2
         version: 6.0.3

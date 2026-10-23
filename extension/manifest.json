@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Send to Recipe Maker",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "action": { "default_title": "Send to Recipe Maker" },
   "background": { "service_worker": "background.js", "scripts": ["background.js"] },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
   "permissions": ["scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "browser_specific_settings": {

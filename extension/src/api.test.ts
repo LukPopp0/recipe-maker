@@ -22,3 +22,9 @@ describe('getExtensionApi', () => {
     expect(getExtensionApi()).toBe(chrome);
   });
 });
+
+describe('getExtensionApi without a WebExtension API', () => {
+  it('throws a clear error', () => {
+    expect(() => getExtensionApi()).toThrow(/neither `browser` nor `chrome`/);
+  });
+});

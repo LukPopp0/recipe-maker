@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Send to Recipe Maker</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 16px; max-width: 32rem; }
+      label { display: block; font-weight: 600; margin-bottom: 4px; }
+      input { width: 100%; box-sizing: border-box; padding: 8px; font-size: 1rem; }
+      button { margin-top: 12px; padding: 8px 16px; font-size: 1rem; }
+      p { line-height: 1.4; }
+    </style>
+  </head>
+  <body>
+    <h1>Send to Recipe Maker</h1>
+    <label for="address">Recipe Maker address</label>
+    <input id="address" type="url" placeholder="https://recipes.example" autocomplete="off" />
+    <button id="save" type="button">Save</button>
+    <p id="status" role="status"></p>
+    <p>Firefox asks you to allow access to all websites. The extension needs it to read recipe pages and their images.</p>
+    <script src="options.js"></script>
+  </body>
+</html>

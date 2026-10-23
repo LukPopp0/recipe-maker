@@ -1,17 +1,19 @@
 {
   "name": "extension",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "package": "node scripts/build.mjs && node scripts/package.mjs"
   },
   "devDependencies": {
     "typescript": "~6.0.2",
     "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "jsdom": "^29.1.1"
   }
 }
