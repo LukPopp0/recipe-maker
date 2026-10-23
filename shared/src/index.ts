@@ -10,15 +10,15 @@ export {
 export type { Ingredient, Step, Metadata } from './schema/canonical-recipe.js';
 export type { CanonicalRecipe } from './contracts/canonical-recipe.js';
 
-export { IngestUrlRequestSchema, SaveRecipeRequestSchema, RecipeIdSchema } from './schema/requests.js';
-export type { IngestUrlRequest, SaveRecipeRequest, RecipeId } from './schema/requests.js';
+export { IngestUrlRequestSchema, SaveRecipeRequestSchema, RecipeIdSchema, ImageSlotSchema, LinkImageRequestSchema } from './schema/requests.js';
+export type { IngestUrlRequest, SaveRecipeRequest, RecipeId, LinkImageRequest } from './schema/requests.js';
 
 export { ERROR_CODES } from './contracts/envelope.js';
 export type { ErrorCode, ApiError, ApiSuccessEnvelope, ApiErrorEnvelope, ApiResponse } from './contracts/envelope.js';
 
 export type { RecipeMeta, RecipeSummary, LibraryScope } from './contracts/recipe-repository.js';
 export type { CurrentUser } from './contracts/user.js';
-export type { UnusedImage } from './contracts/images.js';
+export type { UnusedImage, ImageSlot, UnhostedImage } from './contracts/images.js';
 
 export { amountContainsUnit, formatIngredientAmount } from './lib/ingredient-amount.js';
 

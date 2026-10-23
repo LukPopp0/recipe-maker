@@ -37,6 +37,10 @@ Implementations:
      already shows (or another recipe's, via a shared namespace), and the URL
      changes so browsers never serve a cached old image. Replaced files become
      unreferenced and the admin "Unused images" cleanup removes them.
+   - user-driven paths (`/api/image/upload`, `/api/image/link`, capture
+     main-image bytes): recipes/{namespace}/{main-0|step-i}-{8 hex}.jpg, a new
+     key per change, never overwriting. Ingest re-hosting keeps
+     {kind}-{index}.jpg in its fresh per-ingest namespace.
    The extension is always `.jpg` (the key is rewritten whatever the source
    format) and the stored content type is `image/jpeg`.
 5. Store image and return hosted URL.
@@ -80,7 +84,9 @@ generic image-download error result.
 
 ## Failure Behavior
 - If non-critical image download fails, keep recipe and attach warning.
-- If main image required by design but missing, keep null and show warning.
+- On all ingest routes, a main image that cannot be hosted becomes the placeholder
+  (`DEFAULT_MAIN_IMAGE_URL` or `/images/placeholder-recipe.png`) with a warning.
+- A step image that cannot be hosted is dropped with a warning.
 
 ## Acceptance Criteria
 - Hosted URLs are stable across sessions.

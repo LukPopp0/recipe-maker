@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import dns from 'node:dns';
 import path from 'node:path';
 import type { ApiErrorEnvelope, ApiSuccessEnvelope } from 'shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -139,5 +140,167 @@ describe('POST /api/image/step', () => {
     expect(res.status).toBe(400);
     expect(body.error.code).toBe('INVALID_INPUT');
     expect(body.error.message).toMatch(/"file"/);
+  });
+});
+
+describe('POST /api/image/upload and /api/image/link', () => {
+  let dataDir: string;
+  let imageDir: string;
+
+  beforeEach(async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'image-slot-recipes-'));
+    imageDir = await mkdtemp(path.join(tmpdir(), 'image-slot-images-'));
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address: '93.184.216.34', family: 4 }] as never);
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    await rm(dataDir, { recursive: true, force: true });
+    await rm(imageDir, { recursive: true, force: true });
+  });
+
+  function makeApp() {
+    const env = loadServerEnv({ RECIPE_DATA_DIR: dataDir, IMAGE_DATA_DIR: imageDir, BROWSER_FALLBACK_ENABLED: 'false' });
+    return createApp({
+      env,
+      checkStorageReady: () => true,
+      recipeRepository: new LocalJsonFileRecipeRepository(dataDir),
+      geminiClient: { generateCanonicalRecipe: vi.fn() } as unknown as GeminiClient,
+      geminiConfig: loadGeminiConfig({}),
+      storageAdapter: new LocalDiskStorageAdapter(env.IMAGE_DATA_DIR, env.PUBLIC_BASE_URL),
+      defaultMainImageUrl: '/images/placeholder-recipe.png',
+    });
+  }
+
+  function upload(app: ReturnType<typeof makeApp>, slot: string) {
+    const form = new FormData();
+    form.set('namespaceId', NAMESPACE);
+    form.set('slot', slot);
+    form.set('file', new File([new Uint8Array([1, 2, 3, 4])], 'p.png', { type: 'image/png' }));
+    return app.request('/api/image/upload', { method: 'POST', body: form });
+  }
+
+  function link(app: ReturnType<typeof makeApp>, payload: unknown) {
+    return app.request('/api/image/link', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  function stubFetch(response: () => Response) {
+    vi.stubGlobal('fetch', vi.fn(async () => response()));
+  }
+
+  const png = () => new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/png' } });
+
+  it('hosts an upload for the main slot under main-0-{suffix}', async () => {
+    const res = await upload(makeApp(), 'main');
+    const body = (await res.json()) as UploadSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.url).toMatch(new RegExp(`/images/recipes/${NAMESPACE}/main-0-[0-9a-f]{8}\\.png$`));
+  });
+
+  it('hosts an upload for a step slot', async () => {
+    const res = await upload(makeApp(), '3');
+    const body = (await res.json()) as UploadSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.url).toMatch(/step-3-[0-9a-f]{8}\.png$/);
+  });
+
+  it.each(['cover', '6', '', '-1', '1.5'])('rejects upload slot %j with 400 INVALID_INPUT', async (slot) => {
+    const res = await upload(makeApp(), slot);
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('rejects an invalid link slot with 400 INVALID_INPUT', async () => {
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: 'cover', url: 'https://remote.example.com/a.png' });
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('downloads a linked image into the main slot with a new key each time', async () => {
+    stubFetch(png);
+    const app = makeApp();
+    const payload = { namespaceId: NAMESPACE, slot: 'main', url: 'https://remote.example.com/a.png' };
+
+    const first = (await (await link(app, payload)).json()) as UploadSuccess;
+    const second = (await (await link(app, payload)).json()) as UploadSuccess;
+
+    expect(first.url).toMatch(new RegExp(`/images/recipes/${NAMESPACE}/main-0-[0-9a-f]{8}\\.png$`));
+    expect(second.url).not.toBe(first.url);
+  });
+
+  it.each([['empty string', ''], ['null', null], ['false', false], ['blank string', ' '], ['array', []]])(
+    'rejects a link slot of %s with 400 INVALID_INPUT',
+    async (_name, slot) => {
+      stubFetch(png);
+      const res = await link(makeApp(), { namespaceId: NAMESPACE, slot, url: 'https://remote.example.com/a.png' });
+      const body = (await res.json()) as ApiErrorEnvelope;
+
+      expect(res.status).toBe(400);
+      expect(body.error.code).toBe('INVALID_INPUT');
+    },
+  );
+
+  it('accepts a numeric-string link slot', async () => {
+    stubFetch(png);
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: '2', url: 'https://remote.example.com/a.png' });
+    const body = (await res.json()) as UploadSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.url).toMatch(/step-2-[0-9a-f]{8}\.png$/);
+  });
+
+  it('downloads a linked image into a step slot', async () => {
+    stubFetch(png);
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: 2, url: 'https://remote.example.com/a.png' });
+    const body = (await res.json()) as UploadSuccess;
+
+    expect(res.status).toBe(200);
+    expect(body.url).toMatch(/step-2-[0-9a-f]{8}\.png$/);
+  });
+
+  it('rejects a linked image with an unsupported type', async () => {
+    stubFetch(() => new Response(new Uint8Array([1]), { status: 200, headers: { 'content-type': 'image/avif' } }));
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: 'main', url: 'https://remote.example.com/a.avif' });
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(502);
+    expect(body.error.code).toBe('IMAGE_DOWNLOAD_FAILED');
+    expect(body.error.message).toContain('unsupported content type "image/avif"');
+    expect(body.error.message).toMatch(/^Could not download the image: /);
+    expect(body.error.message).not.toContain('not re-hosted');
+  });
+
+  it.each([401, 403])('returns the paste hint when the linked image answers %i', async (status) => {
+    stubFetch(() => new Response('', { status }));
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: 'main', url: 'https://remote.example.com/a.png' });
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(502);
+    expect(body.error).toMatchObject({
+      code: 'IMAGE_DOWNLOAD_FAILED',
+      message: 'This site blocks downloads, copy the image and paste it instead.',
+      details: { status },
+    });
+  });
+
+  it('rejects a linked URL that resolves to a private address with INVALID_URL', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address: '10.0.0.5', family: 4 }] as never);
+    const res = await link(makeApp(), { namespaceId: NAMESPACE, slot: 'main', url: 'https://internal.example.com/a.png' });
+    const body = (await res.json()) as ApiErrorEnvelope;
+
+    expect(res.status).toBe(400);
+    expect(body.error.code).toBe('INVALID_URL');
+    expect(body.error.message).toBe('The image URL is invalid or points to a blocked address.');
   });
 });
