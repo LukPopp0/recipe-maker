@@ -10,12 +10,13 @@ Define the concrete architecture for a secure, maintainable recipe ingestion and
 
 ## Repository Structure
 
-This is a pnpm workspace with three sibling packages: `/apps/web` (package `web`),
-`/server` (package `server`), `/shared` (package `shared`).
+This is a pnpm workspace with sibling packages: `/apps/web` (package `web`),
+`/server` (package `server`), `/shared` (package `shared`), `/extension` (package `extension`).
 
 ## Top-level
 - /apps/web: frontend application (package `web`).
 - /server: backend API service (package `server`).
+- /extension: "Send to Recipe Maker" browser extension for Firefox and Chrome (package `extension`, see spec 15).
 - /shared: shared types, validators, constants (package `shared`).
 - /shared/assets/ingredients: shared ingredient image source-of-truth used by frontend and backend.
 - /plans: implementation plans.

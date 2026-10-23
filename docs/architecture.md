@@ -22,6 +22,9 @@ This is a pnpm workspace ([spec 01](specs/01-system-architecture.md)).
   card renderer.
 - `server` - Hono backend (`server/src`): routes, middleware, and `services/`
   for ingestion, AI, post-processing, storage and recipes.
+- `extension` - the "Send to Recipe Maker" browser extension (Firefox and
+  Chrome, MV3). It is not part of the Docker image. See
+  [spec 15](specs/15-client-side-capture.md).
 - `shared` - types, the Zod recipe schema, error codes and constants (pantry
   allowlist, tag vocabulary) used by both sides, plus the ingredient image
   catalog in `shared/assets/ingredients`. See
