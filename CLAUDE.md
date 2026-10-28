@@ -6,6 +6,10 @@ canonical JSON schema (max 6 steps, pantry split, ingredient image matching), le
 user save/browse recipes, and renders a printable two-page recipe card.
 
 ## Status
+IN PROGRESS - client-side capture (bookmarklet + browser extension): when the
+user says "continue", "what's next" or similar without more context, read
+`private/plans/capture/HANDOFF.md` first; it has the state, the next steps and
+how to resume. Do not redo tasks the ledger it names marks complete.
 Phases 0-7 are done: repo cleanup, shared contracts, both ingestion pipelines
 (`/api/ingest/url`, `/api/ingest/manual`), ingredient image matching, recipe CRUD
 routes, Milestone 1 frontend (Create workspace with URL/Manual/Load JSON
