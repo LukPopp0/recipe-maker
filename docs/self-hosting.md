@@ -414,6 +414,14 @@ so test it after this step: open `https://recipes.example.com` in a private
 window, you land on the tinyauth login page, and after logging in you are
 back in the app with your username in the header.
 
+## Sites that block the server
+
+Many recipe sites block datacenter IPs, so URL ingestion can fail with
+"URL_FETCH_BLOCKED". The fix is the "Send to Recipe Maker" button: a
+bookmarklet or browser extension that sends the page from the user's own
+browser. The setup page at `/setup` explains how to install it. No extra
+server configuration is needed.
+
 ## Without a login service
 
 On a trusted home network you can skip tinyauth and nginx. Then there is no

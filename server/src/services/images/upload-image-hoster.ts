@@ -27,7 +27,9 @@ export async function hostUploadedImage(
 ): Promise<{ url: string } | { warning: string }> {
   const { recipeId, storageAdapter, maxBytes, kind, index } = options;
 
-  const ext = ALLOWED_CONTENT_TYPES[file.contentType];
+  // Bare lowercased media type: clients may send parameters (image/jpeg; charset=x).
+  const contentType = file.contentType.split(';')[0].trim().toLowerCase();
+  const ext = ALLOWED_CONTENT_TYPES[contentType];
   if (!ext) {
     return {
       warning: `"${file.filename}" was not uploaded: unsupported content type "${file.contentType || 'unknown'}".`,
@@ -48,7 +50,7 @@ export async function hostUploadedImage(
   const key = `recipes/${recipeId}/${kind}-${index}-${suffix}.${ext}`;
   let url: string;
   try {
-    url = await storageAdapter.put(file.buffer, key, file.contentType);
+    url = await storageAdapter.put(file.buffer, key, contentType);
   } catch (err) {
     if (err instanceof ImageDecodeError) {
       return { warning: `"${file.filename}" was not uploaded: the file is not a readable image.` };

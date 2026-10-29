@@ -42,6 +42,22 @@ describe('hostUploadedImage', () => {
     );
   });
 
+  it('accepts a content type with parameters and mixed case', async () => {
+    const storageAdapter = makeStorageAdapter();
+    const file = makeFile({ contentType: 'Image/JPEG; charset=utf-8' });
+
+    const result = await hostUploadedImage(file, {
+      recipeId: 'recipe-1',
+      storageAdapter,
+      maxBytes: 1024,
+      kind: 'main',
+      index: 0,
+    });
+
+    expect(result).toHaveProperty('url');
+    expect(storageAdapter.put).toHaveBeenCalledWith(file.buffer, expect.stringMatching(/\.jpg$/), 'image/jpeg');
+  });
+
   it('hosts a valid png buffer and returns the hosted URL', async () => {
     const storageAdapter = makeStorageAdapter();
     const file = makeFile({ contentType: 'image/png', filename: 'photo.png' });

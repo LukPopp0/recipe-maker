@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 shared/src/generated
+apps/web/src/generated
 server/data/recipes
 server/data/db
 server/data/images

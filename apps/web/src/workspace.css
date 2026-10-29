@@ -49,6 +49,10 @@
   cursor: pointer;
 }
 
+.workspace-nav-item {
+  text-decoration: none;
+}
+
 .workspace-nav-item[aria-current='page'] {
   background: var(--color-surface);
   color: var(--color-accent);
@@ -1078,4 +1082,48 @@
 .image-control-paste:empty::before {
   content: attr(data-placeholder);
   color: var(--color-text-muted);
+}
+
+.url-tab-setup-link {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.setup-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 48rem;
+}
+
+.setup-page h2 {
+  margin-bottom: var(--space-2);
+}
+
+.setup-page ol {
+  padding-left: var(--space-5);
+}
+
+.setup-bookmarklet {
+  display: inline-block;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: grab;
+}
+
+.setup-origin {
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+.setup-code-fallback {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  font-family: monospace;
+  font-size: var(--font-size-xs);
 }

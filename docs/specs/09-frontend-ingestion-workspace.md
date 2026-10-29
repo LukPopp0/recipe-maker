@@ -26,6 +26,12 @@ Actions:
 States:
 - idle/loading/success/error.
 
+## Capture Mode (`/capture`)
+Opened by the bookmarklet or extension (docs/specs/15). Read once at load: when the path is `/capture`, a capture panel appears above the ingest tabs. It shows the waiting state, the handoff-failed instructions, or `Page received from {hostname}` with the URL and an explicit `Extract recipe` button (nothing is sent before the click). After extraction the recipe is adopted with `unhosted`, and images the server could not host are relayed from the capture source and uploaded into their slots without overwriting a slot the user filled meanwhile. Relayed images do not mark the recipe dirty, except after a save: then the image is a real unsaved change (docs/specs/15 Relay). While a relay run is in progress the Review panel shows `Fetching images from the recipe tab...` (role status), and a relay to a closed or missing opener resolves at once.
+
+## Setup Page (`/setup`)
+There is no router library. `App.tsx` reads `location.pathname` at load: `/setup` opens the setup page (docs/specs/15). The header `Setup` link and the `Set up Send to Recipe Maker` link shown next to a `URL_FETCH_BLOCKED` error open it with `history.pushState({}, '', '/setup')`, remembering the previous view; a `popstate` listener returns to that view when the path is no longer `/setup`. Create and Library keep switching by state; choosing one while on Setup replaces the `/setup` entry with `/` (`history.replaceState`), and `popstate` keeps view and path in sync both ways (Back and Forward). Opening Setup while already on it pushes nothing.
+
 ## Load JSON Tab
 Fields:
 - File picker (accepts .json).

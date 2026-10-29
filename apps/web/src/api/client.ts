@@ -5,11 +5,13 @@ import type {
   ApiErrorEnvelope,
   ApiResponse,
   CanonicalRecipe,
+  CapturePayload,
   CurrentUser,
   ImageSlot,
   LibraryScope,
   RecipeMeta,
   RecipeSummary,
+  UnhostedImage,
   UnusedImage,
 } from 'shared';
 
@@ -116,6 +118,26 @@ export async function ingestUrl(url: string): Promise<ClientResult<IngestResult>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
+  });
+}
+
+export type CaptureIngestResult = IngestResult & { unhosted: UnhostedImage[] }
+
+// Posts a page captured by the user's own browser (bookmarklet / extension).
+export async function ingestCapture(payload: CapturePayload): Promise<ClientResult<CaptureIngestResult>> {
+  const formData = new FormData();
+  formData.append('url', payload.url);
+  formData.append('html', payload.html);
+  if (payload.mainImageUrl) {
+    formData.append('mainImageUrl', payload.mainImageUrl);
+  }
+  // The server checks the file type, so the part always carries the blob's own image/* type.
+  if (payload.mainImage) {
+    formData.append('mainImage', new File([payload.mainImage], 'main-image', { type: payload.mainImage.type }));
+  }
+  return request<CaptureIngestResult>('/api/ingest/capture', {
+    method: 'POST',
+    body: formData,
   });
 }
 

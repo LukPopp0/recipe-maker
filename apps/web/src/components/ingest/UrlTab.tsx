@@ -19,9 +19,11 @@ function isValidHttpUrl(value: string): boolean {
 export function UrlTab({
   onRecipe,
   onExtractStart,
+  onOpenSetup,
 }: {
   onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string) => void
   onExtractStart: () => void
+  onOpenSetup: () => void
 }) {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<IngestStatus>({ phase: 'idle' });
@@ -98,6 +100,18 @@ export function UrlTab({
       <StageStatus status={status} />
       {status.phase === 'error' ? (
         <ErrorBanner error={status.error} onRetry={handleRetry} onDismiss={handleDismiss} />
+      ) : null}
+      {status.phase === 'error' && status.error.code === 'URL_FETCH_BLOCKED' ? (
+        <a
+          href="/setup"
+          className="url-tab-setup-link"
+          onClick={(event) => {
+            event.preventDefault();
+            onOpenSetup();
+          }}
+        >
+          Set up Send to Recipe Maker
+        </a>
       ) : null}
     </form>
   );

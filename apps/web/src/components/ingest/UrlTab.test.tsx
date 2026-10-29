@@ -39,7 +39,7 @@ describe('UrlTab', () => {
 
   it('disables the submit button when the URL field is empty or whitespace', async () => {
     const user = userEvent.setup();
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} onOpenSetup={vi.fn()} />);
 
     const button = screen.getByRole('button', { name: /extract recipe/i });
     const input = screen.getByLabelText(/recipe url/i);
@@ -52,7 +52,7 @@ describe('UrlTab', () => {
 
   it('shows an inline error for an obviously invalid URL without calling the client', async () => {
     const user = userEvent.setup();
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} onOpenSetup={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'not-a-url');
@@ -64,7 +64,7 @@ describe('UrlTab', () => {
 
   it('shows an inline error for a non-http(s) URL without calling the client', async () => {
     const user = userEvent.setup();
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} onOpenSetup={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'ftp://example.com/recipe');
@@ -82,7 +82,7 @@ describe('UrlTab', () => {
       value: { recipe: RECIPE, diagnostics: { extractor: 'url', model: 'gemini', durationMs: 100 }, imageNamespaceId: 'ns-test' },
     });
 
-    render(<UrlTab onRecipe={onRecipe} onExtractStart={vi.fn()} />);
+    render(<UrlTab onRecipe={onRecipe} onExtractStart={vi.fn()} onOpenSetup={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'https://example.com/recipe');
@@ -99,7 +99,7 @@ describe('UrlTab', () => {
     const pending = deferred<Awaited<ReturnType<typeof ingestUrl>>>();
     mockedIngestUrl.mockReturnValueOnce(pending.promise);
 
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} onOpenSetup={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'https://example.com/recipe');
@@ -124,7 +124,7 @@ describe('UrlTab', () => {
       error: { code: 'URL_EXTRACTION_FAILED', message: 'Could not extract that recipe.' },
     });
 
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} onOpenSetup={vi.fn()} />);
 
     const input = screen.getByLabelText(/recipe url/i);
     await user.type(input, 'https://example.com/recipe');
@@ -148,7 +148,7 @@ describe('UrlTab', () => {
     const pending = deferred<Awaited<ReturnType<typeof ingestUrl>>>();
     mockedIngestUrl.mockReturnValueOnce(pending.promise);
 
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={onExtractStart} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={onExtractStart} onOpenSetup={vi.fn()} />);
 
     await user.type(screen.getByLabelText(/recipe url/i), 'https://example.com/recipe');
     await user.click(screen.getByRole('button', { name: /extract recipe/i }));
@@ -165,12 +165,27 @@ describe('UrlTab', () => {
   it('does not fire onExtractStart when validation fails (item 5)', async () => {
     const user = userEvent.setup();
     const onExtractStart = vi.fn();
-    render(<UrlTab onRecipe={vi.fn()} onExtractStart={onExtractStart} />);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={onExtractStart} onOpenSetup={vi.fn()} />);
 
     await user.type(screen.getByLabelText(/recipe url/i), 'not-a-url');
     await user.click(screen.getByRole('button', { name: /extract recipe/i }));
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(onExtractStart).not.toHaveBeenCalled();
+  });
+
+  it('offers the setup link for URL_FETCH_BLOCKED', async () => {
+    const user = userEvent.setup();
+    const onOpenSetup = vi.fn();
+    mockedIngestUrl.mockResolvedValue({
+      ok: false,
+      error: { code: 'URL_FETCH_BLOCKED', message: 'blocked', retryable: false },
+    } as never);
+    render(<UrlTab onRecipe={vi.fn()} onExtractStart={vi.fn()} onOpenSetup={onOpenSetup} />);
+
+    await user.type(screen.getByLabelText(/recipe url/i), 'https://example.com/r');
+    await user.click(screen.getByRole('button', { name: /extract recipe/i }));
+    await user.click(await screen.findByRole('link', { name: 'Set up Send to Recipe Maker' }));
+    expect(onOpenSetup).toHaveBeenCalledTimes(1);
   });
 });

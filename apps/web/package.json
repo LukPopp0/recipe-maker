@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/generate-bookmarklet.mjs && tsc -b && vite build",
     "typecheck": "tsc -b",
+    "generate:bookmarklet": "node scripts/generate-bookmarklet.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",

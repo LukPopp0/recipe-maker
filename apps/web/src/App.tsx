@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { CanonicalRecipe, CurrentUser } from 'shared';
-import { getMe, type IngestDiagnostics } from './api/client.ts';
-import { DEFAULT_PLACEHOLDER_IMAGE_URL } from './lib/image-slots.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CanonicalRecipe, CurrentUser, ImageSlot, UnhostedImage } from 'shared';
+import { getMe, uploadImage, type CaptureIngestResult, type IngestDiagnostics } from './api/client.ts';
+import { DEFAULT_PLACEHOLDER_IMAGE_URL, isSlotEmpty, setSlotImage } from './lib/image-slots.ts';
+import { useCaptureHandoff } from './capture/use-capture-handoff.ts';
+import { relayUnhostedImages } from './capture/relay-images.ts';
+import { CapturePanel } from './components/ingest/CapturePanel.tsx';
 import { shouldConfirmReplace, type WorkspaceRecipeState } from './workspace-types.ts';
 import { IngestTabs } from './components/ingest/IngestTabs.tsx';
 import { ReviewPanel } from './components/review/ReviewPanel.tsx';
@@ -10,9 +13,11 @@ import { ActionTray } from './components/ActionTray.tsx';
 import { useTheme } from './lib/use-theme.ts';
 import { LibraryPanel } from './components/library/LibraryPanel.tsx';
 import { CardView } from './components/card/CardView.tsx';
+import { SetupPage } from './components/setup/SetupPage.tsx';
 
-// Nav is local-state only (plan decision 11) - no router yet.
-type WorkspaceView = 'create' | 'library';
+// Nav is local-state only (plan decision 11) - no router. Only /setup gets a
+// pushed path (docs/specs/15); popstate returns to the previous view.
+type WorkspaceView = 'create' | 'library' | 'setup';
 
 // Hides Create panels behind the card preview (or Library view) via inline
 // style rather than the `hidden` attribute: `hidden` (and CSS visibility)
@@ -46,7 +51,15 @@ function statusVariant(state: WorkspaceRecipeState): string {
 }
 
 function App() {
-  const [view, setView] = useState<WorkspaceView>('create');
+  const [view, setView] = useState<WorkspaceView>(() =>
+    window.location.pathname === '/setup' ? 'setup' : 'create',
+  );
+  const previousViewRef = useRef<WorkspaceView>('create');
+  // Capture mode (docs/specs/15) is decided once at load: the handoff hook
+  // rewrites the URL to / after receiving the page.
+  const [captureMode] = useState(() => window.location.pathname === '/capture');
+  const { state: handoff, requestRelay } = useCaptureHandoff(captureMode);
+  const [relayRuns, setRelayRuns] = useState(0);
   const [recipeState, setRecipeState] = useState<WorkspaceRecipeState>(null);
   const [showCardPreview, setShowCardPreview] = useState(false);
   // Wizard flow (phase 8.5 item 11): the Input stage collapses to a slim row
@@ -75,7 +88,7 @@ function App() {
   // unsaved edits, so confirm first when the current state is dirty (plan
   // decision 12).
   const adoptRecipe = useCallback(
-    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string, sourceId?: string): boolean => {
+    (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string, sourceId?: string, unhosted: UnhostedImage[] = []): boolean => {
       if (shouldConfirmReplace(recipeState)) {
         const proceed = window.confirm(
           'Loading a new recipe will discard your unsaved changes. Continue?',
@@ -91,7 +104,7 @@ function App() {
         dirty: false,
         imageNamespaceId: imageNamespaceId ?? crypto.randomUUID(),
         sourceId: sourceId ?? null,
-        unhosted: [],
+        unhosted,
       });
       setShowCardPreview(false);
       setInputCollapsed(true);
@@ -110,6 +123,38 @@ function App() {
     setShowCardPreview(false);
     setInputCollapsed(false);
   }, []);
+
+  // Capture: adopt the recipe, then ask the capture source for the images the
+  // server could not host. Relay results never overwrite a slot the user filled
+  // meanwhile or a replaced workspace; they mark the recipe dirty only after a save.
+  const handleCaptureIngested = useCallback(
+    (result: CaptureIngestResult) => {
+      if (!adoptRecipe(result.recipe, result.diagnostics, result.imageNamespaceId, undefined, result.unhosted)) return;
+      if (result.unhosted.length === 0) return;
+      setRelayRuns((n) => n + 1);
+      void relayUnhostedImages({
+        unhosted: result.unhosted,
+        namespaceId: result.imageNamespaceId,
+        requestRelay,
+        upload: uploadImage,
+        onImage: (slot: ImageSlot, url: string) => {
+          setRecipeState((prev) => {
+            if (!prev || prev.imageNamespaceId !== result.imageNamespaceId) return prev;
+            if (!isSlotEmpty(prev.recipe, slot, placeholderImageUrl)) return prev;
+            // Before a save the image is part of the fresh extraction (stays
+            // not dirty); after a save it is a real unsaved change.
+            return {
+              ...prev,
+              recipe: setSlotImage(prev.recipe, slot, url, { placeholderUrl: placeholderImageUrl, unhosted: prev.unhosted }),
+              unhosted: prev.unhosted.filter((u) => u.slot !== slot),
+              ...(prev.savedId !== null ? { dirty: true, savedId: null } : {}),
+            };
+          });
+        },
+      }).finally(() => setRelayRuns((n) => n - 1));
+    },
+    [adoptRecipe, requestRelay, placeholderImageUrl],
+  );
 
   // Open in Create loads a saved recipe for editing: Save changes updates it
   // in place, Save as new makes a copy.
@@ -135,6 +180,36 @@ function App() {
     setRecipeState((prev) => (prev ? { ...prev, savedId: id, sourceId: id, dirty: false } : prev));
   }, []);
 
+  const openSetup = useCallback(() => {
+    if (view === 'setup') return;
+    previousViewRef.current = view;
+    window.history.pushState({}, '', '/setup');
+    setView('setup');
+  }, [view]);
+
+  // The path and the view stay in sync both ways (Back and Forward).
+  useEffect(() => {
+    const onPopState = () => {
+      const onSetupPath = window.location.pathname === '/setup';
+      setView((current) => {
+        if (onSetupPath) {
+          if (current !== 'setup') previousViewRef.current = current;
+          return 'setup';
+        }
+        return current === 'setup' ? previousViewRef.current : current;
+      });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Create/Library leave Setup by replacing its history entry, so Back never
+  // lands on a /setup entry that shows another view.
+  const switchView = useCallback((next: WorkspaceView) => {
+    if (window.location.pathname === '/setup') window.history.replaceState(null, '', '/');
+    setView(next);
+  }, []);
+
   const inCreate = view === 'create' && !showCardPreview;
 
   return (
@@ -146,7 +221,7 @@ function App() {
             type="button"
             className="workspace-nav-item"
             aria-current={view === 'create' ? 'page' : undefined}
-            onClick={() => setView('create')}
+            onClick={() => switchView('create')}
           >
             Create
           </button>
@@ -154,10 +229,21 @@ function App() {
             type="button"
             className="workspace-nav-item"
             aria-current={view === 'library' ? 'page' : undefined}
-            onClick={() => setView('library')}
+            onClick={() => switchView('library')}
           >
             Library
           </button>
+          <a
+            href="/setup"
+            className="workspace-nav-item"
+            aria-current={view === 'setup' ? 'page' : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              openSetup();
+            }}
+          >
+            Setup
+          </a>
         </nav>
         <span className={`workspace-status workspace-status--${statusVariant(recipeState)}`}>
           {statusLabel(recipeState)}
@@ -200,7 +286,10 @@ function App() {
           ) : null}
         </div>
         <div hidden={inputCollapsed}>
-          <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} />
+          {captureMode ? (
+            <CapturePanel handoff={handoff} onExtractStart={handleExtractStart} onIngested={handleCaptureIngested} />
+          ) : null}
+          <IngestTabs onRecipe={adoptRecipe} onExtractStart={handleExtractStart} onOpenSetup={openSetup} />
         </div>
       </section>
 
@@ -214,6 +303,7 @@ function App() {
           <span className="workspace-stage-number" aria-hidden="true">2</span>
           <h2 id="review-panel-heading">Review</h2>
         </div>
+        {relayRuns > 0 ? <p role="status">Fetching images from the recipe tab...</p> : null}
         {recipeState ? (
           <ReviewPanel
             // A replaced recipe gets a new namespace: remount so a pending
@@ -271,6 +361,13 @@ function App() {
         <section className="workspace-panel workspace-panel-library" aria-labelledby="library-panel-heading">
           <h2 id="library-panel-heading">Library</h2>
           <LibraryPanel currentUser={currentUser} onOpenInCreate={handleOpenInCreate} />
+        </section>
+      ) : null}
+
+      {view === 'setup' ? (
+        <section className="workspace-panel workspace-panel-setup" aria-labelledby="setup-panel-heading">
+          <h2 id="setup-panel-heading">Setup</h2>
+          <SetupPage appOrigin={window.location.origin} />
         </section>
       ) : null}
 

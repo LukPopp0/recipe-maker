@@ -17,9 +17,11 @@ const TABS: { id: IngestTab; label: string }[] = [
 export function IngestTabs({
   onRecipe,
   onExtractStart,
+  onOpenSetup,
 }: {
   onRecipe: (recipe: CanonicalRecipe, diagnostics: IngestDiagnostics | null, imageNamespaceId?: string) => void
   onExtractStart: () => void
+  onOpenSetup: () => void
 }) {
   const [activeTab, setActiveTab] = useState<IngestTab>('url');
 
@@ -41,7 +43,7 @@ export function IngestTabs({
       </div>
 
       <div className="ingest-tabs-panel" role="tabpanel">
-        {activeTab === 'url' ? <UrlTab onRecipe={onRecipe} onExtractStart={onExtractStart} /> : null}
+        {activeTab === 'url' ? <UrlTab onRecipe={onRecipe} onExtractStart={onExtractStart} onOpenSetup={onOpenSetup} /> : null}
         {activeTab === 'manual' ? <ManualTab onRecipe={onRecipe} onExtractStart={onExtractStart} /> : null}
         {activeTab === 'json' ? <LoadJsonTab onRecipe={onRecipe} /> : null}
       </div>
