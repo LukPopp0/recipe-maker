@@ -31,7 +31,8 @@ jobs:
 
       - run: pnpm test
 
-  # Decides whether a push to main needs a new image. Docs-only pushes skip
+  # Decides whether a push to main needs a new image. Docs-only and
+  # extension-only pushes (the image never contains extension/) skip
   # the build, so they do not publish a GHCR version and push an older one
   # out of the 10 kept. Filtered here, not with on.push.paths, so the test
   # job (a PR check) always runs.
@@ -56,10 +57,10 @@ jobs:
           fi
           printf '%s\n' "$files"
           # Any file outside this list (unknown ones too) means a build.
-          if printf '%s\n' "$files" | grep -qvE '^(docs/|[^/]+\.md$|LICENSE$|\.github/dependabot\.yml$)'; then
+          if printf '%s\n' "$files" | grep -qvE '^(docs/|extension/|[^/]+\.md$|LICENSE$|\.github/dependabot\.yml$)'; then
             echo "image=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Only docs changed; skipping the image build."
+            echo "Only docs/extension files changed; skipping the image build."
             echo "image=false" >> "$GITHUB_OUTPUT"
           fi
 

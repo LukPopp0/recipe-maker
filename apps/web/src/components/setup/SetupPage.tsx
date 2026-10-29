@@ -140,7 +140,7 @@ export function SetupPage({ appOrigin }: { appOrigin: string }) {
           <li>Click "Load unpacked" and choose the folder.</li>
           <li>Open the extension options and enter the Recipe Maker address shown above.</li>
         </ol>
-        <p>Chrome shows a developer-mode warning on startup. That is expected. The bookmarklet also works in Chrome on desktop.</p>
+        <p>Chrome shows a developer-mode warning on startup. That is expected, as are warnings about Firefox-only manifest entries on the extensions page. The bookmarklet also works in Chrome on desktop.</p>
       </section>
     </div>
   );

@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Send to Recipe Maker",
+  "version": "0.1.0",
+  "action": { "default_title": "Send to Recipe Maker" },
+  "background": { "service_worker": "background.js", "scripts": ["background.js"] },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "permissions": ["scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "recipe-maker-capture@lukpopp0",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": { "required": ["none"] }
+    },
+    "gecko_android": { "strict_min_version": "128.0" }
+  }
+}

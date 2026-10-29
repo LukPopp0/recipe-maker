@@ -71,6 +71,7 @@ describe('SetupPage', () => {
     render(<SetupPage appOrigin={ORIGIN} />);
     expect(screen.getAllByText(/grant access to all sites/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/That is expected/i)).toBeInTheDocument();
+    expect(screen.getByText(/Firefox-only manifest entries/i)).toBeInTheDocument();
   });
 
   it('shows a manual copy fallback when the clipboard fails', async () => {
